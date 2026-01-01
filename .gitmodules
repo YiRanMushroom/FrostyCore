@@ -1,0 +1,7 @@
+[submodule "vendor/nvrhi"]
+	path = vendor/nvrhi
+	url = https://github.com/YiRanMushroom/NVRHI
+[submodule "vendor/sdl3"]
+	path = vendor/sdl3
+	url = https://github.com/libsdl-org/SDL
+	branch = release-3.2.x

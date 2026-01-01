@@ -1,6 +1,0 @@
-#ifndef FROSTYCORE_LIBRARY_H
-#define FROSTYCORE_LIBRARY_H
-
-void hello();
-
-#endif // FROSTYCORE_LIBRARY_H
