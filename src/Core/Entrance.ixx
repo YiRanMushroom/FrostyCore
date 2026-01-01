@@ -1,7 +1,5 @@
 export module Core.Entrance;
 
-#define FrostyDefineMain 1
-
 #if FrostyDefineMain
 
 import Core.Exception;
