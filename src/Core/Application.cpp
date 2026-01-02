@@ -5,6 +5,7 @@ import Vendor.ApplicationAPI;
 // import <vulkan/vulkan_core.h>;
 
 import "SDL3/SDL.h";
+import "SDL3/SDL_video.h";
 
 namespace
 Engine {
@@ -423,18 +424,18 @@ Engine {
     void Application::ProcessEvents() {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
+            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(mWindow.get())) {
                 mRunning = false;
             }
 
-            if (event.type == SDL_EVENT_WINDOW_RESIZED ||
-                event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
+            if ((event.type == SDL_EVENT_WINDOW_RESIZED ||
+                 event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) && event.window.windowID == SDL_GetWindowID(mWindow.get())) {
                 mNeedsResize = true;
             }
 
-            if (event.type == SDL_EVENT_WINDOW_MINIMIZED) {
+            if ((event.type == SDL_EVENT_WINDOW_MINIMIZED) && event.window.windowID == SDL_GetWindowID(mWindow.get())) {
                 mMinimized = true;
-            } else if (event.type == SDL_EVENT_WINDOW_RESTORED) {
+            } else if ((event.type == SDL_EVENT_WINDOW_RESTORED) && event.window.windowID == SDL_GetWindowID(mWindow.get())) {
                 mMinimized = false;
             }
 
@@ -488,11 +489,11 @@ Engine {
 
         const nvrhi::FramebufferHandle &currentFramebuffer = mSwapchainData.framebuffers[imageIndex];
 
-        nvrhi::ITexture* currentBackBuffer = mSwapchainData.backBuffers[imageIndex];
+        nvrhi::ITexture *currentBackBuffer = mSwapchainData.backBuffers[imageIndex];
         mCommandList->clearTextureFloat(
             currentBackBuffer,
             nvrhi::TextureSubresourceSet(0, nvrhi::TextureSubresourceSet::AllMipLevels,
-                0, nvrhi::TextureSubresourceSet::AllArraySlices),
+                                         0, nvrhi::TextureSubresourceSet::AllArraySlices),
             GetClearColor()
         );
 

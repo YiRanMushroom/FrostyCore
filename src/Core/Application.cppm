@@ -4,6 +4,7 @@ import Core.Prelude;
 import Vendor.ApplicationAPI;
 import Render.Color;
 import "SDL3/SDL.h";
+import "SDL3/SDL_video.h";
 
 namespace
 Engine {
