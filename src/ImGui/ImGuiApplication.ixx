@@ -14,7 +14,6 @@ namespace Engine {
 
     public:
         vk::SharedDescriptorPool mImGuiDescriptorPool;
-        vk::SharedRenderPass mImGuiRenderPass;
 
         ImGui_ImplVulkanH_Window mImGuiWindowData;
 

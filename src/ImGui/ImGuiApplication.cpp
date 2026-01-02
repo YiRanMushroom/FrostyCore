@@ -37,7 +37,8 @@ Engine {
         (void) io;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; // Enable Gamepad Controls
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable; // Enable Docking and Multi-Viewport
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
+        // Enable Docking and Multi-Viewport
 
         // Setup Dear ImGui style
         ImGui::StyleColorHazel();
@@ -172,78 +173,45 @@ Engine {
                                                  const nvrhi::FramebufferHandle &framebuffer) {
         Application::OnCommandListRecorded(command_list, framebuffer);
 
-        // Get native Vulkan command buffer - render pass already started by Application
-        VkCommandBuffer vkCmdBuf = static_cast<VkCommandBuffer>(
-            command_list->getNativeObject(nvrhi::ObjectTypes::VK_CommandBuffer)
-        );
+        nvrhi::TextureSubresourceSet allSubresources(0, nvrhi::TextureSubresourceSet::AllMipLevels,
+                                                     0, nvrhi::TextureSubresourceSet::AllArraySlices);
 
-        // Render ImGui (pipeline is handled internally by ImGui)
+        command_list->setResourceStatesForFramebuffer(framebuffer);
+
+        vk::CommandBuffer vkCmdBuf{command_list->getNativeObject(nvrhi::ObjectTypes::VK_CommandBuffer)};
+
+        vk::RenderingAttachmentInfoKHR colorAttachment{};
+        colorAttachment.sType = vk::StructureType::eRenderingAttachmentInfoKHR;
+        colorAttachment.imageView = static_cast<VkImageView>(
+            framebuffer->getDesc().colorAttachments[0].texture->getNativeView(
+                nvrhi::ObjectTypes::VK_ImageView, nvrhi::Format::UNKNOWN, allSubresources
+            )
+        );
+        colorAttachment.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
+        colorAttachment.loadOp = vk::AttachmentLoadOp::eLoad;
+        colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
+
+        vk::RenderingInfoKHR renderingInfo{};
+        renderingInfo.sType = vk::StructureType::eRenderingInfoKHR;
+        renderingInfo.renderArea = vk::Rect2D{{0, 0}, {mSwapchainData.width, mSwapchainData.height}};
+        renderingInfo.layerCount = 1;
+        renderingInfo.colorAttachmentCount = 1;
+        renderingInfo.pColorAttachments = &colorAttachment;
+
+        command_list->commitBarriers();
+
+        vkCmdBuf.beginRenderingKHR(&renderingInfo);
+
+        // Render ImGui
         ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), vkCmdBuf, VK_NULL_HANDLE);
+
+        vkCmdBuf.endRenderingKHR();
     }
 
     void ImGuiApplication::OnEvent(const SDL_Event &event) {
         Application::OnEvent(event);
         ImGui_ImplSDL3_ProcessEvent(&event);
 
-        if (event.type == SDL_EVENT_WINDOW_RESIZED || event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
-            // ImGui_ImplVulkan_SetMinImageCount(static_cast<uint32_t>(mSwapchainData.swapchainImages.size()));
-            //
-            // uint32_t queueFamilyIndex = ImGui_ImplVulkanH_SelectQueueFamilyIndex(mVkPhysicalDevice.get());
-            //
-            // ImGui_ImplVulkanH_CreateOrResizeWindow(
-            //     mVkInstance.get(),
-            //     mVkPhysicalDevice.get(),
-            //     mVkDevice.get(),
-            //     &mImGuiWindowData,
-            //     queueFamilyIndex,
-            //     nullptr,
-            //     static_cast<int>(event.window.data1),
-            //     static_cast<int>(event.window.data2),
-            //     static_cast<uint32_t>(mSwapchainData.swapchainImages.size()),
-            //     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-            // );
-        }
-    }
-
-    void ImGuiApplication::CreateImGuiRenderPass() {
-        vk::AttachmentDescription colorAttachmentDesc{};
-        colorAttachmentDesc.format = mSwapchainData.format;
-        colorAttachmentDesc.samples = vk::SampleCountFlagBits::e1;
-        colorAttachmentDesc.loadOp = vk::AttachmentLoadOp::eLoad;
-        colorAttachmentDesc.storeOp = vk::AttachmentStoreOp::eStore;
-        colorAttachmentDesc.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-        colorAttachmentDesc.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-        colorAttachmentDesc.initialLayout = vk::ImageLayout::eColorAttachmentOptimal;
-        colorAttachmentDesc.finalLayout = vk::ImageLayout::ePresentSrcKHR;
-
-        vk::AttachmentReference colorAttachmentRef{};
-        colorAttachmentRef.attachment = 0;
-        colorAttachmentRef.layout = vk::ImageLayout::eColorAttachmentOptimal;
-
-        vk::SubpassDescription subpassDesc{};
-        subpassDesc.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-        subpassDesc.colorAttachmentCount = 1;
-        subpassDesc.pColorAttachments = &colorAttachmentRef;
-
-        vk::SubpassDependency dependency{};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass = 0;
-        dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-        dependency.srcAccessMask = vk::AccessFlagBits::eNoneKHR;
-        dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-        dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
-
-        vk::RenderPassCreateInfo renderPassInfo{};
-        renderPassInfo.attachmentCount = 1;
-        renderPassInfo.pAttachments = &colorAttachmentDesc;
-        renderPassInfo.subpassCount = 1;
-        renderPassInfo.pSubpasses = &subpassDesc;
-        renderPassInfo.dependencyCount = 1;
-        renderPassInfo.pDependencies = &dependency;
-
-        mImGuiRenderPass = vk::SharedRenderPass(
-            mVkDevice.get().createRenderPass(renderPassInfo),
-            mVkDevice
-        );
+        if (event.type == SDL_EVENT_WINDOW_RESIZED || event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {}
     }
 }
