@@ -1,0 +1,153 @@
+export module Core.Application;
+
+import Core.Prelude;
+import Vendor.ApplicationAPI;
+import Render.Color;
+import "SDL3/SDL.h";
+
+namespace
+Engine {
+    // Simple message callback for NVRHI
+    export class NvrhiMessageCallback : public nvrhi::IMessageCallback {
+    public:
+        void message(nvrhi::MessageSeverity severity, const char *messageText) override;
+    };
+
+    export struct SwapChainData {
+        vk::SharedSwapchainKHR swapchain;
+        std::vector<vk::SharedImage> swapchainImages;
+        std::vector<nvrhi::TextureHandle> backBuffers;
+        std::vector<nvrhi::FramebufferHandle> framebuffers;
+        uint32_t width = 0;
+        uint32_t height = 0;
+    };
+
+    export struct WindowCreationInfo {
+        const char *Title = "NVRHI Vulkan Application";
+        int Width = 1280;
+        int Height = 720;
+        uint32_t SDLWindowFlags = SDL_WINDOW_RESIZABLE;
+    };
+
+    // Application class with all inline implementations
+    export class Application {
+    public:
+        constexpr static size_t MaxFramesInFlight = 3;
+
+        Application() = default;
+
+        virtual ~Application() = default;
+
+        // Non-copyable
+        Application(const Application &) = delete;
+
+        Application &operator=(const Application &) = delete;
+
+        // Getter methods
+        [[nodiscard]] const std::shared_ptr<SDL_Window> &GetWindow() const { return mWindow; }
+
+        [[nodiscard]] const vk::SharedInstance &GetVkInstance() const { return mVkInstance; }
+        [[nodiscard]] const vk::SharedPhysicalDevice &GetVkPhysicalDevice() const { return mVkPhysicalDevice; }
+        [[nodiscard]] const vk::SharedSurfaceKHR &GetVkSurface() const { return mVkSurface; }
+        [[nodiscard]] const vk::SharedDevice &GetVkDevice() const { return mVkDevice; }
+        [[nodiscard]] const vk::SharedQueue &GetVkQueue() const { return mVkQueue; }
+
+        [[nodiscard]] const nvrhi::DeviceHandle &GetNvrhiDevice() const { return mNvrhiDevice; }
+        [[nodiscard]] const nvrhi::CommandListHandle &GetCommandList() const { return mCommandList; }
+
+        [[nodiscard]] const SwapChainData &GetSwapchainData() const { return mSwapchainData; }
+
+        [[nodiscard]] bool IsRunning() const { return mRunning; }
+        [[nodiscard]] bool IsMinimized() const { return mMinimized; }
+
+        virtual void Init(WindowCreationInfo info = {});
+
+        virtual void OnEvent(const SDL_Event &event) {}
+
+        virtual void OnUpdate(std::chrono::duration<float> deltaTime) {}
+
+        virtual void Run();
+
+        virtual void Destroy();
+
+        virtual void OnFrameEnded(std::function<void()> callback);
+
+    protected:
+        [[nodiscard]] virtual nvrhi::Color GetClearColor() const {
+            return Color::MyBlue;
+        }
+
+        virtual void CreateWindow(WindowCreationInfo info);
+
+        void InitVulkan();
+
+        void CreateVulkanInstance();
+
+        void SetupDebugMessenger();
+
+        void SelectPhysicalDevice();
+
+        void CreateSurface();
+
+        void CreateLogicalDevice();
+
+        void InitNVRHI();
+
+        void CreateSwapchain();
+
+        void CreateSyncObjects();
+
+        void RecreateSwapchain();
+
+        SwapChainData CreateSwapchainInternal(vk::SwapchainKHR oldSwapchain = nullptr);
+
+        void ExecuteDeferredTasks();
+
+        void ProcessEvents();
+
+        virtual void RenderFrame();
+
+        virtual void OnCommandListRecorded(const nvrhi::CommandListHandle &,
+                                           const nvrhi::FramebufferHandle &) {}
+
+    private:
+        // Member variables (order matters for destruction)
+        static constexpr uint32_t MaxFrameInFlight = 3;
+
+        // Window
+        std::shared_ptr<SDL_Window> mWindow;
+
+        // Vulkan objects
+        vk::SharedInstance mVkInstance;
+        vk::DebugUtilsMessengerEXT mDebugMessenger; // Debug messenger for validation
+        vk::SharedPhysicalDevice mVkPhysicalDevice;
+        vk::SharedSurfaceKHR mVkSurface;
+        vk::SharedDevice mVkDevice;
+        vk::SharedQueue mVkQueue;
+
+        // NVRHI
+        std::shared_ptr<NvrhiMessageCallback> mMessageCallback;
+        nvrhi::vulkan::DeviceHandle mNvrhiDevice;
+        nvrhi::CommandListHandle mCommandList;
+
+        // Swapchain
+        SwapChainData mSwapchainData;
+
+        // Synchronization
+        std::vector<vk::SharedHandle<vk::Semaphore>> mAcquireSemaphores; // Per-frame (for acquire)
+        std::vector<vk::SharedHandle<vk::Semaphore>> mRenderCompleteSemaphores; // Per-swapchain-image
+        std::array<vk::SharedFence, MaxFrameInFlight> mRenderCompleteFences;
+        uint32_t mCurrentFrame = 0;
+
+        // State
+        bool mRunning = false;
+        bool mNeedsResize = false;
+        bool mMinimized = false;
+
+        // time
+        std::chrono::steady_clock::time_point mLastFrameTimestamp;
+
+        // tasks to execute
+        std::vector<std::function<void()>> mDeferredTasks;
+    };
+}
