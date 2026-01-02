@@ -2,6 +2,8 @@ module Core.Application;
 
 import Core.Prelude;
 import Vendor.ApplicationAPI;
+// import <vulkan/vulkan_core.h>;
+
 import "SDL3/SDL.h";
 
 namespace
@@ -219,9 +221,17 @@ Engine {
         queueInfo.queueCount = 1;
         queueInfo.pQueuePriorities = &queuePriority;
 
-        const char *deviceExtensions[] = {vk::KHRSwapchainExtensionName};
+        const char *deviceExtensions[] = {
+            vk::KHRSwapchainExtensionName,
+            vk::KHRDynamicRenderingExtensionName // Required for dynamic rendering in Vulkan 1.2
+        };
+
+        // Enable dynamic rendering feature
+        vk::PhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeature;
+        dynamicRenderingFeature.dynamicRendering = vk::True;
 
         vk::PhysicalDeviceVulkan12Features features12;
+        features12.pNext = &dynamicRenderingFeature; // Chain dynamic rendering feature
         features12.descriptorIndexing = vk::True;
         features12.bufferDeviceAddress = vk::True;
         features12.runtimeDescriptorArray = vk::True;
@@ -233,7 +243,7 @@ Engine {
         devInfo.pNext = &features12;
         devInfo.queueCreateInfoCount = 1;
         devInfo.pQueueCreateInfos = &queueInfo;
-        devInfo.enabledExtensionCount = 1;
+        devInfo.enabledExtensionCount = 2; // Now we have 2 extensions
         devInfo.ppEnabledExtensionNames = deviceExtensions;
 
         vk::Device device = mVkPhysicalDevice.get().createDevice(devInfo);
@@ -247,7 +257,10 @@ Engine {
     void Application::InitNVRHI() {
         mMessageCallback = std::make_shared<NvrhiMessageCallback>();
 
-        const char *deviceExtensions[] = {vk::KHRSwapchainExtensionName};
+        const char *deviceExtensions[] = {
+            vk::KHRSwapchainExtensionName,
+            vk::KHRDynamicRenderingExtensionName
+        };
 
         nvrhi::vulkan::DeviceDesc nvrhiDesc;
         nvrhiDesc.errorCB = mMessageCallback.get();
@@ -257,7 +270,7 @@ Engine {
         nvrhiDesc.graphicsQueue = mVkQueue.get();
         nvrhiDesc.graphicsQueueIndex = 0;
         nvrhiDesc.deviceExtensions = deviceExtensions;
-        nvrhiDesc.numDeviceExtensions = 1;
+        nvrhiDesc.numDeviceExtensions = 2;
 
         mNvrhiDevice = nvrhi::vulkan::createDevice(nvrhiDesc);
     }
@@ -391,6 +404,9 @@ Engine {
             result.framebuffers.push_back(framebuffer);
         }
 
+        // Store format
+        result.format = swapchainInfo.imageFormat;
+
         return result;
     }
 
@@ -469,9 +485,104 @@ Engine {
         mCommandList->open();
 
         const nvrhi::FramebufferHandle &currentFramebuffer = mSwapchainData.framebuffers[imageIndex];
-        nvrhi::utils::ClearColorAttachment(mCommandList, currentFramebuffer, 0, GetClearColor());
+
+        nvrhi::TextureSubresourceSet allSubresources(0, nvrhi::TextureSubresourceSet::AllMipLevels,
+                                                     0, nvrhi::TextureSubresourceSet::AllArraySlices);
+
+        // Get native Vulkan command buffer
+        vk::CommandBuffer vkCmdBuf{
+            (VkCommandBuffer) mCommandList->getNativeObject(nvrhi::ObjectTypes::VK_CommandBuffer)
+        };
+
+        // Transition image from PRESENT/UNDEFINED to COLOR_ATTACHMENT_OPTIMAL
+        VkImage vkImage = static_cast<VkImage>(
+            currentFramebuffer->getDesc().colorAttachments[0].texture->getNativeObject(nvrhi::ObjectTypes::VK_Image)
+        );
+
+        vk::ImageMemoryBarrier prePresentBarrier{};
+        prePresentBarrier.sType = vk::StructureType::eImageMemoryBarrier;
+        prePresentBarrier.srcAccessMask = vk::AccessFlagBits::eNone;
+        prePresentBarrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+        // Use UNDEFINED as old layout - Vulkan allows UNDEFINED->X transition which discards contents
+        // This works for both first frame (truly UNDEFINED) and subsequent frames (we don't care about preserving present layout)
+        prePresentBarrier.oldLayout = vk::ImageLayout::eUndefined;
+        prePresentBarrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal;
+        prePresentBarrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+        prePresentBarrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
+        prePresentBarrier.image = vkImage;
+        prePresentBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+        prePresentBarrier.subresourceRange.baseMipLevel = 0;
+        prePresentBarrier.subresourceRange.levelCount = 1;
+        prePresentBarrier.subresourceRange.baseArrayLayer = 0;
+        prePresentBarrier.subresourceRange.layerCount = 1;
+
+        vkCmdBuf.pipelineBarrier(
+            vk::PipelineStageFlagBits::eTopOfPipe,              // Can be anything before
+            vk::PipelineStageFlagBits::eColorAttachmentOutput,  // Need it ready for color writes
+            vk::DependencyFlags{},
+            0, nullptr,
+            0, nullptr,
+            1, &prePresentBarrier
+        );
+
+        // Begin dynamic rendering
+        vk::RenderingAttachmentInfoKHR colorAttachment{};
+        colorAttachment.sType = vk::StructureType::eRenderingAttachmentInfoKHR;
+        colorAttachment.imageView = static_cast<VkImageView>(
+            currentFramebuffer->getDesc().colorAttachments[0].texture->getNativeView(
+                nvrhi::ObjectTypes::VK_ImageView, nvrhi::Format::UNKNOWN, allSubresources
+            )
+        );
+        colorAttachment.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
+        colorAttachment.loadOp = vk::AttachmentLoadOp::eClear;  // Clear on load
+        colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
+        colorAttachment.clearValue.color = vk::ClearColorValue{
+            std::array<float, 4>{GetClearColor().r, GetClearColor().g, GetClearColor().b, GetClearColor().a}
+        };
+
+        vk::RenderingInfoKHR renderingInfo{};
+        renderingInfo.sType = vk::StructureType::eRenderingInfoKHR;
+        renderingInfo.renderArea = vk::Rect2D{
+            vk::Offset2D{0, 0},
+            vk::Extent2D{mSwapchainData.width, mSwapchainData.height}
+        };
+        renderingInfo.layerCount = 1;
+        renderingInfo.colorAttachmentCount = 1;
+        renderingInfo.pColorAttachments = &colorAttachment;
+
+        vkCmdBuf.beginRenderingKHR(&renderingInfo);
 
         OnCommandListRecorded(mCommandList, currentFramebuffer);
+
+        vkCmdBuf.endRenderingKHR();
+
+        // After ending render pass, image is still in COLOR_ATTACHMENT_OPTIMAL
+        // Manually transition to PRESENT layout
+        vk::ImageMemoryBarrier barrier{};
+        barrier.sType = vk::StructureType::eImageMemoryBarrier;
+        barrier.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+        barrier.dstAccessMask = vk::AccessFlagBits::eNone;
+        barrier.oldLayout = vk::ImageLayout::eColorAttachmentOptimal;  // Correct old layout
+        barrier.newLayout = vk::ImageLayout::ePresentSrcKHR;           // New layout for present
+        barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+        barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
+        barrier.image = static_cast<VkImage>(
+            currentFramebuffer->getDesc().colorAttachments[0].texture->getNativeObject(nvrhi::ObjectTypes::VK_Image)
+        );
+        barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+
+        vkCmdBuf.pipelineBarrier(
+            vk::PipelineStageFlagBits::eColorAttachmentOutput,  // After color writes
+            vk::PipelineStageFlagBits::eBottomOfPipe,           // Before present
+            vk::DependencyFlags{},
+            0, nullptr,  // No memory barriers
+            0, nullptr,  // No buffer barriers
+            1, &barrier  // Image barrier
+        );
 
         mCommandList->close();
 

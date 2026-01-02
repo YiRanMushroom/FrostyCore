@@ -63,8 +63,10 @@ target_link_libraries(${PROJECT_NAME} PUBLIC Vulkan::Vulkan)
 
 add_subdirectory(vendor/sdl3)
 add_subdirectory(vendor/nvrhi)
+add_subdirectory(vendor/imgui)
 
 target_link_libraries(nvrhi_vk PUBLIC Vulkan::Vulkan)
+target_link_libraries(imgui PUBLIC SDL3::SDL3 Vulkan::Vulkan)
 
 target_link_libraries(
         ${PROJECT_NAME}
@@ -72,6 +74,7 @@ target_link_libraries(
         SDL3::SDL3
         nvrhi_vk
         nvrhi
+        imgui
 )
 
 target_compile_definitions(

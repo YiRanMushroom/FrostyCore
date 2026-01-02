@@ -20,6 +20,7 @@ Engine {
         std::vector<nvrhi::FramebufferHandle> framebuffers;
         uint32_t width = 0;
         uint32_t height = 0;
+        vk::Format format = vk::Format::eUndefined;
     };
 
     export struct WindowCreationInfo {
@@ -52,7 +53,7 @@ Engine {
         [[nodiscard]] const vk::SharedDevice &GetVkDevice() const { return mVkDevice; }
         [[nodiscard]] const vk::SharedQueue &GetVkQueue() const { return mVkQueue; }
 
-        [[nodiscard]] const nvrhi::DeviceHandle &GetNvrhiDevice() const { return mNvrhiDevice; }
+        [[nodiscard]] const nvrhi::vulkan::DeviceHandle &GetNvrhiDevice() const { return mNvrhiDevice; }
         [[nodiscard]] const nvrhi::CommandListHandle &GetCommandList() const { return mCommandList; }
 
         [[nodiscard]] const SwapChainData &GetSwapchainData() const { return mSwapchainData; }
@@ -110,7 +111,7 @@ Engine {
         virtual void OnCommandListRecorded(const nvrhi::CommandListHandle &,
                                            const nvrhi::FramebufferHandle &) {}
 
-    private:
+    protected:
         // Member variables (order matters for destruction)
         static constexpr uint32_t MaxFrameInFlight = 3;
 
