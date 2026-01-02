@@ -64,8 +64,11 @@ Engine {
         init_info.PipelineCache = nullptr;
         init_info.DescriptorPool = mImGuiDescriptorPool.get();
         init_info.DescriptorPoolSize = 0;
+        // MinImageCount should be the minimum swapchain images
         init_info.MinImageCount = static_cast<uint32_t>(mSwapchainData.swapchainImages.size());
-        init_info.ImageCount = static_cast<uint32_t>(mSwapchainData.swapchainImages.size());
+        // ImageCount should be MaxFramesInFlight to match the number of in-flight frames
+        // This ensures ImGui keeps enough buffer versions to avoid destroying buffers still in use
+        init_info.ImageCount = MaxFramesInFlight;
         init_info.Allocator = nullptr;
         init_info.UseDynamicRendering = true;
         // init_info.PipelineInfoMain.RenderPass = mImGuiRenderPass.get();
