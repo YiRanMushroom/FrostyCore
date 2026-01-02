@@ -37,6 +37,7 @@ Engine {
         (void) io;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; // Enable Gamepad Controls
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable; // Enable Docking and Multi-Viewport
 
         // Setup Dear ImGui style
         ImGui::StyleColorHazel();
@@ -80,11 +81,15 @@ Engine {
 
         init_info.PipelineInfoMain.PipelineRenderingCreateInfo = pipelineRenderingCreateInfo;
 
-        VkInstance vkInstance = mVkInstance.get();
-
-        ImGui_ImplVulkan_LoadFunctions(vk::ApiVersion12, [](const char *function_name, void *vulkan_instance) {
-            return vkGetInstanceProcAddr(*static_cast<VkInstance *>(vulkan_instance), function_name);
-        }, &vkInstance);
+        // Load Vulkan functions using DEVICE proc addr for device-level functions
+        // vkCmdBeginRenderingKHR is a device-level function, not instance-level
+        VkDevice vkDevice = mVkDevice.get();
+        ImGui_ImplVulkan_LoadFunctions(vk::ApiVersion12, [](const char *function_name, void *user_data) {
+            VkDevice device = *static_cast<VkDevice *>(user_data);
+            // First try device-level functions (for commands like vkCmdBeginRenderingKHR)
+            PFN_vkVoidFunction func = vkGetDeviceProcAddr(device, function_name);
+            return func;
+        }, &vkDevice);
 
         ImGui_ImplVulkan_Init(&init_info);
 
