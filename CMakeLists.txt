@@ -55,7 +55,7 @@ set(SDL_HAPTIC OFF CACHE BOOL "Disable SDL haptic subsystem" FORCE)
 set(SDL_HIDAPI OFF CACHE BOOL "Disable SDL HIDAPI subsystem" FORCE)
 set(SDL_POWER OFF CACHE BOOL "Disable SDL power subsystem" FORCE)
 set(SDL_SENSOR OFF CACHE BOOL "Disable SDL sensor subsystem" FORCE)
-set(SDL_DIALOG OFF CACHE BOOL "Disable SDL dialog subsystem" FORCE)
+set(SDL_DIALOG ON CACHE BOOL "Disable SDL dialog subsystem" FORCE)
 set(SDL_VULKAN ON CACHE BOOL "Enable SDL Vulkan support" FORCE)
 
 find_package(Vulkan REQUIRED)
@@ -64,6 +64,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC Vulkan::Vulkan)
 add_subdirectory(vendor/sdl3)
 add_subdirectory(vendor/nvrhi)
 add_subdirectory(vendor/imgui)
+add_subdirectory(vendor/stb_image)
 
 target_link_libraries(nvrhi_vk PUBLIC Vulkan::Vulkan)
 target_link_libraries(imgui PUBLIC SDL3::SDL3 Vulkan::Vulkan)
@@ -75,6 +76,7 @@ target_link_libraries(
         nvrhi_vk
         nvrhi
         imgui
+        stb_image
 )
 
 target_compile_definitions(
@@ -82,3 +84,9 @@ target_compile_definitions(
         PUBLIC
         "VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1"
 )
+
+if(MSVC)
+    add_compile_options(/utf-8)
+else()
+    error("Only MSVC is supported currently")
+endif()

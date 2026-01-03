@@ -111,6 +111,8 @@ Engine {
             mVkDevice.get().waitIdle();
         }
 
+        ImGui::RunGarbageCollectionAllFrames();
+
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplSDL3_Shutdown();
         ImGui::DestroyContext();
@@ -136,14 +138,13 @@ Engine {
                 ImGui::UpdatePlatformWindows();
                 ImGui::RenderPlatformWindowsDefault();
             }
-
-            ImGui::RunGarbageCollection();
         });
     }
 
     void ImGuiApplication::OnRender(const nvrhi::CommandListHandle &command_list,
-                                                 const nvrhi::FramebufferHandle &framebuffer) {
+                                    const nvrhi::FramebufferHandle &framebuffer) {
         Application::OnRender(command_list, framebuffer);
+        ImGui::RunGarbageCollection(mCurrentFrame);
 
         nvrhi::TextureSubresourceSet allSubresources(0, nvrhi::TextureSubresourceSet::AllMipLevels,
                                                      0, nvrhi::TextureSubresourceSet::AllArraySlices);

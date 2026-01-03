@@ -122,7 +122,11 @@ namespace ImGui {
             mHolder->Release();
         }
 
-        ImTextureID GetImGuiTextureID() const {
+        [[nodiscard]] nvrhi::TextureDesc GetTextureDesc() const {
+            return mTexture->getDesc();
+        }
+
+        [[nodiscard]] ImTextureID GetImGuiTextureID() const {
             return mHolder->GetImGuiTextureID();
         }
 
@@ -151,11 +155,17 @@ namespace ImGui {
 
     std::vector<ImGuiImage> g_ImageInUseCurrentFrame{};
 
+    std::vector<std::vector<ImGuiImage>> g_ImagesInUseForFrameIndex{};
+
     void RegisterImGuiImageForCurrentFrame(const ImGuiImage& image) {
         g_ImageInUseCurrentFrame.push_back(image);
     }
 
-    void ReleaseImGuiImagesForCurrentFrame() {
+    void ReleaseImGuiImagesForCurrentFrame(size_t frameIndex) {
+        if (frameIndex >= g_ImagesInUseForFrameIndex.size()) {
+            g_ImagesInUseForFrameIndex.resize(frameIndex + 1);
+        }
+        g_ImagesInUseForFrameIndex[frameIndex] = std::move(g_ImageInUseCurrentFrame);
         g_ImageInUseCurrentFrame.clear();
     }
 
@@ -164,7 +174,12 @@ namespace ImGui {
         RegisterImGuiImageForCurrentFrame(image);
     }
 
-    export void RunGarbageCollection() {
-        ReleaseImGuiImagesForCurrentFrame();
+    export void RunGarbageCollection(size_t frameIndex) {
+        ReleaseImGuiImagesForCurrentFrame(frameIndex);
+    }
+
+    export void RunGarbageCollectionAllFrames() {
+        g_ImageInUseCurrentFrame.clear();
+        g_ImagesInUseForFrameIndex.clear();
     }
 }
