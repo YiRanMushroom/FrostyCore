@@ -136,6 +136,8 @@ Engine {
                 ImGui::UpdatePlatformWindows();
                 ImGui::RenderPlatformWindowsDefault();
             }
+
+            ImGui::RunGarbageCollection();
         });
     }
 
