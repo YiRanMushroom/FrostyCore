@@ -76,7 +76,7 @@ Engine {
 
             ExecuteDeferredTasks();
             mGCTimeCounter += deltaTime;
-            if (mGCTimeCounter.count() >= 5.0f) {
+            if (mGCTimeCounter >= std::chrono::seconds(5)) {
                 mNvrhiDevice->runGarbageCollection();
                 mGCTimeCounter = std::chrono::duration<float>{};
             }
