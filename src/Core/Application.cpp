@@ -76,10 +76,10 @@ Engine {
 
             ExecuteDeferredTasks();
             mGCTimeCounter += deltaTime;
-            if (mGCTimeCounter >= std::chrono::seconds(5)) {
-                mNvrhiDevice->runGarbageCollection();
-                mGCTimeCounter = std::chrono::duration<float>{};
-            }
+            // if (mGCTimeCounter >= std::chrono::milliseconds(100)) {
+            mNvrhiDevice->runGarbageCollection();
+            mGCTimeCounter = std::chrono::duration<float>{};
+            // }
         }
     }
 
