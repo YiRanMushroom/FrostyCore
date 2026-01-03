@@ -48,7 +48,7 @@ Engine {
     }
 
     void Application::OnUpdate(std::chrono::duration<float> deltaTime) {
-        for (auto &layer : mLayers) {
+        for (auto &layer: mLayers) {
             layer->OnUpdate(deltaTime);
         }
     }
@@ -75,6 +75,11 @@ Engine {
                 RenderFrame();
 
             ExecuteDeferredTasks();
+            mGCTimeCounter += deltaTime;
+            if (mGCTimeCounter.count() >= 5.0f) {
+                mNvrhiDevice->runGarbageCollection();
+                mGCTimeCounter = std::chrono::duration<float>{};
+            }
         }
     }
 
@@ -540,9 +545,9 @@ Engine {
         mCurrentFrame = (mCurrentFrame + 1) % MaxFramesInFlight;
     }
 
-    void Application::OnRender(const nvrhi::CommandListHandle & commandList,
-                               const nvrhi::FramebufferHandle & framebuffer) {
-        for (auto &layer : mLayers) {
+    void Application::OnRender(const nvrhi::CommandListHandle &commandList,
+                               const nvrhi::FramebufferHandle &framebuffer) {
+        for (auto &layer: mLayers) {
             layer->OnRender(commandList, framebuffer);
         }
     }
@@ -550,6 +555,7 @@ Engine {
     void Layer::OnAttach(const std::shared_ptr<Application> &app) {
         mApp = app;
     }
+
     void Layer::OnFrameEnded(std::function<void()> callback) {
         if (mApp) {
             mApp->OnFrameEnded(std::move(callback));
@@ -557,6 +563,7 @@ Engine {
             throw Engine::RuntimeException("Layer is not attached to an Application");
         }
     }
+
     void Layer::OnDetach() {
         mApp.reset();
     }

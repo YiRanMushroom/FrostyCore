@@ -180,6 +180,8 @@ Engine {
         // time
         std::chrono::steady_clock::time_point mLastFrameTimestamp;
 
+        std::chrono::duration<float> mGCTimeCounter{};
+
         std::vector<std::shared_ptr<Layer>> mLayers;
 
         // tasks to execute
