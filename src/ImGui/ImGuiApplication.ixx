@@ -12,6 +12,7 @@ namespace Engine {
         virtual void OnUpdate(std::chrono::duration<float> deltaTime) override;
         virtual void OnRender(const nvrhi::CommandListHandle &, const nvrhi::FramebufferHandle &) override;
         virtual void OnEvent(const Event &event) override;
+        virtual void OnPostRender() override;
 
         virtual const vk::SharedDescriptorPool &GetImGuiDescriptorPool() const {
             return mImGuiDescriptorPool;

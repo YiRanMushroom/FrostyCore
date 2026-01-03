@@ -138,6 +138,10 @@ Engine {
 
         void ProcessEvents();
 
+    public:
+        virtual void OnPostRender();
+
+    protected:
         virtual void RenderFrame();
 
         virtual void OnRender(const nvrhi::CommandListHandle &,

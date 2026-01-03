@@ -105,12 +105,6 @@ Engine {
     }
 
     void ImGuiApplication::Destroy() {
-        // Wait for device to be idle before destroying ImGui resources
-        // This ensures all buffers used by ImGui are no longer in use by the GPU
-        if (mVkDevice) {
-            mVkDevice.get().waitIdle();
-        }
-
         ImGui::RunGarbageCollectionAllFrames();
 
         ImGui_ImplVulkan_Shutdown();
@@ -131,14 +125,6 @@ Engine {
         Application::OnUpdate(deltaTime);
 
         ImGui::Render();
-
-        OnFrameEnded([this] {
-            auto &io = ImGui::GetIO();
-            if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-                ImGui::UpdatePlatformWindows();
-                ImGui::RenderPlatformWindowsDefault();
-            }
-        });
     }
 
     void ImGuiApplication::OnRender(const nvrhi::CommandListHandle &command_list,
@@ -186,9 +172,17 @@ Engine {
         Application::OnEvent(event);
     }
 
-    void ImGuiApplication::DetachAllLayers() {
-        mNvrhiDevice->waitForIdle();
+    void ImGuiApplication::OnPostRender() {
+        auto &io = ImGui::GetIO();
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+        }
 
+        Application::OnPostRender();
+    }
+
+    void ImGuiApplication::DetachAllLayers() {
         Application::DetachAllLayers();
     }
 }

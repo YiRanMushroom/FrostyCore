@@ -71,22 +71,19 @@ Engine {
             mLastFrameTimestamp = now;
             OnUpdate(deltaTime);
 
+            mGCTimeCounter += deltaTime;
+
             if (!mMinimized)
                 RenderFrame();
 
-            ExecuteDeferredTasks();
-            mGCTimeCounter += deltaTime;
-            // if (mGCTimeCounter >= std::chrono::milliseconds(100)) {
-            mNvrhiDevice->runGarbageCollection();
-            mGCTimeCounter = std::chrono::duration<float>{};
-            // }
+            OnPostRender();
         }
+
+        mNvrhiDevice->waitForIdle();
     }
 
     void Application::Destroy() {
         if (!mVkDevice) return;
-
-        mVkDevice->waitIdle();
 
         // 1. Clear NVRHI resources
         mSwapchainData.framebuffers.clear();
@@ -462,6 +459,14 @@ Engine {
 
             OnEvent(event);
         }
+    }
+
+    void Application::OnPostRender() {
+        ExecuteDeferredTasks();
+        // if (mGCTimeCounter >= std::chrono::milliseconds(100)) {
+        mNvrhiDevice->runGarbageCollection();
+        mGCTimeCounter = std::chrono::duration<float>{};
+        // }
     }
 
     void Application::RenderFrame() {
