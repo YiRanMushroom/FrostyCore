@@ -2,7 +2,6 @@ module Core.Application;
 
 import Core.Prelude;
 import Vendor.ApplicationAPI;
-// import <vulkan/vulkan_core.h>;
 
 import "SDL3/SDL.h";
 import "SDL3/SDL_video.h";
@@ -38,6 +37,20 @@ Engine {
         mCommandList = mNvrhiDevice->createCommandList();
 
         mLastFrameTimestamp = std::chrono::steady_clock::now();
+    }
+
+    void Application::OnEvent(const Event &event) {
+        for (auto it = mLayers.rbegin(); it != mLayers.rend(); ++it) {
+            if ((*it)->OnEvent(event)) {
+                return;
+            }
+        }
+    }
+
+    void Application::OnUpdate(std::chrono::duration<float> deltaTime) {
+        for (auto &layer : mLayers) {
+            layer->OnUpdate(deltaTime);
+        }
     }
 
     void Application::Run() {
@@ -424,18 +437,21 @@ Engine {
     void Application::ProcessEvents() {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(mWindow.get())) {
+            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(
+                    mWindow.get())) {
                 mRunning = false;
             }
 
             if ((event.type == SDL_EVENT_WINDOW_RESIZED ||
-                 event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) && event.window.windowID == SDL_GetWindowID(mWindow.get())) {
+                 event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) && event.window.windowID == SDL_GetWindowID(
+                    mWindow.get())) {
                 mNeedsResize = true;
             }
 
             if ((event.type == SDL_EVENT_WINDOW_MINIMIZED) && event.window.windowID == SDL_GetWindowID(mWindow.get())) {
                 mMinimized = true;
-            } else if ((event.type == SDL_EVENT_WINDOW_RESTORED) && event.window.windowID == SDL_GetWindowID(mWindow.get())) {
+            } else if ((event.type == SDL_EVENT_WINDOW_RESTORED) && event.window.windowID == SDL_GetWindowID(
+                           mWindow.get())) {
                 mMinimized = false;
             }
 
@@ -497,7 +513,7 @@ Engine {
             GetClearColor()
         );
 
-        OnCommandListRecorded(mCommandList, currentFramebuffer);
+        OnRender(mCommandList, currentFramebuffer);
 
         mCommandList->close();
 
@@ -522,5 +538,26 @@ Engine {
         }
 
         mCurrentFrame = (mCurrentFrame + 1) % MaxFramesInFlight;
+    }
+
+    void Application::OnRender(const nvrhi::CommandListHandle & commandList,
+                               const nvrhi::FramebufferHandle & framebuffer) {
+        for (auto &layer : mLayers) {
+            layer->OnRender(commandList, framebuffer);
+        }
+    }
+
+    void Layer::OnAttach(const std::shared_ptr<Application> &app) {
+        mApp = app;
+    }
+    void Layer::OnFrameEnded(std::function<void()> callback) {
+        if (mApp) {
+            mApp->OnFrameEnded(std::move(callback));
+        } else {
+            throw Engine::RuntimeException("Layer is not attached to an Application");
+        }
+    }
+    void Layer::OnDetach() {
+        mApp.reset();
     }
 }

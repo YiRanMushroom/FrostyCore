@@ -5,6 +5,7 @@ import "imgui.h";
 import "backends/imgui_impl_vulkan.h";
 import "SDL3/SDL.h";
 import Render.Color;
+import Core.Events;
 
 namespace
 Engine {
@@ -101,11 +102,6 @@ Engine {
         // Init sampler
         nvrhi::SamplerDesc samplerDesc{};
         mImGuiTextureSampler = mNvrhiDevice->createSampler(samplerDesc);
-
-        // create a 16 by 16 MyPink texture using NVRHI and get an ImGui texture ID for it
-        nvrhi::Color color = Engine::Color::MyPink;
-        InitMyTexture();
-        mImGuiTexture = GetImGuiTextureID(mMyTexture.Get(), mImGuiTextureSampler.Get());
     }
 
     void ImGuiApplication::Destroy() {
@@ -114,9 +110,6 @@ Engine {
         if (mVkDevice) {
             mVkDevice.get().waitIdle();
         }
-
-        RemoveImGuiTextureID(mImGuiTexture);
-        mMyTexture.Reset();
 
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplSDL3_Shutdown();
@@ -129,20 +122,11 @@ Engine {
     }
 
     void ImGuiApplication::OnUpdate(std::chrono::duration<float> deltaTime) {
-        Application::OnUpdate(deltaTime);
-
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
-        static bool show_demo_window = true;
-        if (show_demo_window)
-            ImGui::ShowDemoWindow(&show_demo_window);
-
-        ImGui::Begin("MyPink Texture Window");
-        ImGui::Text("This is my pink texture rendered in ImGui:");
-        ImGui::Image(mImGuiTexture, ImVec2(128, 128));
-        ImGui::End();
+        Application::OnUpdate(deltaTime);
 
         ImGui::Render();
 
@@ -155,14 +139,13 @@ Engine {
         });
     }
 
-    void ImGuiApplication::OnCommandListRecorded(const nvrhi::CommandListHandle &command_list,
+    void ImGuiApplication::OnRender(const nvrhi::CommandListHandle &command_list,
                                                  const nvrhi::FramebufferHandle &framebuffer) {
-        Application::OnCommandListRecorded(command_list, framebuffer);
+        Application::OnRender(command_list, framebuffer);
 
         nvrhi::TextureSubresourceSet allSubresources(0, nvrhi::TextureSubresourceSet::AllMipLevels,
                                                      0, nvrhi::TextureSubresourceSet::AllArraySlices);
 
-        command_list->setTextureState(mMyTexture, nvrhi::AllSubresources, nvrhi::ResourceStates::ShaderResource);
         command_list->setResourceStatesForFramebuffer(framebuffer);
         command_list->commitBarriers();
 
@@ -194,39 +177,15 @@ Engine {
         vkCmdBuf.endRenderingKHR();
     }
 
-    void ImGuiApplication::OnEvent(const SDL_Event &event) {
-        Application::OnEvent(event);
+    void ImGuiApplication::OnEvent(const Event &event) {
         ImGui_ImplSDL3_ProcessEvent(&event);
 
-        if (event.type == SDL_EVENT_WINDOW_RESIZED || event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {}
+        Application::OnEvent(event);
     }
 
-    void ImGuiApplication::InitMyTexture() {
-        nvrhi::TextureDesc desc;
-        desc.width = 16;
-        desc.height = 16;
-        desc.format = nvrhi::Format::RGBA8_UNORM;
-        desc.debugName = "MyPinkTexture";
-        desc.isRenderTarget = false;
-        desc.isUAV = false;
-        desc.initialState = nvrhi::ResourceStates::ShaderResource;
-        desc.keepInitialState = true;
+    void ImGuiApplication::DetachAllLayers() {
+        mNvrhiDevice->waitForIdle();
 
-        nvrhi::TextureHandle pinkTexture = mNvrhiDevice->createTexture(desc);
-
-        auto color = Engine::Color::MyPink;
-        uint8_t r = static_cast<uint8_t>(color.r * 255.0f);
-        uint8_t g = static_cast<uint8_t>(color.g * 255.0f);
-        uint8_t b = static_cast<uint8_t>(color.b * 255.0f);
-        uint8_t a = static_cast<uint8_t>(color.a * 255.0f);
-
-        std::vector<uint32_t> pixels(16 * 16, (a << 24) | (b << 16) | (g << 8) | r);
-
-        mCommandList->open();
-        mCommandList->writeTexture(pinkTexture, 0, 0, pixels.data(), 16 * sizeof(uint32_t));
-        mCommandList->close();
-        mNvrhiDevice->executeCommandList(mCommandList);
-
-        mMyTexture = std::move(pinkTexture);
+        Application::DetachAllLayers();
     }
 }

@@ -4,6 +4,7 @@ export import "imgui.h";
 export import "imgui_internal.h";
 export import "backends/imgui_impl_sdl3.h";
 export import "backends/imgui_impl_vulkan.h";
+import Vendor.GraphicsAPI;
 
 namespace ImGui {
     export inline void StyleColorHazel() {
@@ -63,4 +64,88 @@ namespace ImGui {
         // colors[ImGuiCol_DockingPreview] = ImVec4(0.31f, 0.31f, 0.31f, 0.7f);
         // colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.02f, 0.02f, 0.02f, 1.0f);
     }
+
+    export class ImGuiImage;
+
+    export class IImGuiImageHolder : public nvrhi::IResource {
+    public:
+        virtual ~IImGuiImageHolder() override {
+            IImGuiImageHolder::Destroy();
+        }
+
+        friend class ImGuiImage;
+
+        virtual void Destroy() {
+            ImGui_ImplVulkan_RemoveTexture(reinterpret_cast<VkDescriptorSet>(mImGuiTextureID));
+            mImGuiTextureID = 0;
+        }
+
+        virtual void Init(nvrhi::ITexture *texture, nvrhi::ISampler *sampler) {
+            if (mImGuiTextureID != 0) {
+                Destroy();
+            }
+
+            // 1. Get native Vulkan objects from NVRHI
+            VkImageView imageView = texture->getNativeView(nvrhi::ObjectTypes::VK_ImageView);
+            VkSampler vkSampler = sampler->getNativeObject(nvrhi::ObjectTypes::VK_Sampler);
+
+            // 2. Register with ImGui's Vulkan backend
+            // This creates a VkDescriptorSet internally
+            mImGuiTextureID = reinterpret_cast<ImTextureID>(ImGui_ImplVulkan_AddTexture(
+                vkSampler,
+                imageView,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+            ));
+        }
+
+        ImTextureID GetImGuiTextureID() const {
+            return mImGuiTextureID;
+        }
+
+    private:
+        ImTextureID mImGuiTextureID{};
+    };
+
+    export class ImGuiImageHolder : public nvrhi::RefCounter<IImGuiImageHolder> {
+    public:
+        ImGuiImageHolder(nvrhi::ITexture *texture, nvrhi::ISampler *sampler)
+            : nvrhi::RefCounter<IImGuiImageHolder>() {
+            IImGuiImageHolder::Init(texture, sampler);
+        }
+    };
+
+    class ImGuiImage {
+    public:
+        ImGuiImage(nvrhi::TextureHandle texture, nvrhi::SamplerHandle sampler)
+            : mTexture(texture), mSampler(sampler) {
+            mHolder = new ImGuiImageHolder(mTexture.Get(), mSampler.Get());
+            mHolder->Release();
+        }
+
+        ImTextureID GetImGuiTextureID() const {
+            return mHolder->GetImGuiTextureID();
+        }
+
+        void Reset() {
+            mHolder.Reset();
+            mTexture.Reset();
+            mSampler.Reset();
+        }
+
+        ~ImGuiImage() {
+            Reset();
+        }
+
+        ImGuiImage() = default;
+
+    private:
+        nvrhi::SamplerHandle mSampler;
+        nvrhi::TextureHandle mTexture;
+        nvrhi::RefCountPtr<IImGuiImageHolder> mHolder;
+
+    public:
+        static ImGuiImage Create(nvrhi::TextureHandle texture, nvrhi::SamplerHandle sampler) {
+            return ImGuiImage(texture, sampler);
+        }
+    };
 }

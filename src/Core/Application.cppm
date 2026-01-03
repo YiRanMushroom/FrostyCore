@@ -3,13 +3,44 @@ export module Core.Application;
 import Core.Prelude;
 import Vendor.ApplicationAPI;
 import Render.Color;
+import Core.Layer;
+import Core.Events;
 import "SDL3/SDL.h";
 import "SDL3/SDL_video.h";
 
 namespace
 Engine {
+    export class Application;
+
+    export class Layer {
+    public:
+        virtual ~Layer() = default;
+
+        virtual void OnAttach(const std::shared_ptr<Application> &app);
+
+        virtual void OnUpdate(std::chrono::duration<float> deltaTime) {}
+
+        virtual bool OnEvent(const Event &event) {
+            return false;
+        }
+
+        virtual void OnRender(const nvrhi::CommandListHandle &commandList,
+                              const nvrhi::FramebufferHandle &framebuffer) {}
+
+        virtual void OnFrameEnded(std::function<void()> callback);
+
+        virtual void OnDetach();
+
+    protected:
+        std::shared_ptr<Application> mApp{};
+    };
+}
+
+
+namespace
+Engine {
     // Simple message callback for NVRHI
-    export class NvrhiMessageCallback : public nvrhi::IMessageCallback {
+    class NvrhiMessageCallback : public nvrhi::IMessageCallback {
     public:
         void message(nvrhi::MessageSeverity severity, const char *messageText) override;
     };
@@ -32,7 +63,7 @@ Engine {
     };
 
     // Application class with all inline implementations
-    export class Application {
+    class Application : public std::enable_shared_from_this<Application> {
     public:
         constexpr static size_t MaxFramesInFlight = 3;
 
@@ -64,9 +95,9 @@ Engine {
 
         virtual void Init(WindowCreationInfo info = {});
 
-        virtual void OnEvent(const SDL_Event &event) {}
+        virtual void OnEvent(const Event &event);
 
-        virtual void OnUpdate(std::chrono::duration<float> deltaTime) {}
+        virtual void OnUpdate(std::chrono::duration<float> deltaTime);
 
         virtual void Run();
 
@@ -109,8 +140,8 @@ Engine {
 
         virtual void RenderFrame();
 
-        virtual void OnCommandListRecorded(const nvrhi::CommandListHandle &,
-                                           const nvrhi::FramebufferHandle &) {}
+        virtual void OnRender(const nvrhi::CommandListHandle &,
+                              const nvrhi::FramebufferHandle &);
 
     protected:
         // Member variables (order matters for destruction)
@@ -149,7 +180,53 @@ Engine {
         // time
         std::chrono::steady_clock::time_point mLastFrameTimestamp;
 
+        std::vector<std::shared_ptr<Layer>> mLayers;
+
         // tasks to execute
         std::vector<std::function<void()>> mDeferredTasks;
+
+    public:
+        void PushLayer(const std::shared_ptr<Layer> &layer) {
+            mLayers.push_back(layer);
+            layer->OnAttach(shared_from_this());
+        }
+
+        std::shared_ptr<Layer> PopLayer(std::weak_ptr<Layer> layer) {
+            if (auto locked = layer.lock()) {
+                std::erase(mLayers, locked);
+                locked->OnDetach();
+                return locked;
+            }
+            return nullptr;
+        }
+
+        template<typename T, typename... Args>
+        std::shared_ptr<T> EmplaceLayer(Args &&... args) {
+            static_assert(std::is_base_of_v<Layer, T>, "T must be derived from Layer");
+            auto layer = std::make_shared<T>(std::forward<Args>(args)...);
+            PushLayer(layer);
+            return layer;
+        }
+
+        void TransitionToLayer(std::shared_ptr<Layer> oldLayer, std::shared_ptr<Layer> newLayer) {
+            for (auto &layer: mLayers) {
+                if (layer == oldLayer) {
+                    std::swap(layer, newLayer);
+                    oldLayer->OnDetach();
+                    newLayer->OnAttach(shared_from_this());
+                    return;
+                }
+            }
+
+            throw Engine::RuntimeException("Old layer not found in layer stack");
+        }
+
+        virtual void DetachAllLayers() {
+            for (auto &layer: mLayers) {
+                layer->OnDetach();
+            }
+
+            mLayers.clear();
+        }
     };
 }
