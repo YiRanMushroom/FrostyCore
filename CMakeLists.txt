@@ -8,12 +8,6 @@ add_library(${PROJECT_NAME} STATIC)
 file(GLOB_RECURSE IMPL_UNITS "src/*.cpp")
 file(GLOB_RECURSE INTERFACE_UNITS "src/*.ixx" "src/*.cppm")
 
-#target_compile_options(
-#        ${PROJECT_NAME}
-#        PRIVATE
-#        "/EHa"
-#)
-
 target_include_directories(
         ${PROJECT_NAME}
         PRIVATE
@@ -40,6 +34,12 @@ target_compile_definitions(
         "Engine=Frosty"
 )
 
+include(cmake/GenerateShaderSource.cmake)
+add_shader_embedding_target(ShaderBuildTarget
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Render/shaders"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Render/GeneratedShaders.cppm"
+)
+
 set(NVRHI_BUILD_SHARED OFF CACHE BOOL "Do not build NVRHI as a shared library" FORCE)
 set(NVRHI_WITH_VALIDATION ON CACHE BOOL "Build NVRHI with validation layers" FORCE)
 set(NVRHI_WITH_VULKAN ON CACHE BOOL "Build NVRHI with Vulkan backend" FORCE)
@@ -57,6 +57,9 @@ set(SDL_POWER OFF CACHE BOOL "Disable SDL power subsystem" FORCE)
 set(SDL_SENSOR OFF CACHE BOOL "Disable SDL sensor subsystem" FORCE)
 set(SDL_DIALOG ON CACHE BOOL "Disable SDL dialog subsystem" FORCE)
 set(SDL_VULKAN ON CACHE BOOL "Enable SDL Vulkan support" FORCE)
+
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "Do not build SDL test library" FORCE)
+set(SDL_EXAMPLES OFF CACHE BOOL "Do not build SDL examples" FORCE)
 
 find_package(Vulkan REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC Vulkan::Vulkan)

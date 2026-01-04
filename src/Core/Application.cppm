@@ -53,6 +53,10 @@ Engine {
         uint32_t width = 0;
         uint32_t height = 0;
         vk::Format format = vk::Format::eUndefined;
+
+        [[nodiscard]] nvrhi::Format GetNvrhiFormat() const {
+            return framebuffers.empty() ? nvrhi::Format::UNKNOWN : framebuffers[0]->getFramebufferInfo().colorFormats[0];
+        }
     };
 
     export struct WindowCreationInfo {

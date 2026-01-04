@@ -6,6 +6,7 @@ import "backends/imgui_impl_vulkan.h";
 import "SDL3/SDL.h";
 import Render.Color;
 import Core.Events;
+import Render.Utilities;
 
 namespace
 Engine {
@@ -132,38 +133,13 @@ Engine {
         Application::OnRender(command_list, framebuffer);
         ImGui::RunGarbageCollection(mCurrentFrame);
 
-        nvrhi::TextureSubresourceSet allSubresources(0, nvrhi::TextureSubresourceSet::AllMipLevels,
-                                                     0, nvrhi::TextureSubresourceSet::AllArraySlices);
+        command_list->clearState();
 
-        command_list->setResourceStatesForFramebuffer(framebuffer);
-        command_list->commitBarriers();
+        Render::SimpleRenderingGuard renderingGuard(command_list, framebuffer,
+                                                    framebuffer->getDesc().colorAttachments[0].texture->getDesc().width,
+                                                    framebuffer->getDesc().colorAttachments[0].texture->getDesc().height);
 
-        vk::CommandBuffer vkCmdBuf{command_list->getNativeObject(nvrhi::ObjectTypes::VK_CommandBuffer)};
-
-        vk::RenderingAttachmentInfoKHR colorAttachment{};
-        colorAttachment.sType = vk::StructureType::eRenderingAttachmentInfoKHR;
-        colorAttachment.imageView = static_cast<VkImageView>(
-            framebuffer->getDesc().colorAttachments[0].texture->getNativeView(
-                nvrhi::ObjectTypes::VK_ImageView, nvrhi::Format::UNKNOWN, allSubresources
-            )
-        );
-        colorAttachment.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
-        colorAttachment.loadOp = vk::AttachmentLoadOp::eLoad;
-        colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
-
-        vk::RenderingInfoKHR renderingInfo{};
-        renderingInfo.sType = vk::StructureType::eRenderingInfoKHR;
-        renderingInfo.renderArea = vk::Rect2D{{0, 0}, {mSwapchainData.width, mSwapchainData.height}};
-        renderingInfo.layerCount = 1;
-        renderingInfo.colorAttachmentCount = 1;
-        renderingInfo.pColorAttachments = &colorAttachment;
-
-        vkCmdBuf.beginRenderingKHR(&renderingInfo);
-
-        // Render ImGui
-        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), vkCmdBuf, VK_NULL_HANDLE);
-
-        vkCmdBuf.endRenderingKHR();
+        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), renderingGuard.GetVkCommandBuffer(), VK_NULL_HANDLE);
     }
 
     void ImGuiApplication::OnEvent(const Event &event) {

@@ -523,6 +523,12 @@ Engine {
             GetClearColor()
         );
 
+        nvrhi::TextureSubresourceSet allSubresources(0, nvrhi::TextureSubresourceSet::AllMipLevels,
+                                             0, nvrhi::TextureSubresourceSet::AllArraySlices);
+
+        mCommandList->setResourceStatesForFramebuffer(currentFramebuffer);
+        mCommandList->commitBarriers();
+
         OnRender(mCommandList, currentFramebuffer);
 
         mCommandList->close();
