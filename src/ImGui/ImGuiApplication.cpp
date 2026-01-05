@@ -117,7 +117,7 @@ Engine {
     void ImGuiApplication::OnRender(const nvrhi::CommandListHandle &command_list,
                                     const nvrhi::FramebufferHandle &framebuffer) {
         Application::OnRender(command_list, framebuffer);
-        ImGui::RunGarbageCollection(mCurrentFrame);
+        ImGui::RunGarbageCollection(mCurrentImageIndex);
 
         command_list->clearState();
 

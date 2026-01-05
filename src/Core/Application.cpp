@@ -438,6 +438,8 @@ Engine {
 
         uint32_t imageIndex = acquireResult.imageIndex;
 
+        mCurrentImageIndex = imageIndex;
+
         // Reset fence before submitting new work
         mVkDevice.get().resetFences(currentRenderCompleteFence.get());
 

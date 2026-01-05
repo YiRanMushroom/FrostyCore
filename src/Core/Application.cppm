@@ -192,6 +192,7 @@ Engine {
         std::vector<vk::SharedSemaphore> mAcquireSemaphores; // Per-frame (for acquire)
         std::array<vk::SharedFence, MaxFrameInFlight> mRenderCompleteFences;
         uint32_t mCurrentFrame = 0;
+        uint32_t mCurrentImageIndex = 0;
 
         // State
         bool mRunning = false;
