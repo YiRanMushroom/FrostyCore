@@ -27,8 +27,15 @@ function(add_shader_embedding_target TARGET_NAME INPUT_DIR OUTPUT_FILE)
 
         set(SPV_FILE "${INTERMEDIATE_DIR}/${FILE_NAME}.spv")
 
+        # Add Vulkan binding shifts to match NVRHI's VulkanBindingOffsets defaults:
+        # shaderResource = 0, sampler = 128, constantBuffer = 256, unorderedAccess = 384
         execute_process(
-                COMMAND ${DXC_EXECUTABLE} -T ${PROFILE} -E main -spirv -Fo "${SPV_FILE}" "${SHADER_PATH}"
+                COMMAND ${DXC_EXECUTABLE} -T ${PROFILE} -E main -spirv
+                        -fvk-t-shift 0 0
+                        -fvk-s-shift 128 0
+                        -fvk-b-shift 256 0
+                        -fvk-u-shift 384 0
+                        -Fo "${SPV_FILE}" "${SHADER_PATH}"
                 RESULT_VARIABLE DXC_RESULT
                 ERROR_VARIABLE DXC_ERROR
         )

@@ -164,6 +164,13 @@ namespace Engine {
         /// Reset acquired image state (call after present)
         void ResetAcquiredState() { mCurrentImageIndex = UINT32_MAX; }
 
+        nvrhi::FramebufferInfo GetFramebufferInfo() const {
+            nvrhi::FramebufferInfo fbInfo;
+            fbInfo.colorFormats.push_back(GetNvrhiFormat());
+            fbInfo.sampleCount = 1;
+            return fbInfo;
+        }
+
     private:
         static PlatformSwapchain CreateSwapchainInternal(
             SDL_Window* window,
