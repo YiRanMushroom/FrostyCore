@@ -477,7 +477,7 @@ Engine {
             // Lock the queue mutex to prevent ImGui viewport rendering from using queue simultaneously
             nvrhi::vulkan::Queue* nvrhiQueue = static_cast<nvrhi::vulkan::Device*>(mNvrhiDevice.Get())
                 ->getQueue(nvrhi::CommandQueue::Graphics);
-            std::lock_guard<std::mutex> queueLock(nvrhiQueue->GetVulkanQueueMutexInternal());
+            std::lock_guard queueLock(nvrhiQueue->GetVulkanQueueMutexInternal());
             presentResult = mSwapchain.Present(mVkQueue, imageIndex);
         }
         if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR) {
