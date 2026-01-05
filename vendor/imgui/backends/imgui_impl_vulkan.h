@@ -139,7 +139,7 @@ struct ImGui_ImplVulkan_InitInfo
     VkShaderModuleCreateInfo        CustomShaderVertCreateInfo;
     VkShaderModuleCreateInfo        CustomShaderFragCreateInfo;
 
-    std::mutex*                     GraphicsQueueMutex;          // lock this mutex before using the graphics queue. This mutex is owned by nvrhi.
+    void*                           NvrhiDeviceHandle;           // nvrhi::vulkan::IDevice* - used to dynamically get the graphics queue mutex
 };
 
 // Follow "Getting Started" link and check examples/ folder to learn about using backends!

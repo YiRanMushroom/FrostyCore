@@ -72,6 +72,12 @@ add_subdirectory(vendor/stb_image)
 target_link_libraries(nvrhi_vk PUBLIC Vulkan::Vulkan)
 target_link_libraries(imgui PUBLIC SDL3::SDL3 Vulkan::Vulkan nvrhi nvrhi_vk)
 
+target_include_directories(
+        imgui
+        PUBLIC
+        vendor
+)
+
 target_link_libraries(
         ${PROJECT_NAME}
         PUBLIC

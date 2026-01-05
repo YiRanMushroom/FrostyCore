@@ -82,9 +82,8 @@ Engine {
             return func;
         }, &vkDevice);
 
-        init_info.GraphicsQueueMutex = &static_cast<nvrhi::vulkan::Queue *>(
-            mNvrhiDevice->getNativeQueue(nvrhi::ObjectTypes::VK_Queue,
-                                         nvrhi::CommandQueue::Graphics))->GetVulkanQueueMutexInternal();
+        // Pass nvrhi device handle so ImGui can dynamically get the queue mutex
+        init_info.NvrhiDeviceHandle = mNvrhiDevice.Get();
 
         ImGui_ImplVulkan_Init(&init_info);
 

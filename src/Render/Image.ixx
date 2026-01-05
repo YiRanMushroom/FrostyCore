@@ -49,7 +49,14 @@ Engine {
                                       rowPitch);
         }
         commandList->close();
+
+        auto eventQuery = device->createEventQuery();
+
         device->executeCommandList(commandList);
+
+        device->setEventQuery(eventQuery, nvrhi::CommandQueue::Graphics);
+
+        device->waitEventQuery(eventQuery);
 
         return textures;
     }

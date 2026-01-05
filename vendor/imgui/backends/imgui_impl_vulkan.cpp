@@ -109,6 +109,9 @@
 #include "imgui_impl_vulkan.h"
 #include <stdio.h>
 #include <unordered_map>
+
+// Include nvrhi internal header to access queue mutex
+#include "nvrhi/src/vulkan/vulkan-backend.h"
 #ifndef IM_MAX
 #define IM_MAX(A, B)    (((A) >= (B)) ? (A) : (B))
 #endif
@@ -121,6 +124,9 @@
 
 // Helper function to check VkResult
 static void check_vk_result(VkResult err);
+
+// Helper function to get queue mutex from nvrhi device handle
+static std::mutex* ImGui_ImplVulkan_GetQueueMutex(void* nvrhiDeviceHandle);
 
 #define IMGUI_IMPL_VULKAN_HAS_DYNAMIC_RENDERING
 
@@ -256,25 +262,22 @@ static PFN_vkCmdEndRenderingKHR ImGuiImplVulkanFuncs_vkCmdEndRenderingKHR;
 //-----------------------------------------------------------------------------
 // Descriptor Pool Manager - Handles dynamic descriptor set allocation
 //-----------------------------------------------------------------------------
-struct ImGui_ImplVulkan_DescriptorPoolManager
-{
-    struct PoolInfo
-    {
-        VkDescriptorPool    Pool;
-        uint32_t            AllocatedSets;
-        uint32_t            MaxSets;
+struct ImGui_ImplVulkan_DescriptorPoolManager {
+    struct PoolInfo {
+        VkDescriptorPool Pool;
+        uint32_t AllocatedSets;
+        uint32_t MaxSets;
     };
 
-    ImVector<PoolInfo>                              Pools;
-    std::unordered_map<ImTextureID, int>           SetToPoolIndex;  // Use ImTextureID (void*) as key
-    VkDevice                                        Device;
-    const VkAllocationCallbacks*                    Allocator;
-    VkDescriptorSetLayout                           SetLayout;
-    uint32_t                                        InitialPoolSize;  // Initial pool size
-    uint32_t                                        NextPoolSize;     // Size for next pool (grows dynamically)
+    ImVector<PoolInfo> Pools;
+    std::unordered_map<ImTextureID, int> SetToPoolIndex; // Use ImTextureID (void*) as key
+    VkDevice Device;
+    const VkAllocationCallbacks *Allocator;
+    VkDescriptorSetLayout SetLayout;
+    uint32_t InitialPoolSize; // Initial pool size
+    uint32_t NextPoolSize; // Size for next pool (grows dynamically)
 
-    ImGui_ImplVulkan_DescriptorPoolManager()
-    {
+    ImGui_ImplVulkan_DescriptorPoolManager() {
         Device = VK_NULL_HANDLE;
         Allocator = nullptr;
         SetLayout = VK_NULL_HANDLE;
@@ -282,8 +285,8 @@ struct ImGui_ImplVulkan_DescriptorPoolManager
         NextPoolSize = 64;
     }
 
-    void Init(VkDevice device, const VkAllocationCallbacks* allocator, VkDescriptorSetLayout layout, uint32_t poolSize = 5)
-    {
+    void Init(VkDevice device, const VkAllocationCallbacks *allocator, VkDescriptorSetLayout layout,
+              uint32_t poolSize = 5) {
         Device = device;
         Allocator = allocator;
         SetLayout = layout;
@@ -291,8 +294,7 @@ struct ImGui_ImplVulkan_DescriptorPoolManager
         NextPoolSize = poolSize;
     }
 
-    VkDescriptorPool CreateNewPool()
-    {
+    VkDescriptorPool CreateNewPool() {
         // Calculate pool size for this new pool
         uint32_t currentPoolSize = NextPoolSize;
 
@@ -323,12 +325,9 @@ struct ImGui_ImplVulkan_DescriptorPoolManager
         return pool;
     }
 
-    VkDescriptorSet AllocateSet()
-    {
-        for (int i = 0; i < Pools.Size; i++)
-        {
-            if (Pools[i].AllocatedSets < Pools[i].MaxSets)
-            {
+    VkDescriptorSet AllocateSet() {
+        for (int i = 0; i < Pools.Size; i++) {
+            if (Pools[i].AllocatedSets < Pools[i].MaxSets) {
                 VkDescriptorSetAllocateInfo alloc_info = {};
                 alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
                 alloc_info.descriptorPool = Pools[i].Pool;
@@ -337,10 +336,9 @@ struct ImGui_ImplVulkan_DescriptorPoolManager
 
                 VkDescriptorSet set;
                 VkResult err = vkAllocateDescriptorSets(Device, &alloc_info, &set);
-                if (err == VK_SUCCESS)
-                {
+                if (err == VK_SUCCESS) {
                     Pools[i].AllocatedSets++;
-                    SetToPoolIndex[reinterpret_cast<ImTextureID>(set)] = i;  // Cast to ImTextureID (void*)
+                    SetToPoolIndex[reinterpret_cast<ImTextureID>(set)] = i; // Cast to ImTextureID (void*)
                     return set;
                 }
             }
@@ -360,16 +358,14 @@ struct ImGui_ImplVulkan_DescriptorPoolManager
         check_vk_result(err);
 
         Pools[newPoolIndex].AllocatedSets++;
-        SetToPoolIndex[reinterpret_cast<ImTextureID>(set)] = newPoolIndex;  // Cast to ImTextureID (void*)
+        SetToPoolIndex[reinterpret_cast<ImTextureID>(set)] = newPoolIndex; // Cast to ImTextureID (void*)
 
         return set;
     }
 
-    void FreeSet(VkDescriptorSet set)
-    {
-        auto it = SetToPoolIndex.find(reinterpret_cast<ImTextureID>(set));  // Cast to ImTextureID (void*)
-        if (it == SetToPoolIndex.end())
-        {
+    void FreeSet(VkDescriptorSet set) {
+        auto it = SetToPoolIndex.find(reinterpret_cast<ImTextureID>(set)); // Cast to ImTextureID (void*)
+        if (it == SetToPoolIndex.end()) {
             IM_ASSERT(0 && "Trying to free unknown descriptor set");
             return;
         }
@@ -379,17 +375,34 @@ struct ImGui_ImplVulkan_DescriptorPoolManager
 
         vkFreeDescriptorSets(Device, pool, 1, &set);
         Pools[poolIndex].AllocatedSets--;
-        SetToPoolIndex.erase(it);  // Remove from map
+        SetToPoolIndex.erase(it); // Remove from map
     }
 
-    void Shutdown()
-    {
+    void Shutdown() {
         for (int i = 0; i < Pools.Size; i++)
             vkDestroyDescriptorPool(Device, Pools[i].Pool, Allocator);
         Pools.clear();
-        SetToPoolIndex.clear();  // Use std::unordered_map clear()
+        SetToPoolIndex.clear(); // Use std::unordered_map clear()
     }
 };
+
+//-----------------------------------------------------------------------------
+// NVRHI Queue Mutex Helper Implementation
+//-----------------------------------------------------------------------------
+static std::mutex* ImGui_ImplVulkan_GetQueueMutex(void* nvrhiDeviceHandle) {
+    if (nvrhiDeviceHandle == nullptr)
+        return nullptr;
+
+    nvrhi::vulkan::IDevice* nvrhiDevice = static_cast<nvrhi::vulkan::IDevice*>(nvrhiDeviceHandle);
+
+    // Use getQueue() to get the Queue object, not getNativeQueue() which returns VkQueue handle
+    nvrhi::vulkan::Queue* queue = static_cast<nvrhi::vulkan::Device*>(nvrhiDevice)->getQueue(nvrhi::CommandQueue::Graphics);
+
+    if (queue == nullptr)
+        return nullptr;
+
+    return &queue->GetVulkanQueueMutexInternal();
+}
 
 // Reusable buffers used for rendering 1 current in-flight frame, for ImGui_ImplVulkan_RenderDrawData()
 // [Please zero-clear before use!]
@@ -449,7 +462,7 @@ struct ImGui_ImplVulkan_Data {
     VkShaderModule ShaderModuleVert;
     VkShaderModule ShaderModuleFrag;
     VkDescriptorPool DescriptorPool;
-    ImGui_ImplVulkan_DescriptorPoolManager PoolManager;  // NEW: Manages descriptor sets dynamically
+    ImGui_ImplVulkan_DescriptorPoolManager PoolManager; // NEW: Manages descriptor sets dynamically
     ImVector<VkFormat> PipelineRenderingCreateInfoColorAttachmentFormats; // Deep copy of format array
 
     // Texture management
@@ -465,7 +478,7 @@ struct ImGui_ImplVulkan_Data {
         BufferMemoryAlignment = 256;
         NonCoherentAtomSize = 64;
         // IMPORTANT: Re-construct PoolManager after memset destroyed it
-        new (&PoolManager) ImGui_ImplVulkan_DescriptorPoolManager();
+        new(&PoolManager) ImGui_ImplVulkan_DescriptorPoolManager();
     }
 };
 
@@ -1067,15 +1080,25 @@ void ImGui_ImplVulkan_UpdateTexture(ImTextureData *tex) {
             check_vk_result(err);
             // lock
             {
-                std::lock_guard guard(*v->GraphicsQueueMutex);
-                err = vkQueueSubmit(v->Queue, 1, &end_info, VK_NULL_HANDLE);
+                std::mutex* queueMutex = ImGui_ImplVulkan_GetQueueMutex(v->NvrhiDeviceHandle);
+                if (queueMutex) {
+                    std::lock_guard<std::mutex> guard(*queueMutex);
+                    err = vkQueueSubmit(v->Queue, 1, &end_info, VK_NULL_HANDLE);
+                } else {
+                    err = vkQueueSubmit(v->Queue, 1, &end_info, VK_NULL_HANDLE);
+                }
             }
             check_vk_result(err);
         }
         // lock
         {
-            std::lock_guard guard(*v->GraphicsQueueMutex);
-            err = vkQueueWaitIdle(v->Queue); // FIXME-OPT: Suboptimal!
+            std::mutex* queueMutex = ImGui_ImplVulkan_GetQueueMutex(v->NvrhiDeviceHandle);
+            if (queueMutex) {
+                std::lock_guard<std::mutex> guard(*queueMutex);
+                err = vkQueueWaitIdle(v->Queue); // FIXME-OPT: Suboptimal!
+            } else {
+                err = vkQueueWaitIdle(v->Queue); // FIXME-OPT: Suboptimal!
+            }
         }
         check_vk_result(err);
         vkDestroyBuffer(v->Device, upload_buffer, v->Allocator);
@@ -1241,7 +1264,7 @@ static VkPipeline ImGui_ImplVulkan_CreatePipeline(VkDevice device, const VkAlloc
     return pipeline;
 }
 
-void check_vk_result(VkResult err)  {
+void check_vk_result(VkResult err) {
     ImGui_ImplVulkan_Data *bd = ImGui_ImplVulkan_GetBackendData();
     if (!bd)
         return;
@@ -1286,7 +1309,7 @@ bool ImGui_ImplVulkan_CreateDeviceObjects() {
     }
 
     // Initialize PoolManager after DescriptorSetLayout is created
-    bd->PoolManager.Init(v->Device, v->Allocator, bd->DescriptorSetLayout, 5);  // 5 descriptors per pool for testing
+    bd->PoolManager.Init(v->Device, v->Allocator, bd->DescriptorSetLayout, 5); // 5 descriptors per pool for testing
 
     if (v->DescriptorPoolSize != 0) {
         IM_ASSERT(v->DescriptorPoolSize >= IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE);
@@ -1871,7 +1894,18 @@ void ImGui_ImplVulkanH_CreateWindowSwapChain(VkPhysicalDevice physical_device, V
     VkResult err;
     VkSwapchainKHR old_swapchain = wd->Swapchain;
     wd->Swapchain = VK_NULL_HANDLE;
-    err = vkDeviceWaitIdle(device);
+
+    // lock queue mutex before waiting idle
+    {
+        std::mutex* queueMutex = ImGui_ImplVulkan_GetQueueMutex(
+            ImGui_ImplVulkan_GetBackendData()->VulkanInitInfo.NvrhiDeviceHandle);
+        if (queueMutex) {
+            std::lock_guard<std::mutex> lock(*queueMutex);
+            err = vkDeviceWaitIdle(device);
+        } else {
+            err = vkDeviceWaitIdle(device);
+        }
+    }
     check_vk_result(err);
 
     // We don't use ImGui_ImplVulkanH_DestroyWindow() because we want to preserve the old swapchain to create the new one.
@@ -2423,8 +2457,13 @@ static void ImGui_ImplVulkan_RenderWindow(ImGuiViewport *viewport, void *) {
             check_vk_result(err);
             // lock
             {
-                std::lock_guard guard(*v->GraphicsQueueMutex);
-                err = vkQueueSubmit(v->Queue, 1, &info, fd->Fence);
+                std::mutex* queueMutex = ImGui_ImplVulkan_GetQueueMutex(v->NvrhiDeviceHandle);
+                if (queueMutex) {
+                    std::lock_guard<std::mutex> guard(*queueMutex);
+                    err = vkQueueSubmit(v->Queue, 1, &info, fd->Fence);
+                } else {
+                    err = vkQueueSubmit(v->Queue, 1, &info, fd->Fence);
+                }
             }
             check_vk_result(err);
         }
@@ -2455,8 +2494,13 @@ static void ImGui_ImplVulkan_SwapBuffers(ImGuiViewport *viewport, void *) {
     info.pImageIndices = &present_index;
     // lock
     {
-        std::lock_guard guard(*v->GraphicsQueueMutex);
-        err = vkQueuePresentKHR(v->Queue, &info);
+        std::mutex* queueMutex = ImGui_ImplVulkan_GetQueueMutex(v->NvrhiDeviceHandle);
+        if (queueMutex) {
+            std::lock_guard<std::mutex> guard(*queueMutex);
+            err = vkQueuePresentKHR(v->Queue, &info);
+        } else {
+            err = vkQueuePresentKHR(v->Queue, &info);
+        }
     }
     if (err == VK_ERROR_OUT_OF_DATE_KHR) {
         vd->SwapChainNeedRebuild = true;

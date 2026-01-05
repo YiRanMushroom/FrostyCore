@@ -7,6 +7,11 @@ import Render.Swapchain;
 import "SDL3/SDL.h";
 import "SDL3/SDL_video.h";
 
+// Include nvrhi internal header to access queue mutex
+import "nvrhi/src/vulkan/vulkan-backend.h";
+
+#undef CreateWindow
+
 namespace
 Engine {
     class NvrhiMessageCallback : public nvrhi::IMessageCallback {
@@ -466,8 +471,15 @@ Engine {
 
         mNvrhiDevice->executeCommandListSignalFence(mCommandList, currentRenderCompleteFence.get());
 
-        // Present using new swapchain API
-        vk::Result presentResult = mSwapchain.Present(mVkQueue, imageIndex);
+        // Present using new swapchain API (with queue lock protection)
+        vk::Result presentResult;
+        {
+            // Lock the queue mutex to prevent ImGui viewport rendering from using queue simultaneously
+            nvrhi::vulkan::Queue* nvrhiQueue = static_cast<nvrhi::vulkan::Device*>(mNvrhiDevice.Get())
+                ->getQueue(nvrhi::CommandQueue::Graphics);
+            std::lock_guard<std::mutex> queueLock(nvrhiQueue->GetVulkanQueueMutexInternal());
+            presentResult = mSwapchain.Present(mVkQueue, imageIndex);
+        }
         if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR) {
             mNeedsResize = true;
         }
