@@ -2,6 +2,7 @@ module Core.Application;
 
 import Core.Prelude;
 import Vendor.ApplicationAPI;
+import Render.Swapchain;
 
 import "SDL3/SDL.h";
 import "SDL3/SDL_video.h";
@@ -85,11 +86,8 @@ Engine {
     void Application::Destroy() {
         if (!mVkDevice) return;
 
-        // 1. Clear NVRHI resources
-        mSwapchainData.framebuffers.clear();
-        mSwapchainData.backBuffers.clear();
-        mSwapchainData.swapchainImages.clear();
-        mSwapchainData.swapchain = vk::SharedSwapchainKHR{};
+        // 1. Clear NVRHI resources - PlatformSwapchain handles its own cleanup
+        mSwapchain = PlatformSwapchain{};
 
         mCommandList = nullptr;
 
@@ -101,7 +99,6 @@ Engine {
             mRenderCompleteFences[i].reset();
         }
         mAcquireSemaphores.clear();
-        mRenderCompleteSemaphores.clear();
 
         // 5. Destroy debug messenger
         if (mDebugMessenger) {
@@ -294,22 +291,21 @@ Engine {
     }
 
     void Application::CreateSwapchain() {
-        mSwapchainData = CreateSwapchainInternal();
+        // Create swapchain using new PlatformSwapchain class
+        mSwapchain = PlatformSwapchain(
+            mWindow.get(),
+            mVkSurface,
+            mVkPhysicalDevice,
+            mVkDevice,
+            mNvrhiDevice
+        );
 
-        // Create acquire semaphores per frame in flight
+        // Create acquire semaphores per frame in flight (separate from swapchain)
         mAcquireSemaphores.resize(MaxFramesInFlight);
         vk::SemaphoreCreateInfo semaphoreInfo;
         for (uint32_t i = 0; i < MaxFramesInFlight; ++i) {
             vk::Semaphore acquireSem = mVkDevice.get().createSemaphore(semaphoreInfo);
-            mAcquireSemaphores[i] = vk::SharedHandle<vk::Semaphore>(acquireSem, mVkDevice);
-        }
-
-        // Create render complete semaphores per swapchain image
-        const uint32_t imageCount = static_cast<uint32_t>(mSwapchainData.backBuffers.size());
-        mRenderCompleteSemaphores.resize(imageCount);
-        for (uint32_t i = 0; i < imageCount; ++i) {
-            vk::Semaphore renderSem = mVkDevice.get().createSemaphore(semaphoreInfo);
-            mRenderCompleteSemaphores[i] = vk::SharedHandle<vk::Semaphore>(renderSem, mVkDevice);
+            mAcquireSemaphores[i] = vk::SharedSemaphore(acquireSem, mVkDevice);
         }
     }
 
@@ -341,91 +337,25 @@ Engine {
             throw Engine::RuntimeException("Failed to wait for fences during swapchain recreation");
         }
 
-        vk::SwapchainKHR oldSwapchain = mSwapchainData.swapchain ? mSwapchainData.swapchain.get() : nullptr;
-        mSwapchainData = CreateSwapchainInternal(oldSwapchain);
+        // Use PlatformSwapchain's Recreate method (handles old swapchain internally)
+        mSwapchain.Recreate(
+            mWindow.get(),
+            mVkSurface,
+            mVkPhysicalDevice,
+            mVkDevice,
+            mNvrhiDevice
+        );
 
         mNvrhiDevice->waitForIdle();
 
-        // Clear old semaphores
+        // Clear and recreate acquire semaphores per frame in flight
         mAcquireSemaphores.clear();
-        mRenderCompleteSemaphores.clear();
-
-        // Recreate acquire semaphores per frame in flight
         mAcquireSemaphores.resize(MaxFramesInFlight);
         vk::SemaphoreCreateInfo semaphoreInfo;
         for (uint32_t i = 0; i < MaxFramesInFlight; ++i) {
             vk::Semaphore acquireSem = mVkDevice.get().createSemaphore(semaphoreInfo);
-            mAcquireSemaphores[i] = vk::SharedHandle<vk::Semaphore>(acquireSem, mVkDevice);
+            mAcquireSemaphores[i] = vk::SharedSemaphore(acquireSem, mVkDevice);
         }
-
-        // Recreate render complete semaphores per swapchain image
-        const uint32_t imageCount = static_cast<uint32_t>(mSwapchainData.backBuffers.size());
-        mRenderCompleteSemaphores.resize(imageCount);
-        for (uint32_t i = 0; i < imageCount; ++i) {
-            vk::Semaphore renderSem = mVkDevice.get().createSemaphore(semaphoreInfo);
-            mRenderCompleteSemaphores[i] = vk::SharedHandle<vk::Semaphore>(renderSem, mVkDevice);
-        }
-    }
-
-    SwapChainData Application::CreateSwapchainInternal(vk::SwapchainKHR oldSwapchain) {
-        SwapChainData result;
-
-        int width, height;
-        SDL_GetWindowSizeInPixels(mWindow.get(), &width, &height);
-        result.width = static_cast<uint32_t>(width);
-        result.height = static_cast<uint32_t>(height);
-
-        vk::SurfaceCapabilitiesKHR caps = mVkPhysicalDevice.get().getSurfaceCapabilitiesKHR(mVkSurface.get());
-
-        vk::SwapchainCreateInfoKHR swapchainInfo;
-        swapchainInfo.surface = mVkSurface.get();
-        swapchainInfo.minImageCount = 2;
-        swapchainInfo.imageFormat = vk::Format::eB8G8R8A8Unorm;
-        swapchainInfo.imageColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
-        swapchainInfo.imageExtent = vk::Extent2D(result.width, result.height);
-        swapchainInfo.imageArrayLayers = 1;
-        swapchainInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst;
-        swapchainInfo.preTransform = caps.currentTransform;
-        swapchainInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
-        swapchainInfo.presentMode = vk::PresentModeKHR::eFifo;
-        swapchainInfo.clipped = vk::True;
-        swapchainInfo.oldSwapchain = oldSwapchain;
-
-        vk::SwapchainKHR swapchain = mVkDevice.get().createSwapchainKHR(swapchainInfo);
-        result.swapchain = vk::SharedSwapchainKHR(swapchain, mVkDevice, mVkSurface);
-
-        std::vector<vk::Image> rawImages = mVkDevice.get().getSwapchainImagesKHR(swapchain);
-
-        for (const auto &img: rawImages) {
-            vk::SharedImage sharedImg(img, mVkDevice, vk::SwapchainOwns::yes);
-            result.swapchainImages.push_back(sharedImg);
-
-            auto textureDesc = nvrhi::TextureDesc()
-                    .setDimension(nvrhi::TextureDimension::Texture2D)
-                    .setFormat(nvrhi::Format::BGRA8_UNORM)
-                    .setWidth(result.width)
-                    .setHeight(result.height)
-                    .setIsRenderTarget(true)
-                    .setDebugName("BackBuffer")
-                    .setInitialState(nvrhi::ResourceStates::Present)
-                    .setKeepInitialState(true);
-
-            nvrhi::TextureHandle handle = mNvrhiDevice->createHandleForNativeTexture(
-                nvrhi::ObjectTypes::VK_Image,
-                nvrhi::Object(img),
-                textureDesc
-            );
-            result.backBuffers.push_back(handle);
-
-            auto framebufferDesc = nvrhi::FramebufferDesc().addColorAttachment(handle);
-            nvrhi::FramebufferHandle framebuffer = mNvrhiDevice->createFramebuffer(framebufferDesc);
-            result.framebuffers.push_back(framebuffer);
-        }
-
-        // Store format
-        result.format = swapchainInfo.imageFormat;
-
-        return result;
     }
 
 
@@ -484,38 +414,33 @@ Engine {
         }
 
         // Use per-frame acquire semaphore
-        vk::SharedHandle<vk::Semaphore> &frameAcquireSemaphore = mAcquireSemaphores[mCurrentFrame];
+        vk::SharedSemaphore &frameAcquireSemaphore = mAcquireSemaphores[mCurrentFrame];
 
-        // Acquire next swapchain image
-        uint32_t imageIndex;
-        vk::Result res = mVkDevice.get().acquireNextImageKHR(
-            mSwapchainData.swapchain.get(),
-            UINT64_MAX,
-            frameAcquireSemaphore.get(),
-            nullptr,
-            &imageIndex
-        );
+        // Acquire next swapchain image using new API
+        SwapchainAcquireResult acquireResult = mSwapchain.AcquireNextImage(frameAcquireSemaphore.get());
 
-        if (res == vk::Result::eErrorOutOfDateKHR || res == vk::Result::eSuboptimalKHR) {
+        if (acquireResult.NeedsRecreation()) {
             mNeedsResize = true;
             return;
         }
 
-        if (res != vk::Result::eSuccess) {
+        if (!acquireResult.IsSuccess() && !acquireResult.IsValid()) {
             throw Engine::RuntimeException("Failed to acquire swapchain image");
         }
+
+        uint32_t imageIndex = acquireResult.imageIndex;
 
         // Reset fence before submitting new work
         mVkDevice.get().resetFences(currentRenderCompleteFence.get());
 
-        // Use per-image render complete semaphore
-        vk::SharedHandle<vk::Semaphore> &imageRenderCompleteSemaphore = mRenderCompleteSemaphores[imageIndex];
+        // Use per-image render complete semaphore from swapchain
+        const vk::SharedSemaphore &imageRenderCompleteSemaphore = mSwapchain.GetRenderCompleteSemaphore(imageIndex);
 
         mCommandList->open();
 
-        const nvrhi::FramebufferHandle &currentFramebuffer = mSwapchainData.framebuffers[imageIndex];
+        const nvrhi::FramebufferHandle &currentFramebuffer = mSwapchain.GetFramebuffer(imageIndex);
 
-        nvrhi::ITexture *currentBackBuffer = mSwapchainData.backBuffers[imageIndex];
+        nvrhi::ITexture *currentBackBuffer = mSwapchain.GetBackBuffer(imageIndex);
         mCommandList->clearTextureFloat(
             currentBackBuffer,
             nvrhi::TextureSubresourceSet(0, nvrhi::TextureSubresourceSet::AllMipLevels,
@@ -538,18 +463,9 @@ Engine {
 
         mNvrhiDevice->executeCommandListSignalFence(mCommandList, currentRenderCompleteFence.get());
 
-        // Present
-        vk::SwapchainKHR rawSwapchain = mSwapchainData.swapchain.get();
-        vk::PresentInfoKHR presentInfo{};
-        presentInfo.waitSemaphoreCount = 1;
-        vk::Semaphore waitSemaphores[] = {imageRenderCompleteSemaphore.get()};
-        presentInfo.pWaitSemaphores = waitSemaphores;
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = &rawSwapchain;
-        presentInfo.pImageIndices = &imageIndex;
-
-        res = mVkQueue.get().presentKHR(presentInfo);
-        if (res == vk::Result::eErrorOutOfDateKHR || res == vk::Result::eSuboptimalKHR) {
+        // Present using new swapchain API
+        vk::Result presentResult = mSwapchain.Present(mVkQueue, imageIndex);
+        if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR) {
             mNeedsResize = true;
         }
 

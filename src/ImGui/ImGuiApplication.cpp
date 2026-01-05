@@ -69,7 +69,7 @@ Engine {
         init_info.DescriptorPool = mImGuiDescriptorPool.get();
         init_info.DescriptorPoolSize = 0;
         // MinImageCount should be the minimum swapchain images
-        init_info.MinImageCount = static_cast<uint32_t>(mSwapchainData.swapchainImages.size());
+        init_info.MinImageCount = mSwapchain.GetImageCount();
         // ImageCount should be MaxFramesInFlight to match the number of in-flight frames
         // This ensures ImGui keeps enough buffer versions to avoid destroying buffers still in use
         init_info.ImageCount = MaxFramesInFlight;
@@ -80,7 +80,7 @@ Engine {
         // init_info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
         init_info.CheckVkResultFn = nullptr;
 
-        VkFormat colorFormat = static_cast<VkFormat>(mSwapchainData.format);
+        VkFormat colorFormat = static_cast<VkFormat>(mSwapchain.GetVkFormat());
         VkPipelineRenderingCreateInfoKHR pipelineRenderingCreateInfo{};
         pipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
         pipelineRenderingCreateInfo.colorAttachmentCount = 1;

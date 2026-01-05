@@ -5,6 +5,7 @@ import Vendor.ApplicationAPI;
 import Render.Color;
 import Core.Layer;
 import Core.Events;
+import Render.Swapchain;
 import "SDL3/SDL.h";
 import "SDL3/SDL_video.h";
 
@@ -45,19 +46,6 @@ Engine {
         void message(nvrhi::MessageSeverity severity, const char *messageText) override;
     };
 
-    export struct SwapChainData {
-        vk::SharedSwapchainKHR swapchain;
-        std::vector<vk::SharedImage> swapchainImages;
-        std::vector<nvrhi::TextureHandle> backBuffers;
-        std::vector<nvrhi::FramebufferHandle> framebuffers;
-        uint32_t width = 0;
-        uint32_t height = 0;
-        vk::Format format = vk::Format::eUndefined;
-
-        [[nodiscard]] nvrhi::Format GetNvrhiFormat() const {
-            return framebuffers.empty() ? nvrhi::Format::UNKNOWN : framebuffers[0]->getFramebufferInfo().colorFormats[0];
-        }
-    };
 
     export struct WindowCreationInfo {
         const char *Title = "NVRHI Vulkan Application";
@@ -92,7 +80,10 @@ Engine {
         [[nodiscard]] const nvrhi::vulkan::DeviceHandle &GetNvrhiDevice() const { return mNvrhiDevice; }
         [[nodiscard]] const nvrhi::CommandListHandle &GetCommandList() const { return mCommandList; }
 
-        [[nodiscard]] const SwapChainData &GetSwapchainData() const { return mSwapchainData; }
+        [[nodiscard]] const PlatformSwapchain &GetSwapchain() const { return mSwapchain; }
+
+        // Legacy compatibility - maps to new Swapchain API
+        [[nodiscard]] const PlatformSwapchain &GetSwapchainData() const { return mSwapchain; }
 
         [[nodiscard]] bool IsRunning() const { return mRunning; }
         [[nodiscard]] bool IsMinimized() const { return mMinimized; }
@@ -136,7 +127,6 @@ Engine {
 
         void RecreateSwapchain();
 
-        SwapChainData CreateSwapchainInternal(vk::SwapchainKHR oldSwapchain = nullptr);
 
         void ExecuteDeferredTasks();
 
@@ -171,12 +161,11 @@ Engine {
         nvrhi::vulkan::DeviceHandle mNvrhiDevice;
         nvrhi::CommandListHandle mCommandList;
 
-        // Swapchain
-        SwapChainData mSwapchainData;
+        // Swapchain (uses new PlatformSwapchain class)
+        PlatformSwapchain mSwapchain;
 
-        // Synchronization
-        std::vector<vk::SharedHandle<vk::Semaphore>> mAcquireSemaphores; // Per-frame (for acquire)
-        std::vector<vk::SharedHandle<vk::Semaphore>> mRenderCompleteSemaphores; // Per-swapchain-image
+        // Frame-in-flight synchronization (separate from swapchain)
+        std::vector<vk::SharedSemaphore> mAcquireSemaphores; // Per-frame (for acquire)
         std::array<vk::SharedFence, MaxFrameInFlight> mRenderCompleteFences;
         uint32_t mCurrentFrame = 0;
 
