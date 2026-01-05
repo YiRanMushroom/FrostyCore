@@ -28,6 +28,8 @@
 
 #pragma once
 #ifndef IMGUI_DISABLE
+#include <mutex>
+
 #include "imgui.h"      // IMGUI_IMPL_API
 
 // [Configuration] in order to use a custom Vulkan function loader:
@@ -136,6 +138,8 @@ struct ImGui_ImplVulkan_InitInfo
     // - Shader inputs/outputs need to match ours. Code/data pointed to by the structure needs to survive for whole during of backend usage.
     VkShaderModuleCreateInfo        CustomShaderVertCreateInfo;
     VkShaderModuleCreateInfo        CustomShaderFragCreateInfo;
+
+    std::mutex*                     GraphicsQueueMutex;          // lock this mutex before using the graphics queue. This mutex is owned by nvrhi.
 };
 
 // Follow "Getting Started" link and check examples/ folder to learn about using backends!

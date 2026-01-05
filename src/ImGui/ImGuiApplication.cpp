@@ -7,6 +7,8 @@ import "SDL3/SDL.h";
 import Render.Color;
 import Core.Events;
 import Render.Utilities;
+import "vendor/nvrhi/src/vulkan/vulkan-backend.h";
+import Vendor.GraphicsAPI;
 
 namespace
 Engine {
@@ -97,6 +99,10 @@ Engine {
             PFN_vkVoidFunction func = vkGetDeviceProcAddr(device, function_name);
             return func;
         }, &vkDevice);
+
+        init_info.GraphicsQueueMutex = &static_cast<nvrhi::vulkan::Queue *>(
+            mNvrhiDevice->getNativeQueue(nvrhi::ObjectTypes::VK_Queue,
+                                         nvrhi::CommandQueue::Graphics))->GetVulkanQueueMutexInternal();
 
         ImGui_ImplVulkan_Init(&init_info);
 

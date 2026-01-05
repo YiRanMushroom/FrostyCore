@@ -30,6 +30,9 @@ Engine {
 
         virtual void OnFrameEnded(std::function<void()> callback);
 
+        template<typename T>
+        std::future<T> SendToMainThreadToExecute(std::function<T()> func);
+
         virtual void OnDetach();
 
     protected:
@@ -41,11 +44,7 @@ Engine {
 namespace
 Engine {
     // Simple message callback for NVRHI
-    class NvrhiMessageCallback : public nvrhi::IMessageCallback {
-    public:
-        void message(nvrhi::MessageSeverity severity, const char *messageText) override;
-    };
-
+    class NvrhiMessageCallback;
 
     export struct WindowCreationInfo {
         const char *Title = "NVRHI Vulkan Application";
@@ -100,6 +99,32 @@ Engine {
 
         virtual void OnFrameEnded(std::function<void()> callback);
 
+        template<typename T>
+        std::future<T> SendToMainThreadToExecute(std::function<T()> func) {
+            auto promise = std::make_shared<std::promise<T>>();
+            auto future = promise->get_future();
+
+            OnFrameEnded([func = std::move(func), promise]() {
+                try {
+                    if constexpr (std::is_void_v<T>) {
+                        func();
+                        promise->set_value();
+                    } else {
+                        T result = func();
+                        promise->set_value(std::move(result));
+                    }
+                } catch (...) {
+                    try {
+                        promise->set_exception(std::current_exception());
+                    } catch (...) {
+                        // set_exception() may throw too
+                    }
+                }
+            });
+
+            return future;
+        }
+
     protected:
         [[nodiscard]] virtual nvrhi::Color GetClearColor() const {
             return Color::MyBlue;
@@ -126,7 +151,6 @@ Engine {
         void CreateSyncObjects();
 
         void RecreateSwapchain();
-
 
         void ExecuteDeferredTasks();
 
@@ -228,4 +252,12 @@ Engine {
             mLayers.clear();
         }
     };
+
+    template<typename T>
+    std::future<T> Layer::SendToMainThreadToExecute(std::function<T()> func) {
+        if (mApp) {
+            return mApp->SendToMainThreadToExecute<T>(std::move(func));
+        }
+        throw Engine::RuntimeException("Layer is not attached to an Application");
+    }
 }

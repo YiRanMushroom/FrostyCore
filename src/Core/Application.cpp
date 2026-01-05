@@ -9,6 +9,11 @@ import "SDL3/SDL_video.h";
 
 namespace
 Engine {
+    class NvrhiMessageCallback : public nvrhi::IMessageCallback {
+    public:
+        void message(nvrhi::MessageSeverity severity, const char *messageText) override;
+    };
+
     void NvrhiMessageCallback::message(nvrhi::MessageSeverity severity, const char *messageText) {
         const char *severityStr = "";
         switch (severity) {
@@ -345,8 +350,6 @@ Engine {
             mVkDevice,
             mNvrhiDevice
         );
-
-        mNvrhiDevice->waitForIdle();
 
         // Clear and recreate acquire semaphores per frame in flight
         mAcquireSemaphores.clear();
