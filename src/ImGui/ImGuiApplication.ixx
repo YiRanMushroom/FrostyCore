@@ -14,10 +14,6 @@ namespace Engine {
         virtual void OnEvent(const Event &event) override;
         virtual void OnPostRender() override;
 
-        virtual const vk::SharedDescriptorPool &GetImGuiDescriptorPool() const {
-            return mImGuiDescriptorPool;
-        }
-
         virtual const nvrhi::SamplerHandle &GetImGuiTextureSampler() const {
             return mImGuiTextureSampler;
         }
@@ -25,7 +21,6 @@ namespace Engine {
         virtual void DetachAllLayers() override;
 
     protected:
-        vk::SharedDescriptorPool mImGuiDescriptorPool;
         nvrhi::SamplerHandle mImGuiTextureSampler;
 
         ImGui_ImplVulkanH_Window mImGuiWindowData;

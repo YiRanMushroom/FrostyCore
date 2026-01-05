@@ -15,24 +15,6 @@ Engine {
     void ImGuiApplication::Init(WindowCreationInfo info) {
         Application::Init(info);
 
-        // Create Descriptor Pool for ImGui
-        VkDescriptorPoolSize pool_sizes[] =
-        {
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE},
-        };
-        VkDescriptorPoolCreateInfo pool_info = {};
-        pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-        pool_info.maxSets = 0;
-        for (VkDescriptorPoolSize &pool_size: pool_sizes)
-            pool_info.maxSets += pool_size.descriptorCount;
-        pool_info.poolSizeCount = (uint32_t) IM_COUNTOF(pool_sizes);
-        pool_info.pPoolSizes = pool_sizes;
-
-        mImGuiDescriptorPool = vk::SharedDescriptorPool(
-            mVkDevice.get().createDescriptorPool(pool_info),
-            mVkDevice
-        );
 
         float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
 
@@ -68,8 +50,8 @@ Engine {
         init_info.QueueFamily = ImGui_ImplVulkanH_SelectQueueFamilyIndex(mVkPhysicalDevice.get());
         init_info.Queue = mVkQueue.get();
         init_info.PipelineCache = nullptr;
-        init_info.DescriptorPool = mImGuiDescriptorPool.get();
-        init_info.DescriptorPoolSize = 0;
+        init_info.DescriptorPool = VK_NULL_HANDLE;  // No longer needed - ImGui manages internally
+        init_info.DescriptorPoolSize = 0;           // No longer needed - ImGui manages internally
         // MinImageCount should be the minimum swapchain images
         init_info.MinImageCount = mSwapchain.GetImageCount();
         // ImageCount should be MaxFramesInFlight to match the number of in-flight frames
@@ -119,7 +101,6 @@ Engine {
         ImGui::DestroyContext();
 
         mImGuiTextureSampler.Reset();
-        mImGuiDescriptorPool.reset();
 
         Application::Destroy();
     }

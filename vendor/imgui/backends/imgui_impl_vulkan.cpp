@@ -108,6 +108,7 @@
 #ifndef IMGUI_DISABLE
 #include "imgui_impl_vulkan.h"
 #include <stdio.h>
+#include <unordered_map>
 #ifndef IM_MAX
 #define IM_MAX(A, B)    (((A) >= (B)) ? (A) : (B))
 #endif
@@ -117,6 +118,9 @@
 #ifdef _MSC_VER
 #pragma warning (disable: 4127) // condition expression is constant
 #endif
+
+// Helper function to check VkResult
+static void check_vk_result(VkResult err);
 
 #define IMGUI_IMPL_VULKAN_HAS_DYNAMIC_RENDERING
 
@@ -249,6 +253,144 @@ static PFN_vkCmdBeginRenderingKHR ImGuiImplVulkanFuncs_vkCmdBeginRenderingKHR;
 static PFN_vkCmdEndRenderingKHR ImGuiImplVulkanFuncs_vkCmdEndRenderingKHR;
 #endif
 
+//-----------------------------------------------------------------------------
+// Descriptor Pool Manager - Handles dynamic descriptor set allocation
+//-----------------------------------------------------------------------------
+struct ImGui_ImplVulkan_DescriptorPoolManager
+{
+    struct PoolInfo
+    {
+        VkDescriptorPool    Pool;
+        uint32_t            AllocatedSets;
+        uint32_t            MaxSets;
+    };
+
+    ImVector<PoolInfo>                              Pools;
+    std::unordered_map<ImTextureID, int>           SetToPoolIndex;  // Use ImTextureID (void*) as key
+    VkDevice                                        Device;
+    const VkAllocationCallbacks*                    Allocator;
+    VkDescriptorSetLayout                           SetLayout;
+    uint32_t                                        InitialPoolSize;  // Initial pool size
+    uint32_t                                        NextPoolSize;     // Size for next pool (grows dynamically)
+
+    ImGui_ImplVulkan_DescriptorPoolManager()
+    {
+        Device = VK_NULL_HANDLE;
+        Allocator = nullptr;
+        SetLayout = VK_NULL_HANDLE;
+        InitialPoolSize = 64;
+        NextPoolSize = 64;
+    }
+
+    void Init(VkDevice device, const VkAllocationCallbacks* allocator, VkDescriptorSetLayout layout, uint32_t poolSize = 5)
+    {
+        Device = device;
+        Allocator = allocator;
+        SetLayout = layout;
+        InitialPoolSize = poolSize;
+        NextPoolSize = poolSize;
+    }
+
+    VkDescriptorPool CreateNewPool()
+    {
+        // Calculate pool size for this new pool
+        uint32_t currentPoolSize = NextPoolSize;
+
+        // Grow for next time: 1.5x growth, with minimum increment of 1
+        NextPoolSize = IM_MAX(NextPoolSize + 1, (uint32_t)(NextPoolSize * 1.5f));
+
+        VkDescriptorPoolSize pool_size = {};
+        pool_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        pool_size.descriptorCount = currentPoolSize;
+
+        VkDescriptorPoolCreateInfo pool_info = {};
+        pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+        pool_info.maxSets = currentPoolSize;
+        pool_info.poolSizeCount = 1;
+        pool_info.pPoolSizes = &pool_size;
+
+        VkDescriptorPool pool;
+        VkResult err = vkCreateDescriptorPool(Device, &pool_info, Allocator, &pool);
+        check_vk_result(err);
+
+        PoolInfo info;
+        info.Pool = pool;
+        info.AllocatedSets = 0;
+        info.MaxSets = currentPoolSize;
+        Pools.push_back(info);
+
+        return pool;
+    }
+
+    VkDescriptorSet AllocateSet()
+    {
+        for (int i = 0; i < Pools.Size; i++)
+        {
+            if (Pools[i].AllocatedSets < Pools[i].MaxSets)
+            {
+                VkDescriptorSetAllocateInfo alloc_info = {};
+                alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+                alloc_info.descriptorPool = Pools[i].Pool;
+                alloc_info.descriptorSetCount = 1;
+                alloc_info.pSetLayouts = &SetLayout;
+
+                VkDescriptorSet set;
+                VkResult err = vkAllocateDescriptorSets(Device, &alloc_info, &set);
+                if (err == VK_SUCCESS)
+                {
+                    Pools[i].AllocatedSets++;
+                    SetToPoolIndex[reinterpret_cast<ImTextureID>(set)] = i;  // Cast to ImTextureID (void*)
+                    return set;
+                }
+            }
+        }
+
+        int newPoolIndex = Pools.Size;
+        VkDescriptorPool newPool = CreateNewPool();
+
+        VkDescriptorSetAllocateInfo alloc_info = {};
+        alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        alloc_info.descriptorPool = newPool;
+        alloc_info.descriptorSetCount = 1;
+        alloc_info.pSetLayouts = &SetLayout;
+
+        VkDescriptorSet set;
+        VkResult err = vkAllocateDescriptorSets(Device, &alloc_info, &set);
+        check_vk_result(err);
+
+        Pools[newPoolIndex].AllocatedSets++;
+        SetToPoolIndex[reinterpret_cast<ImTextureID>(set)] = newPoolIndex;  // Cast to ImTextureID (void*)
+
+        return set;
+    }
+
+    void FreeSet(VkDescriptorSet set)
+    {
+        auto it = SetToPoolIndex.find(reinterpret_cast<ImTextureID>(set));  // Cast to ImTextureID (void*)
+        if (it == SetToPoolIndex.end())
+        {
+            IM_ASSERT(0 && "Trying to free unknown descriptor set");
+            return;
+        }
+
+        int poolIndex = it->second;
+        VkDescriptorPool pool = Pools[poolIndex].Pool;
+
+        vkFreeDescriptorSets(Device, pool, 1, &set);
+        Pools[poolIndex].AllocatedSets--;
+        SetToPoolIndex.erase(it);  // Remove from map
+    }
+
+    void Shutdown()
+    {
+        for (int i = 0; i < Pools.Size; i++)
+            vkDestroyDescriptorPool(Device, Pools[i].Pool, Allocator);
+        Pools.clear();
+        SetToPoolIndex.clear();  // Use std::unordered_map clear()
+    }
+};
+
 // Reusable buffers used for rendering 1 current in-flight frame, for ImGui_ImplVulkan_RenderDrawData()
 // [Please zero-clear before use!]
 struct ImGui_ImplVulkan_FrameRenderBuffers {
@@ -307,6 +449,7 @@ struct ImGui_ImplVulkan_Data {
     VkShaderModule ShaderModuleVert;
     VkShaderModule ShaderModuleFrag;
     VkDescriptorPool DescriptorPool;
+    ImGui_ImplVulkan_DescriptorPoolManager PoolManager;  // NEW: Manages descriptor sets dynamically
     ImVector<VkFormat> PipelineRenderingCreateInfoColorAttachmentFormats; // Deep copy of format array
 
     // Texture management
@@ -321,6 +464,8 @@ struct ImGui_ImplVulkan_Data {
         memset((void *) this, 0, sizeof(*this));
         BufferMemoryAlignment = 256;
         NonCoherentAtomSize = 64;
+        // IMPORTANT: Re-construct PoolManager after memset destroyed it
+        new (&PoolManager) ImGui_ImplVulkan_DescriptorPoolManager();
     }
 };
 
@@ -458,15 +603,6 @@ static uint32_t ImGui_ImplVulkan_MemoryType(VkMemoryPropertyFlags properties, ui
         if ((prop.memoryTypes[i].propertyFlags & properties) == properties && type_bits & (1 << i))
             return i;
     return 0xFFFFFFFF; // Unable to find memoryType
-}
-
-static void check_vk_result(VkResult err) {
-    ImGui_ImplVulkan_Data *bd = ImGui_ImplVulkan_GetBackendData();
-    if (!bd)
-        return;
-    ImGui_ImplVulkan_InitInfo *v = &bd->VulkanInitInfo;
-    if (v->CheckVkResultFn)
-        v->CheckVkResultFn(err);
 }
 
 // Same as IM_MEMALIGN(). 'alignment' must be a power of two.
@@ -1105,6 +1241,15 @@ static VkPipeline ImGui_ImplVulkan_CreatePipeline(VkDevice device, const VkAlloc
     return pipeline;
 }
 
+void check_vk_result(VkResult err)  {
+    ImGui_ImplVulkan_Data *bd = ImGui_ImplVulkan_GetBackendData();
+    if (!bd)
+        return;
+    ImGui_ImplVulkan_InitInfo *v = &bd->VulkanInitInfo;
+    if (v->CheckVkResultFn)
+        v->CheckVkResultFn(err);
+}
+
 bool ImGui_ImplVulkan_CreateDeviceObjects() {
     ImGui_ImplVulkan_Data *bd = ImGui_ImplVulkan_GetBackendData();
     ImGui_ImplVulkan_InitInfo *v = &bd->VulkanInitInfo;
@@ -1139,6 +1284,9 @@ bool ImGui_ImplVulkan_CreateDeviceObjects() {
         err = vkCreateDescriptorSetLayout(v->Device, &info, v->Allocator, &bd->DescriptorSetLayout);
         check_vk_result(err);
     }
+
+    // Initialize PoolManager after DescriptorSetLayout is created
+    bd->PoolManager.Init(v->Device, v->Allocator, bd->DescriptorSetLayout, 5);  // 5 descriptors per pool for testing
 
     if (v->DescriptorPoolSize != 0) {
         IM_ASSERT(v->DescriptorPoolSize >= IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE);
@@ -1273,6 +1421,8 @@ void ImGui_ImplVulkan_DestroyDeviceObjects() {
         vkDestroyPipeline(v->Device, bd->PipelineForViewports, v->Allocator);
         bd->PipelineForViewports = VK_NULL_HANDLE;
     }
+    // Shutdown PoolManager (handles its own descriptor pools)
+    bd->PoolManager.Shutdown();
     if (bd->DescriptorPool) {
         vkDestroyDescriptorPool(v->Device, bd->DescriptorPool, v->Allocator);
         bd->DescriptorPool = VK_NULL_HANDLE;
@@ -1394,10 +1544,10 @@ bool ImGui_ImplVulkan_Init(ImGui_ImplVulkan_InitInfo *info) {
     IM_ASSERT(info->Queue != VK_NULL_HANDLE);
     IM_ASSERT(info->MinImageCount >= 2);
     IM_ASSERT(info->ImageCount >= info->MinImageCount);
-    if (info->DescriptorPool != VK_NULL_HANDLE) // Either DescriptorPool or DescriptorPoolSize must be set, not both!
-        IM_ASSERT(info->DescriptorPoolSize == 0);
-    else
-        IM_ASSERT(info->DescriptorPoolSize > 0);
+    // if (info->DescriptorPool != VK_NULL_HANDLE) // Either DescriptorPool or DescriptorPoolSize must be set, not both!
+    //     IM_ASSERT(info->DescriptorPoolSize == 0);
+    // else
+    //     IM_ASSERT(info->DescriptorPoolSize > 0);
     if (info->UseDynamicRendering)
         IM_ASSERT(
         info->PipelineInfoMain.RenderPass == VK_NULL_HANDLE && info->PipelineInfoForViewports.RenderPass ==
@@ -1473,42 +1623,34 @@ void ImGui_ImplVulkan_SetMinImageCount(uint32_t min_image_count) {
 VkDescriptorSet ImGui_ImplVulkan_AddTexture(VkSampler sampler, VkImageView image_view, VkImageLayout image_layout) {
     ImGui_ImplVulkan_Data *bd = ImGui_ImplVulkan_GetBackendData();
     ImGui_ImplVulkan_InitInfo *v = &bd->VulkanInitInfo;
-    VkDescriptorPool pool = bd->DescriptorPool ? bd->DescriptorPool : v->DescriptorPool;
 
-    // Create Descriptor Set:
-    VkDescriptorSet descriptor_set;
-    {
-        VkDescriptorSetAllocateInfo alloc_info = {};
-        alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        alloc_info.descriptorPool = pool;
-        alloc_info.descriptorSetCount = 1;
-        alloc_info.pSetLayouts = &bd->DescriptorSetLayout;
-        VkResult err = vkAllocateDescriptorSets(v->Device, &alloc_info, &descriptor_set);
-        check_vk_result(err);
+    // Use PoolManager to allocate descriptor set
+    VkDescriptorSet descriptor_set = bd->PoolManager.AllocateSet();
+    if (descriptor_set == VK_NULL_HANDLE) {
+        IM_ASSERT(0 && "Failed to allocate descriptor set from PoolManager");
+        return VK_NULL_HANDLE;
     }
 
     // Update the Descriptor Set:
-    {
-        VkDescriptorImageInfo desc_image[1] = {};
-        desc_image[0].sampler = sampler;
-        desc_image[0].imageView = image_view;
-        desc_image[0].imageLayout = image_layout;
-        VkWriteDescriptorSet write_desc[1] = {};
-        write_desc[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        write_desc[0].dstSet = descriptor_set;
-        write_desc[0].descriptorCount = 1;
-        write_desc[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        write_desc[0].pImageInfo = desc_image;
-        vkUpdateDescriptorSets(v->Device, 1, write_desc, 0, nullptr);
-    }
+    VkDescriptorImageInfo desc_image[1] = {};
+    desc_image[0].sampler = sampler;
+    desc_image[0].imageView = image_view;
+    desc_image[0].imageLayout = image_layout;
+    VkWriteDescriptorSet write_desc[1] = {};
+    write_desc[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write_desc[0].dstSet = descriptor_set;
+    write_desc[0].descriptorCount = 1;
+    write_desc[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    write_desc[0].pImageInfo = desc_image;
+    vkUpdateDescriptorSets(v->Device, 1, write_desc, 0, nullptr);
+
     return descriptor_set;
 }
 
 void ImGui_ImplVulkan_RemoveTexture(VkDescriptorSet descriptor_set) {
     ImGui_ImplVulkan_Data *bd = ImGui_ImplVulkan_GetBackendData();
-    ImGui_ImplVulkan_InitInfo *v = &bd->VulkanInitInfo;
-    VkDescriptorPool pool = bd->DescriptorPool ? bd->DescriptorPool : v->DescriptorPool;
-    vkFreeDescriptorSets(v->Device, pool, 1, &descriptor_set);
+    // Use PoolManager to free descriptor set
+    bd->PoolManager.FreeSet(descriptor_set);
 }
 
 void ImGui_ImplVulkan_DestroyFrameRenderBuffers(VkDevice device, ImGui_ImplVulkan_FrameRenderBuffers *buffers,
