@@ -13,7 +13,7 @@ Engine::Render {
 
         SimpleRenderingGuard &operator=(SimpleRenderingGuard &&) = delete;
 
-        SimpleRenderingGuard(nvrhi::CommandListHandle command_list,
+        SimpleRenderingGuard(const nvrhi::CommandListHandle& command_list,
                              const nvrhi::FramebufferHandle &framebuffer,
                              uint32_t width,
                              uint32_t height)
@@ -21,15 +21,13 @@ Engine::Render {
             nvrhi::TextureSubresourceSet allSubresources(0, nvrhi::TextureSubresourceSet::AllMipLevels,
                                                          0, nvrhi::TextureSubresourceSet::AllArraySlices);
 
-            vk::CommandBuffer vkCmdBuf{command_list->getNativeObject(nvrhi::ObjectTypes::VK_CommandBuffer)};
+            vk::CommandBuffer vkCmdBuf{mCommandList->getNativeObject(nvrhi::ObjectTypes::VK_CommandBuffer)};
 
             vk::RenderingAttachmentInfoKHR colorAttachment{};
             colorAttachment.sType = vk::StructureType::eRenderingAttachmentInfoKHR;
-            colorAttachment.imageView = static_cast<VkImageView>(
-                framebuffer->getDesc().colorAttachments[0].texture->getNativeView(
-                    nvrhi::ObjectTypes::VK_ImageView, nvrhi::Format::UNKNOWN, allSubresources
-                )
-            );
+            colorAttachment.imageView = framebuffer->getDesc().colorAttachments[0]
+                    .texture->getNativeView(nvrhi::ObjectTypes::VK_ImageView,
+                                            nvrhi::Format::UNKNOWN, allSubresources);
             colorAttachment.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
             colorAttachment.loadOp = vk::AttachmentLoadOp::eLoad;
             colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
@@ -44,7 +42,7 @@ Engine::Render {
             vkCmdBuf.beginRenderingKHR(&renderingInfo);
         }
 
-        vk::CommandBuffer GetVkCommandBuffer() {
+        [[nodiscard]] vk::CommandBuffer GetVkCommandBuffer() const {
             return vk::CommandBuffer{mCommandList->getNativeObject(nvrhi::ObjectTypes::VK_CommandBuffer)};
         }
 
@@ -54,6 +52,6 @@ Engine::Render {
         }
 
     private:
-        nvrhi::CommandListHandle mCommandList;
+        const nvrhi::CommandListHandle& mCommandList;
     };
 }
