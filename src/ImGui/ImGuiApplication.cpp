@@ -110,13 +110,14 @@ Engine {
         ImGui::NewFrame();
 
         Application::OnUpdate(deltaTime);
-
-        ImGui::Render();
     }
 
     void ImGuiApplication::OnRender(const nvrhi::CommandListHandle &command_list,
                                     const nvrhi::FramebufferHandle &framebuffer) {
         Application::OnRender(command_list, framebuffer);
+
+        ImGui::Render();
+
         ImGui::RunGarbageCollection(mCurrentImageIndex);
 
         command_list->clearState();

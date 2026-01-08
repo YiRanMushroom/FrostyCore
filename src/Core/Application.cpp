@@ -279,7 +279,9 @@ Engine {
     }
 
     void Application::InitNVRHI() {
+#if defined(_DEBUG)
         mMessageCallback = std::make_shared<NvrhiMessageCallback>();
+#endif
 
         const char *deviceExtensions[] = {
             vk::KHRSwapchainExtensionName,
@@ -471,11 +473,10 @@ Engine {
         mNvrhiDevice->executeCommandListSignalFence(mCommandList, currentRenderCompleteFence.get());
 
         // Present using new swapchain API (with queue lock protection)
-        vk::Result presentResult;
-        {
+        vk::Result presentResult; {
             // Lock the queue mutex to prevent ImGui viewport rendering from using queue simultaneously
-            nvrhi::vulkan::Queue* nvrhiQueue = static_cast<nvrhi::vulkan::Device*>(mNvrhiDevice.Get())
-                ->getQueue(nvrhi::CommandQueue::Graphics);
+            nvrhi::vulkan::Queue *nvrhiQueue = static_cast<nvrhi::vulkan::Device *>(mNvrhiDevice.Get())
+                    ->getQueue(nvrhi::CommandQueue::Graphics);
             std::lock_guard queueLock(nvrhiQueue->GetVulkanQueueMutexInternal());
             presentResult = mSwapchain.Present(mVkQueue, imageIndex);
         }
