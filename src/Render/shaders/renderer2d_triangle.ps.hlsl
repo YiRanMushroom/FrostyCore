@@ -14,7 +14,7 @@ float4 main(PSInput input) : SV_Target {
     float4 sampledColor;
 
     if (input.textureIndex >= 0) {
-        sampledColor = u_Textures[input.textureIndex].SampleLevel(u_Sampler, input.texCoord, 0);
+        sampledColor = u_Textures[NonUniformResourceIndex(input.textureIndex)].SampleLevel(u_Sampler, input.texCoord, 0);
     } else {
         sampledColor = float4(1.0, 1.0, 1.0, 1.0);
     }
