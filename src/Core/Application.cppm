@@ -26,7 +26,8 @@ Engine {
         }
 
         virtual void OnRender(const nvrhi::CommandListHandle &commandList,
-                              const nvrhi::FramebufferHandle &framebuffer) {}
+                              const nvrhi::FramebufferHandle &framebuffer,
+                              uint32_t frameIndex) {}
 
         virtual void OnFrameEnded(std::function<void()> callback);
 

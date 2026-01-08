@@ -458,9 +458,6 @@ Engine {
             GetClearColor()
         );
 
-        nvrhi::TextureSubresourceSet allSubresources(0, nvrhi::TextureSubresourceSet::AllMipLevels,
-                                             0, nvrhi::TextureSubresourceSet::AllArraySlices);
-
         mCommandList->setResourceStatesForFramebuffer(currentFramebuffer);
         mCommandList->commitBarriers();
 
@@ -492,7 +489,7 @@ Engine {
     void Application::OnRender(const nvrhi::CommandListHandle &commandList,
                                const nvrhi::FramebufferHandle &framebuffer) {
         for (auto &layer: mLayers) {
-            layer->OnRender(commandList, framebuffer);
+            layer->OnRender(commandList, framebuffer, mCurrentImageIndex);
         }
     }
 
