@@ -291,7 +291,7 @@ namespace Engine {
             .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst)
             .setPreTransform(capabilities.currentTransform)
             .setCompositeAlpha(vk::CompositeAlphaFlagBitsKHR::eOpaque)
-            .setPresentMode(vk::PresentModeKHR::eFifo)
+            .setPresentMode(vk::PresentModeKHR::eImmediate)
             .setClipped(vk::True)
             .setOldSwapchain(oldSwapchain);
 

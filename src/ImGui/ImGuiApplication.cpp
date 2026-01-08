@@ -15,7 +15,6 @@ Engine {
     void ImGuiApplication::Init(WindowCreationInfo info) {
         Application::Init(info);
 
-
         float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
 
         IMGUI_CHECKVERSION();

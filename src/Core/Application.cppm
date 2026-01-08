@@ -168,7 +168,7 @@ Engine {
 
     protected:
         // Member variables (order matters for destruction)
-        static constexpr uint32_t MaxFrameInFlight = 3;
+        static constexpr uint32_t MaxFrameInFlight = 5;
 
         // Window
         std::shared_ptr<SDL_Window> mWindow;
