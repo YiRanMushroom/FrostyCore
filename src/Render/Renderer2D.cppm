@@ -6,7 +6,8 @@ import Render.GeneratedShaders;
 import Render.VirtualTextureManager;
 import glm;
 
-namespace Engine {
+namespace
+Engine {
     export struct Renderer2DDescriptor {
         glm::u32vec2 OutputSize;
         glm::vec2 VirtualSize;
@@ -37,15 +38,15 @@ namespace Engine {
         uint32_t TintColor;
         int Depth;
 
-        static TriangleRenderingData Triangle(const glm::vec2& p0, const glm::vec2& uv0,
-                                              const glm::vec2& p1, const glm::vec2& uv1,
-                                              const glm::vec2& p2, const glm::vec2& uv2,
+        static TriangleRenderingData Triangle(const glm::vec2 &p0, const glm::vec2 &uv0,
+                                              const glm::vec2 &p1, const glm::vec2 &uv1,
+                                              const glm::vec2 &p2, const glm::vec2 &uv2,
                                               int textureIndex, uint32_t tintColor, int depth = 0);
 
-        static TriangleRenderingData Quad(const glm::vec2& p0, const glm::vec2& uv0,
-                                          const glm::vec2& p1, const glm::vec2& uv1,
-                                          const glm::vec2& p2, const glm::vec2& uv2,
-                                          const glm::vec2& p3, const glm::vec2& uv3,
+        static TriangleRenderingData Quad(const glm::vec2 &p0, const glm::vec2 &uv0,
+                                          const glm::vec2 &p1, const glm::vec2 &uv1,
+                                          const glm::vec2 &p2, const glm::vec2 &uv2,
+                                          const glm::vec2 &p3, const glm::vec2 &uv3,
                                           int virtualTextureID, uint32_t tintColor, int depth = 0);
     };
 
@@ -55,8 +56,10 @@ namespace Engine {
         std::vector<TriangleInstanceData> InstanceData;
 
         TriangleRenderingSubmissionData() = default;
-        TriangleRenderingSubmissionData(TriangleRenderingSubmissionData&&) = default;
-        TriangleRenderingSubmissionData& operator=(TriangleRenderingSubmissionData&&) = default;
+
+        TriangleRenderingSubmissionData(TriangleRenderingSubmissionData &&) = default;
+
+        TriangleRenderingSubmissionData &operator=(TriangleRenderingSubmissionData &&) = default;
 
         void Clear();
     };
@@ -65,17 +68,21 @@ namespace Engine {
         std::vector<TriangleRenderingData> Instances;
 
         void Clear();
-        void AddTriangle(const glm::vec2& p0, const glm::vec2& uv0,
-                        const glm::vec2& p1, const glm::vec2& uv1,
-                        const glm::vec2& p2, const glm::vec2& uv2,
-                        int virtualTextureID, uint32_t tintColor, int depth);
-        void AddQuad(const glm::vec2& p0, const glm::vec2& uv0,
-                    const glm::vec2& p1, const glm::vec2& uv1,
-                    const glm::vec2& p2, const glm::vec2& uv2,
-                    const glm::vec2& p3, const glm::vec2& uv3,
-                    int virtualTextureID, uint32_t tintColor, int depth);
+
+        void AddTriangle(const glm::vec2 &p0, const glm::vec2 &uv0,
+                         const glm::vec2 &p1, const glm::vec2 &uv1,
+                         const glm::vec2 &p2, const glm::vec2 &uv2,
+                         int virtualTextureID, uint32_t tintColor, int depth);
+
+        void AddQuad(const glm::vec2 &p0, const glm::vec2 &uv0,
+                     const glm::vec2 &p1, const glm::vec2 &uv1,
+                     const glm::vec2 &p2, const glm::vec2 &uv2,
+                     const glm::vec2 &p3, const glm::vec2 &uv3,
+                     int virtualTextureID, uint32_t tintColor, int depth);
+
         std::vector<TriangleRenderingSubmissionData> RecordRendererSubmissionData(size_t triangleBufferInstanceSizeMax);
-        void GiveBackForNextFrame(std::vector<TriangleRenderingSubmissionData>&& thisCache);
+
+        void GiveBackForNextFrame(std::vector<TriangleRenderingSubmissionData> &&thisCache);
 
     private:
         std::vector<TriangleRenderingSubmissionData> mLastFrameCache;
@@ -95,6 +102,7 @@ namespace Engine {
 
     struct LineRenderingSubmissionData {
         std::vector<LineVertexData> VertexData;
+
         void Clear();
     };
 
@@ -102,10 +110,13 @@ namespace Engine {
         std::vector<LineVertexData> VertexData;
 
         void Clear();
-        void AddLine(const glm::vec2& p0, const glm::u8vec4& color0,
-                    const glm::vec2& p1, const glm::u8vec4& color1);
+
+        void AddLine(const glm::vec2 &p0, const glm::u8vec4 &color0,
+                     const glm::vec2 &p1, const glm::u8vec4 &color1);
+
         std::vector<LineRenderingSubmissionData> RecordRendererSubmissionData(size_t lineBufferInstanceSizeMax);
-        void GiveBackForNextFrame(std::vector<LineRenderingSubmissionData>&& thisCache);
+
+        void GiveBackForNextFrame(std::vector<LineRenderingSubmissionData> &&thisCache);
 
     private:
         std::vector<LineRenderingSubmissionData> mLastFrameCache;
@@ -141,33 +152,41 @@ namespace Engine {
         float edgeSoftness = 1.0f;
         int depth = 0;
 
-        static EllipseRenderingData Circle(const glm::vec2& center, float radius,
-                                           const glm::u8vec4& color, int depth = 0);
-        static EllipseRenderingData Ellipse(const glm::vec2& center, const glm::vec2& radii,
-                                            float rotation, const glm::u8vec4& color, int depth = 0);
-        static EllipseRenderingData Ring(const glm::vec2& center, float outerRadius, float innerRadius,
-                                         const glm::u8vec4& color, int depth = 0);
-        static EllipseRenderingData Sector(const glm::vec2& center, float radius,
+        static EllipseRenderingData Circle(const glm::vec2 &center, float radius,
+                                           const glm::u8vec4 &color, int depth = 0);
+
+        static EllipseRenderingData Ellipse(const glm::vec2 &center, const glm::vec2 &radii,
+                                            float rotation, const glm::u8vec4 &color, int depth = 0);
+
+        static EllipseRenderingData Ring(const glm::vec2 &center, float outerRadius, float innerRadius,
+                                         const glm::u8vec4 &color, int depth = 0);
+
+        static EllipseRenderingData Sector(const glm::vec2 &center, float radius,
                                            float startAngle, float endAngle,
-                                           const glm::u8vec4& color, int textureIndex = -1, int depth = 0);
-        static EllipseRenderingData Arc(const glm::vec2& center, float radius, float thickness,
+                                           const glm::u8vec4 &color, int textureIndex = -1, int depth = 0);
+
+        static EllipseRenderingData Arc(const glm::vec2 &center, float radius, float thickness,
                                         float startAngle, float endAngle,
-                                        const glm::u8vec4& color, int depth = 0);
-        static EllipseRenderingData EllipseSector(const glm::vec2& center, const glm::vec2& radii,
+                                        const glm::u8vec4 &color, int depth = 0);
+
+        static EllipseRenderingData EllipseSector(const glm::vec2 &center, const glm::vec2 &radii,
                                                   float rotation, float startAngle, float endAngle,
-                                                  const glm::u8vec4& color, int textureIndex = -1, int depth = 0);
-        static EllipseRenderingData EllipseArc(const glm::vec2& center, const glm::vec2& radii,
+                                                  const glm::u8vec4 &color, int textureIndex = -1, int depth = 0);
+
+        static EllipseRenderingData EllipseArc(const glm::vec2 &center, const glm::vec2 &radii,
                                                float rotation, float thickness,
                                                float startAngle, float endAngle,
-                                               const glm::u8vec4& color, int depth = 0);
+                                               const glm::u8vec4 &color, int depth = 0);
     };
 
     struct EllipseRenderingSubmissionData {
         std::vector<EllipseShapeData> ShapeData;
 
         EllipseRenderingSubmissionData() = default;
-        EllipseRenderingSubmissionData(EllipseRenderingSubmissionData&&) = default;
-        EllipseRenderingSubmissionData& operator=(EllipseRenderingSubmissionData&&) = default;
+
+        EllipseRenderingSubmissionData(EllipseRenderingSubmissionData &&) = default;
+
+        EllipseRenderingSubmissionData &operator=(EllipseRenderingSubmissionData &&) = default;
 
         void Clear();
     };
@@ -176,9 +195,12 @@ namespace Engine {
         std::vector<EllipseRenderingData> Instances;
 
         void Clear();
-        void AddEllipse(const EllipseRenderingData& data);
+
+        void AddEllipse(const EllipseRenderingData &data);
+
         std::vector<EllipseRenderingSubmissionData> RecordRendererSubmissionData(size_t ellipseBufferInstanceSizeMax);
-        void GiveBackForNextFrame(std::vector<EllipseRenderingSubmissionData>&& thisCache);
+
+        void GiveBackForNextFrame(std::vector<EllipseRenderingSubmissionData> &&thisCache);
 
     private:
         std::vector<EllipseRenderingSubmissionData> mLastFrameCache;
@@ -194,100 +216,137 @@ namespace Engine {
         Renderer2D(Renderer2DDescriptor desc);
 
         void BeginRendering();
+
         void EndRendering();
+
         void OnResize(uint32_t width, uint32_t height);
 
-        [[nodiscard]] nvrhi::ITexture* GetTexture() const;
+        [[nodiscard]] nvrhi::ITexture *GetTexture() const;
+
         void Clear();
 
         [[nodiscard]] int GetCurrentDepth() const;
+
         void SetCurrentDepth(int depth);
 
-        uint32_t RegisterVirtualTextureForThisFrame(const nvrhi::TextureHandle& texture);
+        uint32_t RegisterVirtualTextureForThisFrame(const nvrhi::TextureHandle &texture);
 
-        void DrawTriangleColored(const glm::mat3x2& positions, const glm::u8vec4& color,
+        void DrawTriangleColored(const glm::mat3x2 &positions, const glm::u8vec4 &color,
                                  std::optional<int> overrideDepth = std::nullopt);
-        void DrawTriangleTextureVirtual(const glm::mat3x2& positions, const glm::mat3x2& uvs,
+
+        void DrawTriangleTextureVirtual(const glm::mat3x2 &positions, const glm::mat3x2 &uvs,
                                         uint32_t virtualTextureID, std::optional<int> overrideDepth = std::nullopt,
                                         glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255));
-        uint32_t DrawTriangleTextureManaged(const glm::mat3x2& positions, const glm::mat3x2& uvs,
-                                                   const nvrhi::TextureHandle& texture,
-                                                   std::optional<int> overrideDepth = std::nullopt,
-                                                   glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255));
 
-        void DrawQuadColored(const glm::mat4x2& positions, const glm::u8vec4& color,
-                            std::optional<int> overrideDepth = std::nullopt);
-        void DrawQuadTextureVirtual(const glm::mat4x2& positions, const glm::mat4x2& uvs,
+        uint32_t DrawTriangleTextureManaged(const glm::mat3x2 &positions, const glm::mat3x2 &uvs,
+                                            const nvrhi::TextureHandle &texture,
+                                            std::optional<int> overrideDepth = std::nullopt,
+                                            glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255));
+
+        void DrawQuadColored(const glm::mat4x2 &positions, const glm::u8vec4 &color,
+                             std::optional<int> overrideDepth = std::nullopt);
+
+        void DrawQuadTextureVirtual(const glm::mat4x2 &positions, const glm::mat4x2 &uvs,
                                     uint32_t virtualTextureID, std::optional<int> overrideDepth = std::nullopt,
                                     glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255));
-        uint32_t DrawQuadTextureManaged(const glm::mat4x2& positions, const glm::mat4x2& uvs,
-                                        const nvrhi::TextureHandle& texture,
+
+        uint32_t DrawQuadTextureManaged(const glm::mat4x2 &positions, const glm::mat4x2 &uvs,
+                                        const nvrhi::TextureHandle &texture,
                                         std::optional<int> overrideDepth = std::nullopt,
                                         glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255));
 
-        void DrawLine(const glm::vec2& p0, const glm::vec2& p1, const glm::u8vec4& color);
-        void DrawLine(const glm::vec2& p0, const glm::vec2& p1,
-                     const glm::u8vec4& color0, const glm::u8vec4& color1);
+        void DrawLine(const glm::vec2 &p0, const glm::vec2 &p1, const glm::u8vec4 &color);
 
-        void DrawCircle(const glm::vec2& center, float radius, const glm::u8vec4& color,
-                       std::optional<int> overrideDepth = std::nullopt);
-        void DrawEllipse(const glm::vec2& center, const glm::vec2& radii, float rotation,
-                        const glm::u8vec4& color, std::optional<int> overrideDepth = std::nullopt);
-        void DrawRing(const glm::vec2& center, float outerRadius, float innerRadius,
-                     const glm::u8vec4& color, std::optional<int> overrideDepth = std::nullopt);
-        void DrawSector(const glm::vec2& center, float radius, float startAngle, float endAngle,
-                       const glm::u8vec4& color, std::optional<int> overrideDepth = std::nullopt);
-        void DrawSectorTextureVirtual(const glm::vec2& center, float radius, float startAngle, float endAngle,
-                               uint32_t virtualTextureID, const glm::u8vec4& tintColor = glm::u8vec4(255, 255, 255, 255),
-                               std::optional<int> overrideDepth = std::nullopt);
-        uint32_t DrawSectorTextureManaged(const glm::vec2& center, float radius, float startAngle, float endAngle,
-                                          const nvrhi::TextureHandle& texture,
-                                          const glm::u8vec4& tintColor = glm::u8vec4(255, 255, 255, 255),
+        void DrawLine(const glm::vec2 &p0, const glm::vec2 &p1,
+                      const glm::u8vec4 &color0, const glm::u8vec4 &color1);
+
+        void DrawCircle(const glm::vec2 &center, float radius, const glm::u8vec4 &color,
+                        std::optional<int> overrideDepth = std::nullopt);
+
+        void DrawEllipse(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
+                         const glm::u8vec4 &color, std::optional<int> overrideDepth = std::nullopt);
+
+        void DrawRing(const glm::vec2 &center, float outerRadius, float innerRadius,
+                      const glm::u8vec4 &color, std::optional<int> overrideDepth = std::nullopt);
+
+        void DrawSector(const glm::vec2 &center, float radius, float startAngle, float endAngle,
+                        const glm::u8vec4 &color, std::optional<int> overrideDepth = std::nullopt);
+
+        void DrawSectorTextureVirtual(const glm::vec2 &center, float radius, float startAngle, float endAngle,
+                                      uint32_t virtualTextureID,
+                                      const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
+                                      std::optional<int> overrideDepth = std::nullopt);
+
+        uint32_t DrawSectorTextureManaged(const glm::vec2 &center, float radius, float startAngle, float endAngle,
+                                          const nvrhi::TextureHandle &texture,
+                                          const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
                                           std::optional<int> overrideDepth = std::nullopt);
-        void DrawArc(const glm::vec2& center, float radius, float thickness,
-                    float startAngle, float endAngle, const glm::u8vec4& color,
-                    std::optional<int> overrideDepth = std::nullopt);
-        void DrawEllipseSector(const glm::vec2& center, const glm::vec2& radii, float rotation,
-                              float startAngle, float endAngle, const glm::u8vec4& color,
-                              std::optional<int> overrideDepth = std::nullopt);
-        void DrawEllipseSectorTextureVirtual(const glm::vec2& center, const glm::vec2& radii, float rotation,
-                                       float startAngle, float endAngle, uint32_t virtualTextureID,
-                                       const glm::u8vec4& tintColor = glm::u8vec4(255, 255, 255, 255),
+
+        void DrawArc(const glm::vec2 &center, float radius, float thickness,
+                     float startAngle, float endAngle, const glm::u8vec4 &color,
+                     std::optional<int> overrideDepth = std::nullopt);
+
+        void DrawEllipseSector(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
+                               float startAngle, float endAngle, const glm::u8vec4 &color,
+                               std::optional<int> overrideDepth = std::nullopt);
+
+        void DrawEllipseSectorTextureVirtual(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
+                                             float startAngle, float endAngle, uint32_t virtualTextureID,
+                                             const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
+                                             std::optional<int> overrideDepth = std::nullopt);
+
+        void DrawEllipseArc(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
+                            float thickness, float startAngle, float endAngle,
+                            const glm::u8vec4 &color, std::optional<int> overrideDepth = std::nullopt);
+
+        void DrawCircleTextureVirtual(const glm::vec2 &center, float radius, uint32_t virtualTextureID,
+                                      const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
+                                      std::optional<int> overrideDepth = std::nullopt);
+
+        uint32_t DrawCircleTextureManaged(const glm::vec2 &center, float radius,
+                                          const nvrhi::TextureHandle &texture,
+                                          const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
+                                          std::optional<int> overrideDepth = std::nullopt);
+
+        void DrawEllipseTextureVirtual(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
+                                       uint32_t virtualTextureID,
+                                       const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
                                        std::optional<int> overrideDepth = std::nullopt);
-        void DrawEllipseArc(const glm::vec2& center, const glm::vec2& radii, float rotation,
-                           float thickness, float startAngle, float endAngle,
-                           const glm::u8vec4& color, std::optional<int> overrideDepth = std::nullopt);
-        void DrawCircleTextureVirtual(const glm::vec2& center, float radius, uint32_t virtualTextureID,
-                               const glm::u8vec4& tintColor = glm::u8vec4(255, 255, 255, 255),
-                               std::optional<int> overrideDepth = std::nullopt);
-        uint32_t DrawCircleTextureManaged(const glm::vec2& center, float radius,
-                                          const nvrhi::TextureHandle& texture,
-                                          const glm::u8vec4& tintColor = glm::u8vec4(255, 255, 255, 255),
-                                          std::optional<int> overrideDepth = std::nullopt);
-        void DrawEllipseTextureVirtual(const glm::vec2& center, const glm::vec2& radii, float rotation,
-                                uint32_t virtualTextureID,
-                                const glm::u8vec4& tintColor = glm::u8vec4(255, 255, 255, 255),
-                                std::optional<int> overrideDepth = std::nullopt);
-        uint32_t DrawEllipseTextureManaged(const glm::vec2& center, const glm::vec2& radii, float rotation,
-                                           const nvrhi::TextureHandle& texture,
-                                           const glm::u8vec4& tintColor = glm::u8vec4(255, 255, 255, 255),
+
+        uint32_t DrawEllipseTextureManaged(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
+                                           const nvrhi::TextureHandle &texture,
+                                           const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
                                            std::optional<int> overrideDepth = std::nullopt);
 
     private:
         void CreateResources();
+
         void CreatePipelineResources();
+
         void CreateTriangleBatchRenderingResources(size_t count);
+
         void CreateLineBatchRenderingResources(size_t count);
+
         void CreateEllipseBatchRenderingResources(size_t count);
+
         void CreatePipelines();
+
         void CreateConstantBuffers();
+
         void CreatePipelineTriangle();
+
         void CreatePipelineLine();
+
         void CreatePipelineEllipse();
+
         void SubmitTriangleBatchRendering();
+
         void SubmitLineBatchRendering();
+
         void SubmitEllipseBatchRendering();
+
         void Submit();
+
         void RecalculateViewProjectionMatrix();
 
         nvrhi::DeviceHandle mDevice;
@@ -332,4 +391,3 @@ namespace Engine {
         std::vector<EllipseBatchRenderingResources> mEllipseBatchRenderingResources;
     };
 }
-

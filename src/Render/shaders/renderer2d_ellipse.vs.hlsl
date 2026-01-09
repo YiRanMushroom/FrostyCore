@@ -2,7 +2,6 @@ cbuffer GlobalConstants : register(b0, space0) {
     float4x4 u_ViewProjectionMatrix;
 };
 
-// EllipseShapeData 结构体，用于存储椭圆形状数据
 struct EllipseShapeData {
     float2 center;
     float2 radii;

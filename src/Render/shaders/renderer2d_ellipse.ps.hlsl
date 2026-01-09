@@ -61,7 +61,24 @@ float4 main(PSInput input) : SV_TARGET {
 
     float dist = ellipseSDF(localPos, input.radii);
 
-    float fw = max(fwidth(dist), input.edgeSoftness);
+    float2 normalizedPos = localPos / input.radii;
+    float distToCenter = length(normalizedPos);
+
+    float effectiveRadius = min(input.radii.x, input.radii.y);
+    if (distToCenter > 0.001) {
+        float2 direction = normalizedPos / distToCenter;
+        float cosTheta = direction.x;
+        float sinTheta = direction.y;
+        effectiveRadius = (input.radii.x * input.radii.y) /
+                         sqrt(input.radii.y * input.radii.y * cosTheta * cosTheta +
+                              input.radii.x * input.radii.x * sinTheta * sinTheta);
+    }
+
+    float avgRadius = (input.radii.x + input.radii.y) * 0.5;
+    float radiusRatio = effectiveRadius / avgRadius;
+
+    float fw = fwidth(dist) / radiusRatio;
+    fw = max(fw, input.edgeSoftness);
     if (fw < 0.5) fw = 0.5;
 
     float alpha = smoothstep(fw, -fw, dist);
