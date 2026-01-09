@@ -45,7 +45,7 @@ PSInput main(uint vID : SV_VertexID) {
     EllipseShapeData data = u_ShapeBuffer[shapeIndex];
 
     float maxRadius = max(data.radii.x, data.radii.y);
-    float boundingRadius = maxRadius * 1.05; // 增加5%边距用于抗锯齿
+    float boundingRadius = maxRadius * 1.05;
 
     float2 localPos = kQuadVertices[vertexInShape] * boundingRadius;
 
