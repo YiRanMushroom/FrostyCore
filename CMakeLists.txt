@@ -68,6 +68,7 @@ add_subdirectory(vendor/sdl3)
 add_subdirectory(vendor/nvrhi)
 add_subdirectory(vendor/imgui)
 add_subdirectory(vendor/stb_image)
+add_subdirectory(vendor/glm)
 
 target_link_libraries(nvrhi_vk PUBLIC Vulkan::Vulkan)
 target_link_libraries(imgui PUBLIC SDL3::SDL3 Vulkan::Vulkan nvrhi nvrhi_vk)
@@ -78,6 +79,12 @@ target_include_directories(
         vendor
 )
 
+target_compile_definitions(
+        glm
+        PUBLIC
+        "GLM_ENABLE_EXPERIMENTAL=1"
+)
+
 target_link_libraries(
         ${PROJECT_NAME}
         PUBLIC
@@ -86,6 +93,15 @@ target_link_libraries(
         nvrhi
         imgui
         stb_image
+        glm
+)
+
+target_sources(
+        ${PROJECT_NAME}
+        PRIVATE
+        FILE_SET cxx_modules
+        TYPE CXX_MODULES FILES
+        vendor/glm/glm/glm.cppm
 )
 
 target_compile_definitions(
