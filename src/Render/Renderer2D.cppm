@@ -14,46 +14,57 @@ Engine {
         nvrhi::DeviceHandle Device;
     };
 
+    export struct ClipRegion {
+        glm::vec2 Points[4];  // Virtual coordinates
+        uint32_t PointCount;  // 3 or 4
+        uint32_t ClipMode;    // 0 = show inside (clip outside), 1 = show outside (clip inside)
+    };
+
     struct TriangleVertexData {
-        glm::vec2 position;
-        glm::vec2 texCoords;
-        uint32_t constantIndex;
+        glm::vec2 Position;
+        glm::vec2 TexCoords;
+        uint32_t InstanceIndex;
     };
 
     struct TriangleInstanceData {
-        uint32_t tintColor;
-        int32_t textureIndex;
+        uint32_t TintColor;
+        int32_t TextureIndex;
+        int32_t ClipIndex;  // < 0 means no clipping
+    };
+
+    struct VertexPosition {
+        glm::vec2 Position;
+        glm::vec2 TexCoords;
     };
 
     struct TriangleRenderingData {
-        struct VertexPosition {
-            glm::vec2 position;
-            glm::vec2 texCoords;
-        };
-
         glm::mat4x2 Positions;
         glm::mat4x2 TexCoords;
         bool IsQuad;
         int VirtualTextureID;
         uint32_t TintColor;
         int Depth;
+        std::optional<ClipRegion> Clip;
 
         static TriangleRenderingData Triangle(const glm::vec2 &p0, const glm::vec2 &uv0,
                                               const glm::vec2 &p1, const glm::vec2 &uv1,
                                               const glm::vec2 &p2, const glm::vec2 &uv2,
-                                              int textureIndex, uint32_t tintColor, int depth = 0);
+                                              int textureIndex, uint32_t tintColor, int depth = 0,
+                                              const ClipRegion* clip = nullptr);
 
         static TriangleRenderingData Quad(const glm::vec2 &p0, const glm::vec2 &uv0,
                                           const glm::vec2 &p1, const glm::vec2 &uv1,
                                           const glm::vec2 &p2, const glm::vec2 &uv2,
                                           const glm::vec2 &p3, const glm::vec2 &uv3,
-                                          int virtualTextureID, uint32_t tintColor, int depth = 0);
+                                          int virtualTextureID, uint32_t tintColor, int depth = 0,
+                                          const ClipRegion* clip = nullptr);
     };
 
     struct TriangleRenderingSubmissionData {
         std::vector<TriangleVertexData> VertexData;
         std::vector<uint32_t> IndexData;
         std::vector<TriangleInstanceData> InstanceData;
+        std::vector<ClipRegion> ClipData;  // Index 0 is reserved for "no clip"
 
         TriangleRenderingSubmissionData() = default;
 
@@ -72,13 +83,15 @@ Engine {
         void AddTriangle(const glm::vec2 &p0, const glm::vec2 &uv0,
                          const glm::vec2 &p1, const glm::vec2 &uv1,
                          const glm::vec2 &p2, const glm::vec2 &uv2,
-                         int virtualTextureID, uint32_t tintColor, int depth);
+                         int virtualTextureID, uint32_t tintColor, int depth,
+                         const ClipRegion* clip = nullptr);
 
         void AddQuad(const glm::vec2 &p0, const glm::vec2 &uv0,
                      const glm::vec2 &p1, const glm::vec2 &uv1,
                      const glm::vec2 &p2, const glm::vec2 &uv2,
                      const glm::vec2 &p3, const glm::vec2 &uv3,
-                     int virtualTextureID, uint32_t tintColor, int depth);
+                     int virtualTextureID, uint32_t tintColor, int depth,
+                     const ClipRegion* clip = nullptr);
 
         std::vector<TriangleRenderingSubmissionData> RecordRendererSubmissionData(size_t triangleBufferInstanceSizeMax);
 
@@ -92,12 +105,13 @@ Engine {
         nvrhi::BufferHandle VertexBuffer;
         nvrhi::BufferHandle IndexBuffer;
         nvrhi::BufferHandle InstanceBuffer;
+        nvrhi::BufferHandle ClipBuffer;  // ClipRegion buffer
         nvrhi::BindingSetHandle mBindingSetSpace0;
     };
 
     struct LineVertexData {
-        glm::vec2 position;
-        uint32_t color;
+        glm::vec2 Position;
+        uint32_t Color;
     };
 
     struct LineRenderingSubmissionData {
@@ -128,59 +142,68 @@ Engine {
     };
 
     struct EllipseShapeData {
-        glm::vec2 center;
-        glm::vec2 radii;
-        float rotation;
-        float innerScale;
-        float startAngle;
-        float endAngle;
-        uint32_t tintColor;
-        int32_t textureIndex;
-        float edgeSoftness;
-        float _padding;
+        glm::vec2 Center;
+        glm::vec2 Radii;
+        float Rotation;
+        float InnerScale;
+        float StartAngle;
+        float EndAngle;
+        uint32_t TintColor;
+        int32_t TextureIndex;
+        float EdgeSoftness;
+        int32_t ClipIndex;  // < 0 means no clipping
     };
 
     struct EllipseRenderingData {
-        glm::vec2 center;
-        glm::vec2 radii;
-        float rotation = 0.0f;
-        float innerScale = 0.0f;
-        float startAngle = 0.0f;
-        float endAngle = 0.0f;
-        int virtualTextureID = -1;
-        uint32_t tintColor = 0xFFFFFFFF;
-        float edgeSoftness = 1.0f;
-        int depth = 0;
+        glm::vec2 Center;
+        glm::vec2 Radii;
+        float Rotation = 0.0f;
+        float InnerScale = 0.0f;
+        float StartAngle = 0.0f;
+        float EndAngle = 0.0f;
+        int VirtualTextureID = -1;
+        uint32_t TintColor = 0xFFFFFFFF;
+        float EdgeSoftness = 1.0f;
+        int Depth = 0;
+        std::optional<ClipRegion> Clip;
 
         static EllipseRenderingData Circle(const glm::vec2 &center, float radius,
-                                           const glm::u8vec4 &color, int depth = 0);
+                                           const glm::u8vec4 &color, int depth = 0,
+                                           const ClipRegion* clip = nullptr);
 
         static EllipseRenderingData Ellipse(const glm::vec2 &center, const glm::vec2 &radii,
-                                            float rotation, const glm::u8vec4 &color, int depth = 0);
+                                            float rotation, const glm::u8vec4 &color, int depth = 0,
+                                            const ClipRegion* clip = nullptr);
 
         static EllipseRenderingData Ring(const glm::vec2 &center, float outerRadius, float innerRadius,
-                                         const glm::u8vec4 &color, int depth = 0);
+                                         const glm::u8vec4 &color, int depth = 0,
+                                         const ClipRegion* clip = nullptr);
 
         static EllipseRenderingData Sector(const glm::vec2 &center, float radius,
                                            float startAngle, float endAngle,
-                                           const glm::u8vec4 &color, int textureIndex = -1, int depth = 0);
+                                           const glm::u8vec4 &color, int textureIndex = -1, int depth = 0,
+                                           const ClipRegion* clip = nullptr);
 
         static EllipseRenderingData Arc(const glm::vec2 &center, float radius, float thickness,
                                         float startAngle, float endAngle,
-                                        const glm::u8vec4 &color, int depth = 0);
+                                        const glm::u8vec4 &color, int depth = 0,
+                                        const ClipRegion* clip = nullptr);
 
         static EllipseRenderingData EllipseSector(const glm::vec2 &center, const glm::vec2 &radii,
                                                   float rotation, float startAngle, float endAngle,
-                                                  const glm::u8vec4 &color, int textureIndex = -1, int depth = 0);
+                                                  const glm::u8vec4 &color, int textureIndex = -1, int depth = 0,
+                                                  const ClipRegion* clip = nullptr);
 
         static EllipseRenderingData EllipseArc(const glm::vec2 &center, const glm::vec2 &radii,
                                                float rotation, float thickness,
                                                float startAngle, float endAngle,
-                                               const glm::u8vec4 &color, int depth = 0);
+                                               const glm::u8vec4 &color, int depth = 0,
+                                               const ClipRegion* clip = nullptr);
     };
 
     struct EllipseRenderingSubmissionData {
         std::vector<EllipseShapeData> ShapeData;
+        std::vector<ClipRegion> ClipData;  // Index 0 is reserved for "no clip"
 
         EllipseRenderingSubmissionData() = default;
 
@@ -208,6 +231,7 @@ Engine {
 
     struct EllipseBatchRenderingResources {
         nvrhi::BufferHandle ShapeBuffer;
+        nvrhi::BufferHandle ClipBuffer;  // ClipRegion buffer
         nvrhi::BindingSetHandle mBindingSetSpace0;
     };
 
@@ -232,28 +256,34 @@ Engine {
         uint32_t RegisterVirtualTextureForThisFrame(const nvrhi::TextureHandle &texture);
 
         void DrawTriangleColored(const glm::mat3x2 &positions, const glm::u8vec4 &color,
-                                 std::optional<int> overrideDepth = std::nullopt);
+                                 std::optional<int> overrideDepth = std::nullopt,
+                                 const ClipRegion* clip = nullptr);
 
         void DrawTriangleTextureVirtual(const glm::mat3x2 &positions, const glm::mat3x2 &uvs,
                                         uint32_t virtualTextureID, std::optional<int> overrideDepth = std::nullopt,
-                                        glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255));
+                                        glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255),
+                                        const ClipRegion* clip = nullptr);
 
         uint32_t DrawTriangleTextureManaged(const glm::mat3x2 &positions, const glm::mat3x2 &uvs,
                                             const nvrhi::TextureHandle &texture,
                                             std::optional<int> overrideDepth = std::nullopt,
-                                            glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255));
+                                            glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255),
+                                            const ClipRegion* clip = nullptr);
 
         void DrawQuadColored(const glm::mat4x2 &positions, const glm::u8vec4 &color,
-                             std::optional<int> overrideDepth = std::nullopt);
+                             std::optional<int> overrideDepth = std::nullopt,
+                             const ClipRegion* clip = nullptr);
 
         void DrawQuadTextureVirtual(const glm::mat4x2 &positions, const glm::mat4x2 &uvs,
                                     uint32_t virtualTextureID, std::optional<int> overrideDepth = std::nullopt,
-                                    glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255));
+                                    glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255),
+                                    const ClipRegion* clip = nullptr);
 
         uint32_t DrawQuadTextureManaged(const glm::mat4x2 &positions, const glm::mat4x2 &uvs,
                                         const nvrhi::TextureHandle &texture,
                                         std::optional<int> overrideDepth = std::nullopt,
-                                        glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255));
+                                        glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255),
+                                        const ClipRegion* clip = nullptr);
 
         void DrawLine(const glm::vec2 &p0, const glm::vec2 &p1, const glm::u8vec4 &color);
 
@@ -261,62 +291,76 @@ Engine {
                       const glm::u8vec4 &color0, const glm::u8vec4 &color1);
 
         void DrawCircle(const glm::vec2 &center, float radius, const glm::u8vec4 &color,
-                        std::optional<int> overrideDepth = std::nullopt);
+                        std::optional<int> overrideDepth = std::nullopt,
+                        const ClipRegion* clip = nullptr);
 
         void DrawEllipse(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
-                         const glm::u8vec4 &color, std::optional<int> overrideDepth = std::nullopt);
+                         const glm::u8vec4 &color, std::optional<int> overrideDepth = std::nullopt,
+                         const ClipRegion* clip = nullptr);
 
         void DrawRing(const glm::vec2 &center, float outerRadius, float innerRadius,
-                      const glm::u8vec4 &color, std::optional<int> overrideDepth = std::nullopt);
+                      const glm::u8vec4 &color, std::optional<int> overrideDepth = std::nullopt,
+                      const ClipRegion* clip = nullptr);
 
         void DrawSector(const glm::vec2 &center, float radius, float startAngle, float endAngle,
-                        const glm::u8vec4 &color, std::optional<int> overrideDepth = std::nullopt);
+                        const glm::u8vec4 &color, std::optional<int> overrideDepth = std::nullopt,
+                        const ClipRegion* clip = nullptr);
 
         void DrawSectorTextureVirtual(const glm::vec2 &center, float radius, float startAngle, float endAngle,
                                       uint32_t virtualTextureID,
                                       const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
-                                      std::optional<int> overrideDepth = std::nullopt);
+                                      std::optional<int> overrideDepth = std::nullopt,
+                                      const ClipRegion* clip = nullptr);
 
         uint32_t DrawSectorTextureManaged(const glm::vec2 &center, float radius, float startAngle, float endAngle,
                                           const nvrhi::TextureHandle &texture,
                                           const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
-                                          std::optional<int> overrideDepth = std::nullopt);
+                                          std::optional<int> overrideDepth = std::nullopt,
+                                          const ClipRegion* clip = nullptr);
 
         void DrawArc(const glm::vec2 &center, float radius, float thickness,
                      float startAngle, float endAngle, const glm::u8vec4 &color,
-                     std::optional<int> overrideDepth = std::nullopt);
+                     std::optional<int> overrideDepth = std::nullopt,
+                     const ClipRegion* clip = nullptr);
 
         void DrawEllipseSector(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
                                float startAngle, float endAngle, const glm::u8vec4 &color,
-                               std::optional<int> overrideDepth = std::nullopt);
+                               std::optional<int> overrideDepth = std::nullopt,
+                               const ClipRegion* clip = nullptr);
 
         void DrawEllipseSectorTextureVirtual(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
                                              float startAngle, float endAngle, uint32_t virtualTextureID,
                                              const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
-                                             std::optional<int> overrideDepth = std::nullopt);
+                                             std::optional<int> overrideDepth = std::nullopt,
+                                             const ClipRegion* clip = nullptr);
 
         void DrawEllipseArc(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
                             float thickness, float startAngle, float endAngle,
-                            const glm::u8vec4 &color, std::optional<int> overrideDepth = std::nullopt);
+                            const glm::u8vec4 &color, std::optional<int> overrideDepth = std::nullopt,
+                            const ClipRegion* clip = nullptr);
 
         void DrawCircleTextureVirtual(const glm::vec2 &center, float radius, uint32_t virtualTextureID,
                                       const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
-                                      std::optional<int> overrideDepth = std::nullopt);
+                                      std::optional<int> overrideDepth = std::nullopt,
+                                      const ClipRegion* clip = nullptr);
 
         uint32_t DrawCircleTextureManaged(const glm::vec2 &center, float radius,
                                           const nvrhi::TextureHandle &texture,
                                           const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
-                                          std::optional<int> overrideDepth = std::nullopt);
+                                          std::optional<int> overrideDepth = std::nullopt,
+                                          const ClipRegion* clip = nullptr);
 
         void DrawEllipseTextureVirtual(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
                                        uint32_t virtualTextureID,
                                        const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
-                                       std::optional<int> overrideDepth = std::nullopt);
+                                       std::optional<int> overrideDepth = std::nullopt,
+                                       const ClipRegion* clip = nullptr);
 
         uint32_t DrawEllipseTextureManaged(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
                                            const nvrhi::TextureHandle &texture,
                                            const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
-                                           std::optional<int> overrideDepth = std::nullopt);
+                                           std::optional<int> overrideDepth = std::nullopt,
+                                           const ClipRegion* clip = nullptr);
 
     private:
         void CreateResources();
