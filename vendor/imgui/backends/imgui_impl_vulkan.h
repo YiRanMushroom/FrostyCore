@@ -140,6 +140,10 @@ struct ImGui_ImplVulkan_InitInfo
     VkShaderModuleCreateInfo        CustomShaderFragCreateInfo;
 
     void*                           NvrhiDeviceHandle;           // nvrhi::vulkan::IDevice* - used to dynamically get the graphics queue mutex
+
+
+    bool                            HasPreferredSwapchainPresentMode;
+    VkPresentModeKHR                PreferredSwapchainPresentMode;
 };
 
 // Follow "Getting Started" link and check examples/ folder to learn about using backends!

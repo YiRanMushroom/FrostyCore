@@ -1768,6 +1768,22 @@ VkSurfaceFormatKHR ImGui_ImplVulkanH_SelectSurfaceFormat(VkPhysicalDevice physic
 
 VkPresentModeKHR ImGui_ImplVulkanH_SelectPresentMode(VkPhysicalDevice physical_device, VkSurfaceKHR surface,
                                                      const VkPresentModeKHR *request_modes, int request_modes_count) {
+    ImGui_ImplVulkan_Data* bd = ImGui_ImplVulkan_GetBackendData();
+
+    if (bd->VulkanInitInfo.HasPreferredSwapchainPresentMode) {
+        // check if preferred present mode is available
+        uint32_t avail_count = 0;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &avail_count, nullptr);
+        ImVector<VkPresentModeKHR> avail_modes;
+        avail_modes.resize((int) avail_count);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &avail_count, avail_modes.Data);
+        for (uint32_t avail_i = 0; avail_i < avail_count; avail_i++)
+            if (bd->VulkanInitInfo.PreferredSwapchainPresentMode == avail_modes[avail_i])
+                return bd->VulkanInitInfo.PreferredSwapchainPresentMode;
+
+        return VK_PRESENT_MODE_FIFO_KHR; // Always available
+    }
+
     IM_ASSERT(
         g_FunctionsLoaded &&
         "Need to call ImGui_ImplVulkan_LoadFunctions() if IMGUI_IMPL_VULKAN_NO_PROTOTYPES or VK_NO_PROTOTYPES are set!");

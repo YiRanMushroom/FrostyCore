@@ -84,6 +84,9 @@ Engine {
         // Pass nvrhi device handle so ImGui can dynamically get the queue mutex
         init_info.NvrhiDeviceHandle = mNvrhiDevice.Get();
 
+        init_info.HasPreferredSwapchainPresentMode = true;
+        init_info.PreferredSwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+
         ImGui_ImplVulkan_Init(&init_info);
 
         // Init sampler
@@ -139,9 +142,12 @@ Engine {
         Application::OnPostRender();
 
         auto &io = ImGui::GetIO();
-        ImGui::EndFrame();
-        ImGui::UpdatePlatformWindows();
-        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable && !mMinimized) {
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+
+            if (mMinimized)
+                ImGui::Render();
+
+            ImGui::UpdatePlatformWindows();
             ImGui::RenderPlatformWindowsDefault();
         }
     }

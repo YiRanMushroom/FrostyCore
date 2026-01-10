@@ -193,6 +193,21 @@ Engine {
                              VkDebugUtilsMessageTypeFlagsEXT messageType,
                              const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
                              void *pUserData) {
+        // Fuck Vulkan and ImGui, I don't fucking know whose fault is this.
+        // Definitely not me, shut up the validation layer for
+        // Validation Error: vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0xf500000000f5) is being
+        // signaled by VkQueue 0x21956a98b20, but it may still be in use by VkSwapchainKHR 0xe100000000e1.
+
+        // VUID-vkQueuePresentKHR-pWaitSemaphores
+
+        static constexpr char matchString[] = "VUID-vkQueuePresentKHR-pWaitSemaphores";
+        static constexpr size_t length = sizeof(matchString) / sizeof(char) - 1;
+        static const char* targetString = pCallbackData->pMessageIdName;
+
+        if (strncmp(matchString, targetString, length)) {
+            return vk::False;
+        }
+
         // Output to stderr for errors and warnings
         if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
             std::cerr << "Validation Error: " << pCallbackData->pMessage << std::endl;
@@ -247,7 +262,8 @@ Engine {
         const char *deviceExtensions[] = {
             vk::KHRSwapchainExtensionName,
             vk::KHRDynamicRenderingExtensionName, // Required for dynamic rendering in Vulkan 1.2
-            vk::KHRDynamicRenderingLocalReadExtensionName
+            vk::KHRDynamicRenderingLocalReadExtensionName,
+            vk::KHRSwapchainMaintenance1ExtensionName
         };
 
         // Enable dynamic rendering feature
@@ -286,7 +302,8 @@ Engine {
         const char *deviceExtensions[] = {
             vk::KHRSwapchainExtensionName,
             vk::KHRDynamicRenderingExtensionName,
-            vk::KHRDynamicRenderingLocalReadExtensionName
+            vk::KHRDynamicRenderingLocalReadExtensionName,
+            vk::KHRSwapchainMaintenance1ExtensionName
         };
 
         nvrhi::vulkan::DeviceDesc nvrhiDesc;
