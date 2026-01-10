@@ -49,8 +49,8 @@ Engine {
         init_info.QueueFamily = ImGui_ImplVulkanH_SelectQueueFamilyIndex(mVkPhysicalDevice.get());
         init_info.Queue = mVkQueue.get();
         init_info.PipelineCache = nullptr;
-        init_info.DescriptorPool = VK_NULL_HANDLE;  // No longer needed - ImGui manages internally
-        init_info.DescriptorPoolSize = 0;           // No longer needed - ImGui manages internally
+        init_info.DescriptorPool = VK_NULL_HANDLE; // No longer needed - ImGui manages internally
+        init_info.DescriptorPoolSize = 0; // No longer needed - ImGui manages internally
         // MinImageCount should be the minimum swapchain images
         init_info.MinImageCount = mSwapchain.GetImageCount();
         // ImageCount should be MaxFramesInFlight to match the number of in-flight frames
@@ -123,7 +123,8 @@ Engine {
 
         Render::SimpleRenderingGuard renderingGuard(command_list, framebuffer,
                                                     framebuffer->getDesc().colorAttachments[0].texture->getDesc().width,
-                                                    framebuffer->getDesc().colorAttachments[0].texture->getDesc().height);
+                                                    framebuffer->getDesc().colorAttachments[0].texture->getDesc().
+                                                    height);
 
         ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), renderingGuard.GetVkCommandBuffer(), VK_NULL_HANDLE);
     }
@@ -135,13 +136,14 @@ Engine {
     }
 
     void ImGuiApplication::OnPostRender() {
+        Application::OnPostRender();
+
         auto &io = ImGui::GetIO();
-        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-            ImGui::UpdatePlatformWindows();
+        ImGui::EndFrame();
+        ImGui::UpdatePlatformWindows();
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable && !mMinimized) {
             ImGui::RenderPlatformWindowsDefault();
         }
-
-        Application::OnPostRender();
     }
 
     void ImGuiApplication::DetachAllLayers() {
