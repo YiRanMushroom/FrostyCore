@@ -200,11 +200,14 @@ Engine {
 
         // VUID-vkQueuePresentKHR-pWaitSemaphores
 
-        static constexpr char matchString[] = "VUID-vkQueuePresentKHR-pWaitSemaphores";
-        static constexpr size_t length = sizeof(matchString) / sizeof(char) - 1;
+        static constexpr char matchString1[] = "VUID-vkQueuePresentKHR-pWaitSemaphores";
+        static constexpr size_t length1 = sizeof(matchString1) / sizeof(char) - 1;
+        static constexpr char matchString2[] = "VUID-vkQueueSubmit-pSignalSemaphores";
+        static constexpr size_t length2 = sizeof(matchString2) / sizeof(char) - 1;
+
         static const char* targetString = pCallbackData->pMessageIdName;
 
-        if (strncmp(matchString, targetString, length)) {
+        if (strncmp(matchString1, targetString, length1) == 0 || strncmp(matchString2, targetString, length2) == 0) {
             return vk::False;
         }
 

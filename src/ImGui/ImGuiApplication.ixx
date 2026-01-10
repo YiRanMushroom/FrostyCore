@@ -27,5 +27,8 @@ namespace Engine {
 
     protected:
         void CreateImGuiRenderPass();
+
+        // target 100 FPS when minimized
+        std::chrono::duration<float, std::milli> mTargetFrameTimeWhenMinimized{10.f};
     };
 }

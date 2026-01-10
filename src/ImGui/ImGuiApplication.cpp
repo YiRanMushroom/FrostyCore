@@ -85,7 +85,7 @@ Engine {
         init_info.NvrhiDeviceHandle = mNvrhiDevice.Get();
 
         init_info.HasPreferredSwapchainPresentMode = true;
-        init_info.PreferredSwapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+        init_info.PreferredSwapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
 
         ImGui_ImplVulkan_Init(&init_info);
 
@@ -110,6 +110,12 @@ Engine {
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
+
+        if (deltaTime < mTargetFrameTimeWhenMinimized && mMinimized) {
+            // Sleep to target ~100 FPS when minimized
+            std::this_thread::sleep_for(mTargetFrameTimeWhenMinimized -
+                std::chrono::duration<float, std::milli>(deltaTime));
+        }
 
         Application::OnUpdate(deltaTime);
     }
