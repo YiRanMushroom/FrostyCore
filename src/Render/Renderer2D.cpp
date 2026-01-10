@@ -835,7 +835,7 @@ Engine {
                                                      float rotation, float startAngle, float endAngle,
                                                      uint32_t virtualTextureID,
                                                      const glm::u8vec4 &tintColor,
-                                                     std::optional<int> overrideDepth,const ClipRegion* clip) {
+                                                     std::optional<int> overrideDepth, const ClipRegion *clip) {
         EllipseRenderingData data = EllipseRenderingData::EllipseSector(
             center, radii, rotation, startAngle, endAngle, tintColor,
             static_cast<int>(virtualTextureID), overrideDepth.value_or(mCurrentDepth), clip);
@@ -846,16 +846,17 @@ Engine {
                                     float rotation, float thickness,
                                     float startAngle, float endAngle,
                                     const glm::u8vec4 &color,
-                                    std::optional<int> overrideDepth, const ClipRegion* clip) {
+                                    std::optional<int> overrideDepth, const ClipRegion *clip) {
         EllipseRenderingData data = EllipseRenderingData::EllipseArc(
-            center, radii, rotation, thickness, startAngle, endAngle, color, overrideDepth.value_or(mCurrentDepth), clip);
+            center, radii, rotation, thickness, startAngle, endAngle, color, overrideDepth.value_or(mCurrentDepth),
+            clip);
         mEllipseCommandList.AddEllipse(data);
     }
 
     void Renderer2D::DrawCircleTextureVirtual(const glm::vec2 &center, float radius,
                                               uint32_t virtualTextureID,
                                               const glm::u8vec4 &tintColor,
-                                              std::optional<int> overrideDepth, const ClipRegion* clip) {
+                                              std::optional<int> overrideDepth, const ClipRegion *clip) {
         EllipseRenderingData data;
         data.Center = center;
         data.Radii = glm::vec2(radius, radius);
@@ -869,7 +870,7 @@ Engine {
     uint32_t Renderer2D::DrawCircleTextureManaged(const glm::vec2 &center, float radius,
                                                   const nvrhi::TextureHandle &texture,
                                                   const glm::u8vec4 &tintColor,
-                                                  std::optional<int> overrideDepth, const ClipRegion* clip) {
+                                                  std::optional<int> overrideDepth, const ClipRegion *clip) {
         uint32_t virtualTextureID = RegisterVirtualTextureForThisFrame(texture);
         DrawCircleTextureVirtual(center, radius, virtualTextureID, tintColor, overrideDepth, clip);
         return virtualTextureID;
@@ -878,7 +879,7 @@ Engine {
     void Renderer2D::DrawEllipseTextureVirtual(const glm::vec2 &center, const glm::vec2 &radii,
                                                float rotation, uint32_t virtualTextureID,
                                                const glm::u8vec4 &tintColor,
-                                               std::optional<int> overrideDepth, const ClipRegion* clip) {
+                                               std::optional<int> overrideDepth, const ClipRegion *clip) {
         EllipseRenderingData data;
         data.Center = center;
         data.Radii = radii;
@@ -894,7 +895,7 @@ Engine {
                                                    float rotation,
                                                    const nvrhi::TextureHandle &texture,
                                                    const glm::u8vec4 &tintColor,
-                                                   std::optional<int> overrideDepth, const ClipRegion* clip) {
+                                                   std::optional<int> overrideDepth, const ClipRegion *clip) {
         uint32_t virtualTextureID = RegisterVirtualTextureForThisFrame(texture);
         DrawEllipseTextureVirtual(center, radii, rotation, virtualTextureID, tintColor, overrideDepth, clip);
         return virtualTextureID;
@@ -905,6 +906,32 @@ Engine {
 
 namespace
 Engine {
+    ClipRegion ClipRegion::Triangle(const glm::mat3x2 &points, Frosty::ClipMode clipMode) {
+        return ClipRegion{
+            .Points = {
+                points[0],
+                points[1],
+                points[2],
+                {}
+            },
+            .PointCount = 3,
+            .ClipMode = clipMode
+        };
+    }
+
+    ClipRegion ClipRegion::Quad(const glm::mat4x2 &points, Frosty::ClipMode clipMode) {
+        return ClipRegion{
+            .Points = {
+                points[0],
+                points[1],
+                points[2],
+                points[3]
+            },
+            .PointCount = 4,
+            .ClipMode = clipMode
+        };
+    }
+
     TriangleRenderingData TriangleRenderingData::Triangle(const glm::vec2 &p0, const glm::vec2 &uv0,
                                                           const glm::vec2 &p1, const glm::vec2 &uv1,
                                                           const glm::vec2 &p2, const glm::vec2 &uv2,
