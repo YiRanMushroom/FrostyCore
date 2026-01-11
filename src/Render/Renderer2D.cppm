@@ -10,7 +10,7 @@ namespace
 Engine {
     export struct Renderer2DDescriptor {
         glm::u32vec2 OutputSize;
-        glm::vec2 VirtualSize;
+        float VirtualSizeWidth;
         nvrhi::DeviceHandle Device;
     };
 
@@ -248,13 +248,17 @@ Engine {
 
     export class Renderer2D {
     public:
-        Renderer2D(Renderer2DDescriptor desc);
+        Renderer2D(const Renderer2DDescriptor& desc);
 
-        void BeginRendering();
+        [[nodiscard]] const glm::vec2& BeginRendering(const nvrhi::Color& clearColor = nvrhi::Color(0, 0, 0, 0));
+
+        const nvrhi::CommandListHandle& GetCommandList() const;
 
         void EndRendering();
 
         void OnResize(uint32_t width, uint32_t height);
+
+        const glm::vec2& SetVirtualWidth(float virtualWidth);
 
         [[nodiscard]] nvrhi::ITexture *GetTexture() const;
 

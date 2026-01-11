@@ -126,7 +126,7 @@ Engine {
 
         ImGui::Render();
 
-        ImGui::RunGarbageCollection(mCurrentImageIndex);
+        ImGui::RunGarbageCollection(mCurrentFrameIndex);
 
         command_list->clearState();
 

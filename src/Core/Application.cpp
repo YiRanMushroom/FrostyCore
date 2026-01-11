@@ -73,7 +73,7 @@ Engine {
             if (mNeedsResize) {
                 RecreateSwapchain();
                 mNeedsResize = false;
-                mCurrentFrame = 0;
+                mCurrentFrameIndex = 0;
                 continue;
             }
 
@@ -430,7 +430,7 @@ Engine {
     }
 
     void Application::RenderFrame() {
-        vk::SharedFence &currentRenderCompleteFence = mRenderCompleteFences[mCurrentFrame];
+        vk::SharedFence &currentRenderCompleteFence = mRenderCompleteFences[mCurrentFrameIndex];
 
         // Wait for this frame's previous work to complete
         vk::Result waitResult = mVkDevice.get().waitForFences(
@@ -444,7 +444,7 @@ Engine {
         }
 
         // Use per-frame acquire semaphore
-        vk::SharedSemaphore &frameAcquireSemaphore = mAcquireSemaphores[mCurrentFrame];
+        vk::SharedSemaphore &frameAcquireSemaphore = mAcquireSemaphores[mCurrentFrameIndex];
 
         // Acquire next swapchain image using new API
         SwapchainAcquireResult acquireResult = mSwapchain.AcquireNextImage(frameAcquireSemaphore.get());
@@ -504,13 +504,13 @@ Engine {
             mNeedsResize = true;
         }
 
-        mCurrentFrame = (mCurrentFrame + 1) % MaxFramesInFlight;
+        mCurrentFrameIndex = (mCurrentFrameIndex + 1) % MaxFramesInFlight;
     }
 
     void Application::OnRender(const nvrhi::CommandListHandle &commandList,
                                const nvrhi::FramebufferHandle &framebuffer) {
         for (auto &layer: mLayers) {
-            layer->OnRender(commandList, framebuffer, mCurrentImageIndex);
+            layer->OnRender(commandList, framebuffer, mCurrentFrameIndex);
         }
     }
 

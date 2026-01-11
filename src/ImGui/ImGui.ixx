@@ -142,6 +142,10 @@ namespace ImGui {
 
         ImGuiImage() = default;
 
+        explicit operator bool() const {
+            return mTexture != nullptr && mSampler != nullptr && mHolder != nullptr;
+        }
+
     private:
         nvrhi::SamplerHandle mSampler;
         nvrhi::TextureHandle mTexture;

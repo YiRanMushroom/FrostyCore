@@ -10,9 +10,11 @@ import "glm/gtx/transform.hpp";
 
 namespace
 Engine {
-    Renderer2D::Renderer2D(Renderer2DDescriptor desc)
-        : mDevice(std::move(desc.Device)), mOutputSize(desc.OutputSize), mVirtualSize(desc.VirtualSize),
+    Renderer2D::Renderer2D(const Renderer2DDescriptor& desc)
+        : mDevice(std::move(desc.Device)), mOutputSize(desc.OutputSize),
           mVirtualTextureManager(mDevice) {
+        mVirtualSize.x = desc.VirtualSizeWidth;
+        mVirtualSize.y = desc.VirtualSizeWidth * (static_cast<float>(mOutputSize.y) / static_cast<float>(mOutputSize.x));
         CreateResources();
         CreateConstantBuffers();
         CreatePipelines();
@@ -27,14 +29,20 @@ Engine {
         CreateEllipseBatchRenderingResources(4); // same for ellipses
     }
 
-    void Renderer2D::BeginRendering() {
+    const glm::vec2& Renderer2D::BeginRendering(const nvrhi::Color& clearColor) {
         Clear();
 
         mCommandList->open();
 
         mCommandList->setResourceStatesForFramebuffer(mFramebuffer);
         mCommandList->clearTextureFloat(mTexture,
-                                        nvrhi::AllSubresources, nvrhi::Color(0.f, 0.f, 0.f, 0.f));
+                                        nvrhi::AllSubresources, clearColor);
+
+        return mVirtualSize;
+    }
+
+    const nvrhi::CommandListHandle & Renderer2D::GetCommandList() const {
+        return mCommandList;
     }
 
     void Renderer2D::EndRendering() {
@@ -58,8 +66,15 @@ Engine {
         mFramebuffer.Reset();
 
         CreateResources();
-
+        // CreatePipelineResources();
         RecalculateViewProjectionMatrix();
+    }
+
+    const glm::vec2 & Renderer2D::SetVirtualWidth(float virtualWidth) {
+        mVirtualSize.x = virtualWidth;
+        mVirtualSize.y = virtualWidth * (static_cast<float>(mOutputSize.y) / static_cast<float>(mOutputSize.x));
+        RecalculateViewProjectionMatrix();
+        return mVirtualSize;
     }
 
     void Renderer2D::CreateResources() {

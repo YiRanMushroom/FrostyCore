@@ -43,10 +43,6 @@ namespace Engine {
     }
 
     nvrhi::BindingSetHandle VirtualTextureManager::GetBindingSet(nvrhi::IBindingLayout* layout) {
-        if (mVirtualTextures.empty()) {
-            return nullptr;
-        }
-
         if (mIsDirty || !mCurrentBindingSet) {
             mCurrentBindingSet = mDevice->createBindingSet(mBindingSetDesc, layout);
             mIsDirty = false;

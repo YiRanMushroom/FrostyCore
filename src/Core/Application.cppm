@@ -192,7 +192,9 @@ Engine {
         // Frame-in-flight synchronization (separate from swapchain)
         std::vector<vk::SharedSemaphore> mAcquireSemaphores; // Per-frame (for acquire)
         std::array<vk::SharedFence, MaxFrameInFlight> mRenderCompleteFences;
-        uint32_t mCurrentFrame = 0;
+        uint32_t mCurrentFrameIndex = 0;
+
+        // probably you should never use this
         uint32_t mCurrentImageIndex = 0;
 
         // State
