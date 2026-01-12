@@ -29,14 +29,14 @@ Engine {
         CreateEllipseBatchRenderingResources(4); // same for ellipses
     }
 
-    const glm::vec2& Renderer2D::BeginRendering(const nvrhi::Color& clearColor) {
+    const glm::vec2& Renderer2D::BeginRendering(const Renderer2DBeginRenderingInfo& info) {
         Clear();
 
         mCommandList->open();
 
         mCommandList->setResourceStatesForFramebuffer(mFramebuffer);
         mCommandList->clearTextureFloat(mTexture,
-                                        nvrhi::AllSubresources, clearColor);
+                                        nvrhi::AllSubresources, info.ClearColor);
 
         return mVirtualSize;
     }
@@ -98,6 +98,11 @@ Engine {
         }
 
         mTextureSampler = mDevice->createSampler(nvrhi::SamplerDesc()
+            .setAllAddressModes(nvrhi::SamplerAddressMode::Clamp)
+            .setAllFilters(false));
+
+        // font sampler should be linear
+        mFontSampler = mDevice->createSampler(nvrhi::SamplerDesc()
             .setAllAddressModes(nvrhi::SamplerAddressMode::Clamp)
             .setAllFilters(true));
 
@@ -161,7 +166,8 @@ Engine {
             bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, mTriangleConstantBuffer));
             bindingSetDesc.addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(0, resources.InstanceBuffer));
             bindingSetDesc.addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(1, resources.ClipBuffer));
-            bindingSetDesc.addItem(nvrhi::BindingSetItem::Sampler(0, mTextureSampler));
+            bindingSetDesc.addItem(nvrhi::BindingSetItem::Sampler(0, mTextureSampler)); // point sampler
+            bindingSetDesc.addItem(nvrhi::BindingSetItem::Sampler(1, mFontSampler));    // linear sampler
             resources.mBindingSetSpace0 = mDevice->createBindingSet(bindingSetDesc, mTriangleBindingLayoutSpace0);
 
             mTriangleBatchRenderingResources.push_back(resources);
@@ -306,7 +312,8 @@ Engine {
             nvrhi::BindingLayoutItem::ConstantBuffer(0),
             nvrhi::BindingLayoutItem::StructuredBuffer_SRV(0),
             nvrhi::BindingLayoutItem::StructuredBuffer_SRV(1),
-            nvrhi::BindingLayoutItem::Sampler(0)
+            nvrhi::BindingLayoutItem::Sampler(0),
+            nvrhi::BindingLayoutItem::Sampler(1)
         };
 
         bindingLayoutDesc[1].visibility = nvrhi::ShaderType::Pixel;

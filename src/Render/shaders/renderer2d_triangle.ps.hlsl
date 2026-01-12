@@ -1,58 +1,68 @@
-Texture2D u_Textures[] : register(t0, space1);
-SamplerState u_Sampler  : register(s0, space0);
+Texture2D u_Textures[]          : register(t0, space1);
+SamplerState u_TextureSamplier  : register(s0, space0);
+SamplerState u_FontSamplier     : register(s1, space0);
 
-// Point-in-polygon test using cross product method
+struct PSInput {
+    float4 position                 : SV_Position;
+    float2 texCoord                 : TEXCOORD0;
+    float4 tintColor                : COLOR0;
+    nointerpolation int textureIndex : TEXCOORD1;
+    float2 worldPos                 : TEXCOORD2;
+    nointerpolation float2 clipPoints[4] : CLIP_POINTS;
+    nointerpolation uint clipPointCount : CLIP_COUNT;
+    nointerpolation uint clipMode   : CLIP_MODE;
+    nointerpolation float pxRange   : PX_RANGE;
+    nointerpolation uint mode       : RENDER_MODE;
+};
+
+float median(float r, float g, float b) {
+    return max(min(r, g), min(max(r, g), b));
+}
+
 bool isPointInPolygon(float2 p, float2 points[4], uint count) {
     bool inside = false;
-
     for (uint i = 0, j = count - 1; i < count; j = i++) {
         float2 pi = points[i];
         float2 pj = points[j];
-
         if (((pi.y > p.y) != (pj.y > p.y)) &&
             (p.x < (pj.x - pi.x) * (p.y - pi.y) / (pj.y - pi.y) + pi.x)) {
             inside = !inside;
         }
     }
-
     return inside;
 }
 
-struct PSInput {
-    float4 position : SV_Position;
-    float2 texCoord : TEXCOORD0;
-    float4 tintColor : COLOR0;
-    nointerpolation int textureIndex : TEXCOORD1;
-    float2 worldPos : TEXCOORD2;
-    nointerpolation float2 clipPoints[4] : CLIP_POINTS;
-    nointerpolation uint clipPointCount : CLIP_COUNT;
-    nointerpolation uint clipMode : CLIP_MODE;
-};
-
 float4 main(PSInput input) : SV_Target {
-    // Perform clipping test if enabled (in virtual/world space)
     if (input.clipPointCount > 0) {
         bool inside = isPointInPolygon(input.worldPos, input.clipPoints, input.clipPointCount);
-
-        // clipMode: 0 = show inside (discard outside), 1 = show outside (discard inside)
-        if (input.clipMode == 0 && !inside) {
-            discard;
-        } else if (input.clipMode == 1 && inside) {
+        if ((input.clipMode == 0 && !inside) || (input.clipMode == 1 && inside)) {
             discard;
         }
     }
 
-    float4 outColor = input.tintColor;
-
-    float4 sampledColor;
+    float4 sampledColor = float4(1.0, 1.0, 1.0, 1.0);
 
     if (input.textureIndex >= 0) {
-        sampledColor = u_Textures[NonUniformResourceIndex(input.textureIndex)].SampleLevel(u_Sampler, input.texCoord, 0);
-    } else {
-        sampledColor = float4(1.0, 1.0, 1.0, 1.0);
+        if (input.mode == 1) {
+            // MSDF Decoding logic: MUST use u_FontSamplier (Linear)
+            float3 msd = u_Textures[NonUniformResourceIndex(input.textureIndex)].Sample(u_FontSamplier, input.texCoord).rgb;
+            float sd = median(msd.r, msd.g, msd.b);
+
+            // Screen space derivative for anti-aliasing
+            float2 dx = ddx(input.texCoord);
+            float2 dy = ddy(input.texCoord);
+            float2 screenTexSize = float2(1.0 / length(dx), 1.0 / length(dy));
+            float screenPxDistance = input.pxRange * (sd - 0.5) * min(screenTexSize.x, screenTexSize.y);
+
+            float opacity = clamp(screenPxDistance + 0.5, 0.0, 1.0);
+            sampledColor = float4(1.0, 1.0, 1.0, opacity);
+        } else {
+            // Regular Sprite sampling: use u_TextureSamplier (Point/Nearest)
+            sampledColor = u_Textures[NonUniformResourceIndex(input.textureIndex)].SampleLevel(u_TextureSamplier, input.texCoord, 0);
+        }
     }
 
-    outColor *= sampledColor;
+    float4 outColor = input.tintColor * sampledColor;
 
     if (outColor.a < 0.001f) {
         discard;

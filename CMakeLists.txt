@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 4.1)
 project(FrostyCore)
 
 set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 add_library(${PROJECT_NAME} STATIC)
 
@@ -61,14 +62,37 @@ set(SDL_VULKAN ON CACHE BOOL "Enable SDL Vulkan support" FORCE)
 set(SDL_TEST_LIBRARY OFF CACHE BOOL "Do not build SDL test library" FORCE)
 set(SDL_EXAMPLES OFF CACHE BOOL "Do not build SDL examples" FORCE)
 
+set(MSDF_ATLAS_BUILD_STANDALONE OFF CACHE BOOL "Do not build msdf-atlas-gen standalone executable" FORCE)
+set(MSDF_ATLAS_USE_VCPKG OFF CACHE BOOL "Do not use vcpkg to find dependencies" FORCE)
+set(MSDFGEN_DISABLE_SVG ON CACHE BOOL "Disable BMP support in msdfgen" FORCE)
+set(MSDFGEN_DISABLE_PNG ON CACHE BOOL "Disable PNG support in msdfgen" FORCE)
+set(MSDF_ATLAS_USE_SKIA OFF CACHE BOOL "Do not use Skia in msdf-atlas-gen" FORCE)
+set(MSDF_ATLAS_DYNAMIC_RUNTIME OFF CACHE BOOL "Use static runtime library" FORCE)
+
 find_package(Vulkan REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC Vulkan::Vulkan)
+
+include(FetchContent)
+if (NOT FreeType_POPULATED)
+    message(STATUS "Fetching FreeType...")
+    FetchContent_Declare(FreeType
+            GIT_REPOSITORY https://github.com/freetype/freetype
+            GIT_TAG VER-2-14-1)
+    FetchContent_MakeAvailable(FreeType)
+endif ()
+
+if(TARGET freetype AND NOT TARGET Freetype::Freetype)
+    add_library(Freetype::Freetype ALIAS freetype)
+endif()
+
+# we need to link FreeType to msdf-atlas-gen
 
 add_subdirectory(vendor/sdl3)
 add_subdirectory(vendor/nvrhi)
 add_subdirectory(vendor/imgui)
-add_subdirectory(vendor/stb_image)
+add_subdirectory(vendor/stb)
 add_subdirectory(vendor/glm)
+add_subdirectory(vendor/msdf-atlas-gen)
 
 target_link_libraries(nvrhi_vk PUBLIC Vulkan::Vulkan)
 target_link_libraries(imgui PUBLIC SDL3::SDL3 Vulkan::Vulkan nvrhi nvrhi_vk)
@@ -85,6 +109,7 @@ target_compile_definitions(
         "GLM_ENABLE_EXPERIMENTAL=1"
 )
 
+
 target_link_libraries(
         ${PROJECT_NAME}
         PUBLIC
@@ -92,8 +117,10 @@ target_link_libraries(
         nvrhi_vk
         nvrhi
         imgui
-        stb_image
+        stb_lib
         glm
+        msdf-atlas-gen::msdf-atlas-gen
+        msdfgen::msdfgen
 )
 
 target_sources(
@@ -110,8 +137,8 @@ target_compile_definitions(
         "VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1"
 )
 
-if(MSVC)
+if (MSVC)
     add_compile_options(/utf-8)
-else()
+else ()
     error("Only MSVC is supported currently")
-endif()
+endif ()
