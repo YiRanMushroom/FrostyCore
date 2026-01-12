@@ -51,7 +51,7 @@ Engine {
         }
 
         void Reset() {
-            mInitFuture = {};
+            Wait().get();
             mInitialized = {};
         }
 
