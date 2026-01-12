@@ -70,6 +70,9 @@ Engine {
         int Depth;
         std::optional<ClipRegion> Clip;
 
+        InstanceRenderingMode RenderingMode = InstanceRenderingMode::Texture;
+        float MSDFPixelRange = 4.0f;
+
         static TriangleRenderingData Triangle(const glm::vec2 &p0, const glm::vec2 &uv0,
                                               const glm::vec2 &p1, const glm::vec2 &uv1,
                                               const glm::vec2 &p2, const glm::vec2 &uv2,
@@ -82,6 +85,14 @@ Engine {
                                           const glm::vec2 &p3, const glm::vec2 &uv3,
                                           int virtualTextureID, uint32_t tintColor, int depth = 0,
                                           const ClipRegion *clip = nullptr);
+
+        static TriangleRenderingData QuadFont(const glm::vec2 &p0, const glm::vec2 &uv0,
+                                              const glm::vec2 &p1, const glm::vec2 &uv1,
+                                              const glm::vec2 &p2, const glm::vec2 &uv2,
+                                              const glm::vec2 &p3, const glm::vec2 &uv3,
+                                              int virtualTextureID, uint32_t tintColor,
+                                              float msdfPixelRange, int depth = 0,
+                                              const ClipRegion *clip = nullptr);
     };
 
     struct TriangleRenderingSubmissionData {
@@ -116,6 +127,14 @@ Engine {
                      const glm::vec2 &p3, const glm::vec2 &uv3,
                      int virtualTextureID, uint32_t tintColor, int depth,
                      const ClipRegion *clip = nullptr);
+
+        void AddQuadFont(const glm::vec2 &p0, const glm::vec2 &uv0,
+                         const glm::vec2 &p1, const glm::vec2 &uv1,
+                         const glm::vec2 &p2, const glm::vec2 &uv2,
+                         const glm::vec2 &p3, const glm::vec2 &uv3,
+                         int virtualTextureID, uint32_t tintColor,
+                         float msdfPixelRange, int depth,
+                         const ClipRegion *clip = nullptr);
 
         std::vector<TriangleRenderingSubmissionData> RecordRendererSubmissionData(size_t triangleBufferInstanceSizeMax);
 
@@ -315,6 +334,13 @@ Engine {
                                         const nvrhi::TextureHandle &texture,
                                         std::optional<int> overrideDepth = std::nullopt,
                                         glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255),
+                                        const ClipRegion *clip = nullptr);
+
+        void DrawQuadFontColoredVirtual(const glm::mat4x2 &positions, const glm::mat4x2 &uvs,
+                                        uint32_t virtualTextureID,
+                                        glm::u8vec4 tintColor,
+                                        float msdfPixelRange,
+                                        std::optional<int> overrideDepth = std::nullopt,
                                         const ClipRegion *clip = nullptr);
 
         void DrawLine(const glm::vec2 &p0, const glm::vec2 &p1, const glm::u8vec4 &color);

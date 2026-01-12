@@ -29,4 +29,10 @@ Engine {
 
         return future;
     }
+
+    const std::filesystem::path ExecutablePath = std::filesystem::current_path();
+
+    export const std::filesystem::path& GetExecutablePath() {
+        return ExecutablePath;
+    }
 }

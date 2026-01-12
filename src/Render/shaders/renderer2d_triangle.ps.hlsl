@@ -33,6 +33,7 @@ bool isPointInPolygon(float2 p, float2 points[4], uint count) {
 }
 
 float4 main(PSInput input) : SV_Target {
+    // 1. Clipping Logic (Keep it as is, but be careful of performance)
     if (input.clipPointCount > 0) {
         bool inside = isPointInPolygon(input.worldPos, input.clipPoints, input.clipPointCount);
         if ((input.clipMode == 0 && !inside) || (input.clipMode == 1 && inside)) {
@@ -43,27 +44,27 @@ float4 main(PSInput input) : SV_Target {
     float4 sampledColor = float4(1.0, 1.0, 1.0, 1.0);
 
     if (input.textureIndex >= 0) {
-        if (input.mode == 1) {
-            // MSDF Decoding logic: MUST use u_FontSamplier (Linear)
+        if (input.mode == 1) { // MSDF Mode
             float3 msd = u_Textures[NonUniformResourceIndex(input.textureIndex)].Sample(u_FontSamplier, input.texCoord).rgb;
             float sd = median(msd.r, msd.g, msd.b);
 
-            // Screen space derivative for anti-aliasing
-            float2 dx = ddx(input.texCoord);
-            float2 dy = ddy(input.texCoord);
-            float2 screenTexSize = float2(1.0 / length(dx), 1.0 / length(dy));
-            float screenPxDistance = input.pxRange * (sd - 0.5) * min(screenTexSize.x, screenTexSize.y);
+            // Standard MSDF formula: convert distance field to screen space
+            // fwidth returns the sum of absolute derivatives (approximation of gradient magnitude)
+            float screenPxDistance = input.pxRange * (sd - 0.5) / length(fwidth(input.texCoord));
 
             float opacity = clamp(screenPxDistance + 0.5, 0.0, 1.0);
+
             sampledColor = float4(1.0, 1.0, 1.0, opacity);
-        } else {
-            // Regular Sprite sampling: use u_TextureSamplier (Point/Nearest)
+        }
+        else { // Standard Texture Mode
             sampledColor = u_Textures[NonUniformResourceIndex(input.textureIndex)].SampleLevel(u_TextureSamplier, input.texCoord, 0);
         }
     }
 
+    // Apply Tint Color (TintColor.a affects MSDF opacity)
     float4 outColor = input.tintColor * sampledColor;
 
+    // Alpha Test: discard fragments that are nearly transparent
     if (outColor.a < 0.001f) {
         discard;
     }

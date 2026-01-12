@@ -12,8 +12,8 @@ struct SpriteData {
     uint tintColor;
     int textureIndex;
     int clipIndex;
-    float pxRange;
     uint mode;
+    float pxRange;
     float padding[3];
 };
 
@@ -55,8 +55,8 @@ PSInput main(VSInput vertexInput) {
     pixelInput.tintColor = tintColor;
     pixelInput.textureIndex = sprite.textureIndex;
     pixelInput.worldPos = vertexInput.position;
-    pixelInput.pxRange = sprite.pxRange;
     pixelInput.mode = sprite.mode;
+    pixelInput.pxRange = sprite.pxRange;
 
     if (sprite.clipIndex >= 0) {
         ClipRegion clipRegion = u_ClipBuffer[sprite.clipIndex];

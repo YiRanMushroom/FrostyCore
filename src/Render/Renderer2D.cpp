@@ -10,11 +10,12 @@ import "glm/gtx/transform.hpp";
 
 namespace
 Engine {
-    Renderer2D::Renderer2D(const Renderer2DDescriptor& desc)
+    Renderer2D::Renderer2D(const Renderer2DDescriptor &desc)
         : mDevice(std::move(desc.Device)), mOutputSize(desc.OutputSize),
           mVirtualTextureManager(mDevice) {
         mVirtualSize.x = desc.VirtualSizeWidth;
-        mVirtualSize.y = desc.VirtualSizeWidth * (static_cast<float>(mOutputSize.y) / static_cast<float>(mOutputSize.x));
+        mVirtualSize.y = desc.VirtualSizeWidth * (
+                             static_cast<float>(mOutputSize.y) / static_cast<float>(mOutputSize.x));
         CreateResources();
         CreateConstantBuffers();
         CreatePipelines();
@@ -29,7 +30,7 @@ Engine {
         CreateEllipseBatchRenderingResources(4); // same for ellipses
     }
 
-    const glm::vec2& Renderer2D::BeginRendering(const Renderer2DBeginRenderingInfo& info) {
+    const glm::vec2 &Renderer2D::BeginRendering(const Renderer2DBeginRenderingInfo &info) {
         Clear();
 
         mCommandList->open();
@@ -41,7 +42,7 @@ Engine {
         return mVirtualSize;
     }
 
-    const nvrhi::CommandListHandle & Renderer2D::GetCommandList() const {
+    const nvrhi::CommandListHandle &Renderer2D::GetCommandList() const {
         return mCommandList;
     }
 
@@ -70,7 +71,7 @@ Engine {
         RecalculateViewProjectionMatrix();
     }
 
-    const glm::vec2 & Renderer2D::SetVirtualWidth(float virtualWidth) {
+    const glm::vec2 &Renderer2D::SetVirtualWidth(float virtualWidth) {
         mVirtualSize.x = virtualWidth;
         mVirtualSize.y = virtualWidth * (static_cast<float>(mOutputSize.y) / static_cast<float>(mOutputSize.x));
         RecalculateViewProjectionMatrix();
@@ -167,7 +168,7 @@ Engine {
             bindingSetDesc.addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(0, resources.InstanceBuffer));
             bindingSetDesc.addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(1, resources.ClipBuffer));
             bindingSetDesc.addItem(nvrhi::BindingSetItem::Sampler(0, mTextureSampler)); // point sampler
-            bindingSetDesc.addItem(nvrhi::BindingSetItem::Sampler(1, mFontSampler));    // linear sampler
+            bindingSetDesc.addItem(nvrhi::BindingSetItem::Sampler(1, mFontSampler)); // linear sampler
             resources.mBindingSetSpace0 = mDevice->createBindingSet(bindingSetDesc, mTriangleBindingLayoutSpace0);
 
             mTriangleBatchRenderingResources.push_back(resources);
@@ -768,6 +769,21 @@ Engine {
         return virtualTextureID;
     }
 
+    void Renderer2D::DrawQuadFontColoredVirtual(const glm::mat4x2 &positions, const glm::mat4x2 &uvs,
+        uint32_t virtualTextureID, glm::u8vec4 tintColor, float msdfPixelRange, std::optional<int> overrideDepth,
+        const ClipRegion *clip) {
+        mTriangleCommandList.AddQuadFont(
+            positions[0], uvs[0],
+            positions[1], uvs[1],
+            positions[2], uvs[2],
+            positions[3], uvs[3],
+            static_cast<int>(virtualTextureID),
+            (tintColor.r << 24) | (tintColor.g << 16) | (tintColor.b << 8) | tintColor.a,
+            msdfPixelRange,
+            overrideDepth.has_value() ? overrideDepth.value() : mCurrentDepth,
+            clip);
+    }
+
     void Renderer2D::DrawLine(const glm::vec2 &p0, const glm::vec2 &p1,
                               const glm::u8vec4 &color) {
         mLineCommandList.AddLine(p0, color, p1, color);
@@ -960,21 +976,15 @@ Engine {
                                                           int textureIndex,
                                                           uint32_t tintColor, int depth,
                                                           const ClipRegion *clip) {
-        TriangleRenderingData data;
-        data.Positions[0] = p0;
-        data.Positions[1] = p1;
-        data.Positions[2] = p2;
-        data.TexCoords[0] = uv0;
-        data.TexCoords[1] = uv1;
-        data.TexCoords[2] = uv2;
-        data.IsQuad = false;
-        data.VirtualTextureID = textureIndex;
-        data.TintColor = tintColor;
-        data.Depth = depth;
-        if (clip != nullptr) {
-            data.Clip = *clip;
-        }
-        return data;
+        return {
+            .Positions = {p0, p1, p2, {}},
+            .TexCoords = {uv0, uv1, uv2, {}},
+            .IsQuad = false,
+            .VirtualTextureID = textureIndex,
+            .TintColor = tintColor,
+            .Depth = depth,
+            .Clip = clip ? std::optional{*clip} : std::nullopt
+        };
     }
 
     TriangleRenderingData TriangleRenderingData::Quad(const glm::vec2 &p0, const glm::vec2 &uv0,
@@ -984,23 +994,35 @@ Engine {
                                                       int virtualTextureID,
                                                       uint32_t tintColor, int depth,
                                                       const ClipRegion *clip) {
-        TriangleRenderingData data;
-        data.Positions[0] = p0;
-        data.Positions[1] = p1;
-        data.Positions[2] = p2;
-        data.Positions[3] = p3;
-        data.TexCoords[0] = uv0;
-        data.TexCoords[1] = uv1;
-        data.TexCoords[2] = uv2;
-        data.TexCoords[3] = uv3;
-        data.IsQuad = true;
-        data.VirtualTextureID = virtualTextureID;
-        data.TintColor = tintColor;
-        data.Depth = depth;
-        if (clip != nullptr) {
-            data.Clip = *clip;
-        }
-        return data;
+        return {
+            .Positions = {p0, p1, p2, p3},
+            .TexCoords = {uv0, uv1, uv2, uv3},
+            .IsQuad = true,
+            .VirtualTextureID = virtualTextureID,
+            .TintColor = tintColor,
+            .Depth = depth,
+            .Clip = clip ? std::optional{*clip} : std::nullopt
+        };
+    }
+
+    TriangleRenderingData TriangleRenderingData::QuadFont(const glm::vec2 &p0, const glm::vec2 &uv0,
+                                                          const glm::vec2 &p1,
+                                                          const glm::vec2 &uv1, const glm::vec2 &p2,
+                                                          const glm::vec2 &uv2, const glm::vec2 &p3,
+                                                          const glm::vec2 &uv3,
+                                                          int virtualTextureID, uint32_t tintColor,
+                                                          float msdfPixelRange, int depth, const ClipRegion *clip) {
+        return {
+            .Positions = {p0, p1, p2, p3},
+            .TexCoords = {uv0, uv1, uv2, uv3},
+            .IsQuad = true,
+            .VirtualTextureID = virtualTextureID,
+            .TintColor = tintColor,
+            .Depth = depth,
+            .Clip = clip ? std::optional{*clip} : std::nullopt,
+            .RenderingMode = InstanceRenderingMode::MSDF,
+            .MSDFPixelRange = msdfPixelRange
+        };
     }
 
     void TriangleRenderingSubmissionData::Clear() {
@@ -1016,9 +1038,9 @@ Engine {
                                                    int virtualTextureID,
                                                    uint32_t tintColor,
                                                    int depth, const ClipRegion *clip) {
-        Instances.resize(Instances.size() + 1);
-        Instances.back() = TriangleRenderingData::Triangle(
-            p0, uv0, p1, uv1, p2, uv2, virtualTextureID, tintColor, depth, clip);
+        Instances.emplace_back(
+            TriangleRenderingData::Triangle(
+                p0, uv0, p1, uv1, p2, uv2, virtualTextureID, tintColor, depth, clip));
     }
 
     void TriangleRenderingCommandList::AddQuad(const glm::vec2 &p0, const glm::vec2 &uv0,
@@ -1028,9 +1050,17 @@ Engine {
                                                int virtualTextureID,
                                                uint32_t tintColor,
                                                int depth, const ClipRegion *clip) {
-        Instances.resize(Instances.size() + 1);
-        Instances.back() = TriangleRenderingData::Quad(
-            p0, uv0, p1, uv1, p2, uv2, p3, uv3, virtualTextureID, tintColor, depth, clip);
+        Instances.emplace_back(
+            TriangleRenderingData::Quad(
+                p0, uv0, p1, uv1, p2, uv2, p3, uv3, virtualTextureID, tintColor, depth, clip));
+    }
+
+    void TriangleRenderingCommandList::AddQuadFont(const glm::vec2 &p0, const glm::vec2 &uv0, const glm::vec2 &p1,
+        const glm::vec2 &uv1, const glm::vec2 &p2, const glm::vec2 &uv2, const glm::vec2 &p3, const glm::vec2 &uv3,
+        int virtualTextureID, uint32_t tintColor, float msdfPixelRange, int depth, const ClipRegion *clip) {
+        Instances.emplace_back(
+            TriangleRenderingData::QuadFont(
+                p0, uv0, p1, uv1, p2, uv2, p3, uv3, virtualTextureID, tintColor, msdfPixelRange, depth, clip));
     }
 
     void TriangleRenderingCommandList::Clear() {
@@ -1041,6 +1071,7 @@ Engine {
         size_t triangleBufferInstanceSizeMax) {
         std::ranges::sort(Instances, [](const auto &a, const auto &b) {
             if (a.Depth != b.Depth) return a.Depth < b.Depth;
+            if (a.RenderingMode != b.RenderingMode) return a.RenderingMode > b.RenderingMode;
             return a.VirtualTextureID < b.VirtualTextureID;
         });
 
@@ -1100,7 +1131,9 @@ Engine {
             currentSubmission.InstanceData.push_back({
                 .TintColor = instance.TintColor,
                 .TextureIndex = finalTextureIndex,
-                .ClipIndex = clipIndex
+                .ClipIndex = clipIndex,
+                .RenderingMode = instance.RenderingMode,
+                .MSDFPixelRange = instance.MSDFPixelRange
             });
 
             uint32_t baseVtx = static_cast<uint32_t>(currentSubmission.VertexData.size());
