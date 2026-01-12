@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 4.1)
 project(FrostyCore)
 
 set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+#set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 add_library(${PROJECT_NAME} STATIC)
 
@@ -67,7 +67,7 @@ set(MSDF_ATLAS_USE_VCPKG OFF CACHE BOOL "Do not use vcpkg to find dependencies" 
 set(MSDFGEN_DISABLE_SVG ON CACHE BOOL "Disable BMP support in msdfgen" FORCE)
 set(MSDFGEN_DISABLE_PNG ON CACHE BOOL "Disable PNG support in msdfgen" FORCE)
 set(MSDF_ATLAS_USE_SKIA OFF CACHE BOOL "Do not use Skia in msdf-atlas-gen" FORCE)
-set(MSDF_ATLAS_DYNAMIC_RUNTIME OFF CACHE BOOL "Use static runtime library" FORCE)
+set(MSDF_ATLAS_DYNAMIC_RUNTIME ON CACHE BOOL "Use static runtime library" FORCE)
 
 find_package(Vulkan REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC Vulkan::Vulkan)
