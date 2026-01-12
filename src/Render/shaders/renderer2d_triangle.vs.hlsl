@@ -43,11 +43,12 @@ PSInput main(VSInput vertexInput) {
     PSInput pixelInput;
     SpriteData sprite = u_SpriteData[vertexInput.constantIndex];
 
+    uint packed = sprite.tintColor;
     float4 tintColor = float4(
-        ((sprite.tintColor >> 24) & 0xFF) / 255.0,
-        ((sprite.tintColor >> 16) & 0xFF) / 255.0,
-        ((sprite.tintColor >> 8) & 0xFF) / 255.0,
-        (sprite.tintColor & 0xFF) / 255.0
+        ((packed >> 24) & 0xFF) / 255.0,
+        ((packed >> 16) & 0xFF) / 255.0,
+        ((packed >> 8) & 0xFF) / 255.0,
+        (packed & 0xFF) / 255.0
     );
 
     pixelInput.position = mul(u_ViewProjectionMatrix, float4(vertexInput.position, 0.0, 1.0));

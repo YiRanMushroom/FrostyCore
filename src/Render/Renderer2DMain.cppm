@@ -11,7 +11,6 @@ Engine {
     export struct Renderer2DDescriptor {
         glm::u32vec2 OutputSize;
         float VirtualSizeWidth;
-        nvrhi::DeviceHandle Device;
     };
 
     export enum class ClipMode : uint32_t {
@@ -66,7 +65,7 @@ Engine {
         glm::mat4x2 TexCoords;
         bool IsQuad;
         int VirtualTextureID;
-        uint32_t TintColor;
+        glm::u8vec4 TintColor;
         int Depth;
         std::optional<ClipRegion> Clip;
 
@@ -76,21 +75,21 @@ Engine {
         static TriangleRenderingData Triangle(const glm::vec2 &p0, const glm::vec2 &uv0,
                                               const glm::vec2 &p1, const glm::vec2 &uv1,
                                               const glm::vec2 &p2, const glm::vec2 &uv2,
-                                              int textureIndex, uint32_t tintColor, int depth = 0,
+                                              int textureIndex, glm::u8vec4 tintColor, int depth = 0,
                                               const ClipRegion *clip = nullptr);
 
         static TriangleRenderingData Quad(const glm::vec2 &p0, const glm::vec2 &uv0,
                                           const glm::vec2 &p1, const glm::vec2 &uv1,
                                           const glm::vec2 &p2, const glm::vec2 &uv2,
                                           const glm::vec2 &p3, const glm::vec2 &uv3,
-                                          int virtualTextureID, uint32_t tintColor, int depth = 0,
+                                          int virtualTextureID, glm::u8vec4 tintColor, int depth = 0,
                                           const ClipRegion *clip = nullptr);
 
         static TriangleRenderingData QuadFont(const glm::vec2 &p0, const glm::vec2 &uv0,
                                               const glm::vec2 &p1, const glm::vec2 &uv1,
                                               const glm::vec2 &p2, const glm::vec2 &uv2,
                                               const glm::vec2 &p3, const glm::vec2 &uv3,
-                                              int virtualTextureID, uint32_t tintColor,
+                                              int virtualTextureID, glm::u8vec4 tintColor,
                                               float msdfPixelRange, int depth = 0,
                                               const ClipRegion *clip = nullptr);
     };
@@ -118,21 +117,21 @@ Engine {
         void AddTriangle(const glm::vec2 &p0, const glm::vec2 &uv0,
                          const glm::vec2 &p1, const glm::vec2 &uv1,
                          const glm::vec2 &p2, const glm::vec2 &uv2,
-                         int virtualTextureID, uint32_t tintColor, int depth,
+                         int virtualTextureID, glm::u8vec4 tintColor, int depth,
                          const ClipRegion *clip = nullptr);
 
         void AddQuad(const glm::vec2 &p0, const glm::vec2 &uv0,
                      const glm::vec2 &p1, const glm::vec2 &uv1,
                      const glm::vec2 &p2, const glm::vec2 &uv2,
                      const glm::vec2 &p3, const glm::vec2 &uv3,
-                     int virtualTextureID, uint32_t tintColor, int depth,
+                     int virtualTextureID, glm::u8vec4 tintColor, int depth,
                      const ClipRegion *clip = nullptr);
 
         void AddQuadFont(const glm::vec2 &p0, const glm::vec2 &uv0,
                          const glm::vec2 &p1, const glm::vec2 &uv1,
                          const glm::vec2 &p2, const glm::vec2 &uv2,
                          const glm::vec2 &p3, const glm::vec2 &uv3,
-                         int virtualTextureID, uint32_t tintColor,
+                         int virtualTextureID, glm::u8vec4 tintColor,
                          float msdfPixelRange, int depth,
                          const ClipRegion *clip = nullptr);
 
@@ -205,7 +204,7 @@ Engine {
         float StartAngle = 0.0f;
         float EndAngle = 0.0f;
         int VirtualTextureID = -1;
-        uint32_t TintColor = 0xFFFFFFFF;
+        glm::u8vec4 TintColor = glm::u8vec4(255u, 255u, 255u, 255u);
         float EdgeSoftness = 1.0f;
         int Depth = 0;
         std::optional<ClipRegion> Clip;
@@ -282,9 +281,9 @@ Engine {
         nvrhi::Color ClearColor = nvrhi::Color(0, 0, 0, 0);
     };
 
-    export class Renderer2D {
+    export class Renderer2DMain {
     public:
-        Renderer2D(const Renderer2DDescriptor &desc);
+        Renderer2DMain(const Renderer2DDescriptor &desc, nvrhi::DeviceHandle device);
 
         const glm::vec2 &BeginRendering(const Renderer2DBeginRenderingInfo &info = {});
 
