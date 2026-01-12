@@ -4,7 +4,8 @@ project(FrostyCore)
 set(CMAKE_CXX_STANDARD 23)
 #set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-add_library(${PROJECT_NAME} STATIC)
+add_library(${PROJECT_NAME} STATIC
+        src/Render/Renderer2D/Misc.ixx)
 
 file(GLOB_RECURSE IMPL_UNITS "src/*.cpp")
 file(GLOB_RECURSE INTERFACE_UNITS "src/*.ixx" "src/*.cppm")

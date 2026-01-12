@@ -10,7 +10,7 @@ import "glm/gtx/transform.hpp";
 
 namespace
 Engine {
-    Renderer2DMain::Renderer2DMain(const Renderer2DDescriptor &desc, nvrhi::DeviceHandle device)
+    Renderer2D::Renderer2D(const Renderer2DDescriptor &desc, nvrhi::DeviceHandle device)
         : mDevice(device), mOutputSize(desc.OutputSize),
           mVirtualTextureManager(mDevice) {
         mVirtualSize.x = desc.VirtualSizeWidth;
@@ -23,14 +23,14 @@ Engine {
         RecalculateViewProjectionMatrix();
     }
 
-    void Renderer2DMain::CreatePipelineResources() {
+    void Renderer2D::CreatePipelineResources() {
         CreateTriangleBatchRenderingResources(4);
         // this should be enough for most cases, if not we can always expand it
         CreateLineBatchRenderingResources(4); // same for lines
         CreateEllipseBatchRenderingResources(4); // same for ellipses
     }
 
-    const glm::vec2 &Renderer2DMain::BeginRendering(const Renderer2DBeginRenderingInfo &info) {
+    const glm::vec2 &Renderer2D::BeginRendering(const Renderer2DBeginRenderingInfo &info) {
         Clear();
 
         mCommandList->open();
@@ -42,11 +42,11 @@ Engine {
         return mVirtualSize;
     }
 
-    const nvrhi::CommandListHandle &Renderer2DMain::GetCommandList() const {
+    const nvrhi::CommandListHandle &Renderer2D::GetCommandList() const {
         return mCommandList;
     }
 
-    void Renderer2DMain::EndRendering() {
+    void Renderer2D::EndRendering() {
         Submit();
         mCommandList->close();
         mDevice->executeCommandList(mCommandList);
@@ -56,7 +56,7 @@ Engine {
         }
     }
 
-    void Renderer2DMain::OnResize(uint32_t width, uint32_t height) {
+    void Renderer2D::OnResize(uint32_t width, uint32_t height) {
         if (width == mOutputSize.x && height == mOutputSize.y) {
             return;
         }
@@ -71,14 +71,14 @@ Engine {
         RecalculateViewProjectionMatrix();
     }
 
-    const glm::vec2 &Renderer2DMain::SetVirtualWidth(float virtualWidth) {
+    const glm::vec2 &Renderer2D::SetVirtualWidth(float virtualWidth) {
         mVirtualSize.x = virtualWidth;
         mVirtualSize.y = virtualWidth * (static_cast<float>(mOutputSize.y) / static_cast<float>(mOutputSize.x));
         RecalculateViewProjectionMatrix();
         return mVirtualSize;
     }
 
-    void Renderer2DMain::CreateResources() {
+    void Renderer2D::CreateResources() {
         nvrhi::TextureDesc texDesc;
         texDesc.width = mOutputSize.x;
         texDesc.height = mOutputSize.y;
@@ -121,7 +121,7 @@ Engine {
         mEllipseBufferInstanceSizeMax = 1 << 16; // 2^16 ellipses (each ellipse = 6 vertices)
     }
 
-    void Renderer2DMain::CreateTriangleBatchRenderingResources(size_t count) {
+    void Renderer2D::CreateTriangleBatchRenderingResources(size_t count) {
         if (count <= mTriangleBatchRenderingResources.size()) {
             return;
         }
@@ -175,7 +175,7 @@ Engine {
         }
     }
 
-    void Renderer2DMain::CreateLineBatchRenderingResources(size_t count) {
+    void Renderer2D::CreateLineBatchRenderingResources(size_t count) {
         if (count <= mLineBatchRenderingResources.size()) {
             return;
         }
@@ -199,7 +199,7 @@ Engine {
         }
     }
 
-    void Renderer2DMain::CreateEllipseBatchRenderingResources(size_t count) {
+    void Renderer2D::CreateEllipseBatchRenderingResources(size_t count) {
         if (count <= mEllipseBatchRenderingResources.size()) {
             return;
         }
@@ -236,13 +236,13 @@ Engine {
         }
     }
 
-    void Renderer2DMain::CreatePipelines() {
+    void Renderer2D::CreatePipelines() {
         CreatePipelineTriangle();
         CreatePipelineLine();
         CreatePipelineEllipse();
     }
 
-    void Renderer2DMain::CreateConstantBuffers() {
+    void Renderer2D::CreateConstantBuffers() {
         nvrhi::BufferDesc constBufferVPMatrixDesc;
         constBufferVPMatrixDesc.byteSize = sizeof(glm::mat4);
         constBufferVPMatrixDesc.isConstantBuffer = true;
@@ -271,7 +271,7 @@ Engine {
         mEllipseConstantBuffer = mDevice->createBuffer(constBufferEllipseDesc);
     }
 
-    void Renderer2DMain::CreatePipelineTriangle() {
+    void Renderer2D::CreatePipelineTriangle() {
         nvrhi::ShaderDesc vsDesc;
         vsDesc.shaderType = nvrhi::ShaderType::Vertex;
         vsDesc.entryName = "main";
@@ -348,7 +348,7 @@ Engine {
         mTrianglePipeline = mDevice->createGraphicsPipeline(pipeDesc, mFramebuffer->getFramebufferInfo());
     }
 
-    void Renderer2DMain::CreatePipelineLine() {
+    void Renderer2D::CreatePipelineLine() {
         nvrhi::ShaderDesc vsDesc;
         vsDesc.shaderType = nvrhi::ShaderType::Vertex;
         vsDesc.entryName = "main";
@@ -408,7 +408,7 @@ Engine {
         mLinePipeline = mDevice->createGraphicsPipeline(pipeDesc, mFramebuffer->getFramebufferInfo());
     }
 
-    void Renderer2DMain::CreatePipelineEllipse() {
+    void Renderer2D::CreatePipelineEllipse() {
         nvrhi::ShaderDesc vsDesc;
         vsDesc.shaderType = nvrhi::ShaderType::Vertex;
         vsDesc.entryName = "main";
@@ -462,7 +462,7 @@ Engine {
         mEllipsePipeline = mDevice->createGraphicsPipeline(pipeDesc, mFramebuffer->getFramebufferInfo());
     }
 
-    void Renderer2DMain::SubmitTriangleBatchRendering() {
+    void Renderer2D::SubmitTriangleBatchRendering() {
         auto submissions = mTriangleCommandList.RecordRendererSubmissionData(
             mTriangleBufferInstanceSizeMax);
 
@@ -536,7 +536,7 @@ Engine {
         mTriangleCommandList.GiveBackForNextFrame(std::move(submissions));
     }
 
-    void Renderer2DMain::SubmitLineBatchRendering() {
+    void Renderer2D::SubmitLineBatchRendering() {
         auto submissions = mLineCommandList.RecordRendererSubmissionData(
             mLineBufferVertexSizeMax);
 
@@ -590,7 +590,7 @@ Engine {
         mLineCommandList.GiveBackForNextFrame(std::move(submissions));
     }
 
-    void Renderer2DMain::SubmitEllipseBatchRendering() {
+    void Renderer2D::SubmitEllipseBatchRendering() {
         auto submissions = mEllipseCommandList.RecordRendererSubmissionData(
             mEllipseBufferInstanceSizeMax);
 
@@ -642,13 +642,13 @@ Engine {
         mEllipseCommandList.GiveBackForNextFrame(std::move(submissions));
     }
 
-    void Renderer2DMain::Submit() {
+    void Renderer2D::Submit() {
         SubmitTriangleBatchRendering();
         SubmitLineBatchRendering();
         SubmitEllipseBatchRendering();
     }
 
-    void Renderer2DMain::RecalculateViewProjectionMatrix() {
+    void Renderer2D::RecalculateViewProjectionMatrix() {
         float scaleX = static_cast<float>(mOutputSize.x) / mVirtualSize.x;
         float scaleY = static_cast<float>(mOutputSize.y) / mVirtualSize.y;
 
@@ -667,21 +667,21 @@ Engine {
         );
     }
 
-    nvrhi::ITexture *Renderer2DMain::GetTexture() const {
+    nvrhi::ITexture *Renderer2D::GetTexture() const {
         return mTexture.Get();
     }
 
-    void Renderer2DMain::Clear() {
+    void Renderer2D::Clear() {
         mTriangleCommandList.Clear();
         mLineCommandList.Clear();
         mEllipseCommandList.Clear();
     }
 
-    uint32_t Renderer2DMain::RegisterVirtualTextureForThisFrame(const nvrhi::TextureHandle &texture) {
+    uint32_t Renderer2D::RegisterVirtualTextureForThisFrame(const nvrhi::TextureHandle &texture) {
         return mVirtualTextureManager.RegisterTexture(texture);
     }
 
-    void Renderer2DMain::DrawTriangleColored(const glm::mat3x2 &positions,
+    void Renderer2D::DrawTriangleColored(const glm::mat3x2 &positions,
                                          const glm::u8vec4 &color,
                                          std::optional<int> overrideDepth,
                                          const ClipRegion *clip) {
@@ -694,7 +694,7 @@ Engine {
             overrideDepth.has_value() ? overrideDepth.value() : mCurrentDepth, clip);
     }
 
-    void Renderer2DMain::DrawTriangleTextureVirtual(const glm::mat3x2 &positions,
+    void Renderer2D::DrawTriangleTextureVirtual(const glm::mat3x2 &positions,
                                                 const glm::mat3x2 &uvs,
                                                 uint32_t virtualTextureID,
                                                 std::optional<int> overrideDepth,
@@ -708,7 +708,7 @@ Engine {
             overrideDepth.has_value() ? overrideDepth.value() : mCurrentDepth, clip);
     }
 
-    uint32_t Renderer2DMain::DrawTriangleTextureManaged(const glm::mat3x2 &positions,
+    uint32_t Renderer2D::DrawTriangleTextureManaged(const glm::mat3x2 &positions,
                                                     const glm::mat3x2 &uvs,
                                                     const nvrhi::TextureHandle &texture,
                                                     std::optional<int> overrideDepth,
@@ -724,7 +724,7 @@ Engine {
         return virtualTextureID;
     }
 
-    void Renderer2DMain::DrawQuadColored(const glm::mat4x2 &positions,
+    void Renderer2D::DrawQuadColored(const glm::mat4x2 &positions,
                                      const glm::u8vec4 &color,
                                      std::optional<int> overrideDepth, const ClipRegion *clip) {
         mTriangleCommandList.AddQuad(
@@ -737,7 +737,7 @@ Engine {
             overrideDepth.has_value() ? overrideDepth.value() : mCurrentDepth, clip);
     }
 
-    void Renderer2DMain::DrawQuadTextureVirtual(const glm::mat4x2 &positions,
+    void Renderer2D::DrawQuadTextureVirtual(const glm::mat4x2 &positions,
                                             const glm::mat4x2 &uvs,
                                             uint32_t virtualTextureID,
                                             std::optional<int> overrideDepth,
@@ -752,7 +752,7 @@ Engine {
             overrideDepth.has_value() ? overrideDepth.value() : mCurrentDepth, clip);
     }
 
-    uint32_t Renderer2DMain::DrawQuadTextureManaged(const glm::mat4x2 &positions,
+    uint32_t Renderer2D::DrawQuadTextureManaged(const glm::mat4x2 &positions,
                                                 const glm::mat4x2 &uvs,
                                                 const nvrhi::TextureHandle &texture,
                                                 std::optional<int> overrideDepth,
@@ -769,7 +769,7 @@ Engine {
         return virtualTextureID;
     }
 
-    void Renderer2DMain::DrawQuadFontColoredVirtual(const glm::mat4x2 &positions, const glm::mat4x2 &uvs,
+    void Renderer2D::DrawQuadFontColoredVirtual(const glm::mat4x2 &positions, const glm::mat4x2 &uvs,
         uint32_t virtualTextureID, glm::u8vec4 tintColor, float msdfPixelRange, std::optional<int> overrideDepth,
         const ClipRegion *clip) {
         mTriangleCommandList.AddQuadFont(
@@ -784,17 +784,12 @@ Engine {
             clip);
     }
 
-    void Renderer2DMain::DrawLine(const glm::vec2 &p0, const glm::vec2 &p1,
+    void Renderer2D::DrawLine(const glm::vec2 &p0, const glm::vec2 &p1,
                               const glm::u8vec4 &color) {
-        mLineCommandList.AddLine(p0, color, p1, color);
+        mLineCommandList.AddLine(p0, p1, color);
     }
 
-    void Renderer2DMain::DrawLine(const glm::vec2 &p0, const glm::vec2 &p1,
-                              const glm::u8vec4 &color0, const glm::u8vec4 &color1) {
-        mLineCommandList.AddLine(p0, color0, p1, color1);
-    }
-
-    void Renderer2DMain::DrawCircle(const glm::vec2 &center, float radius,
+    void Renderer2D::DrawCircle(const glm::vec2 &center, float radius,
                                 const glm::u8vec4 &color,
                                 std::optional<int> overrideDepth, const ClipRegion *clip) {
         EllipseRenderingData data = EllipseRenderingData::Circle(
@@ -802,7 +797,7 @@ Engine {
         mEllipseCommandList.AddEllipse(data);
     }
 
-    void Renderer2DMain::DrawEllipse(const glm::vec2 &center, const glm::vec2 &radii,
+    void Renderer2D::DrawEllipse(const glm::vec2 &center, const glm::vec2 &radii,
                                  float rotation, const glm::u8vec4 &color,
                                  std::optional<int> overrideDepth, const ClipRegion *clip) {
         EllipseRenderingData data = EllipseRenderingData::Ellipse(
@@ -810,7 +805,7 @@ Engine {
         mEllipseCommandList.AddEllipse(data);
     }
 
-    void Renderer2DMain::DrawRing(const glm::vec2 &center, float outerRadius, float innerRadius,
+    void Renderer2D::DrawRing(const glm::vec2 &center, float outerRadius, float innerRadius,
                               const glm::u8vec4 &color,
                               std::optional<int> overrideDepth, const ClipRegion *clip) {
         EllipseRenderingData data = EllipseRenderingData::Ring(
@@ -818,7 +813,7 @@ Engine {
         mEllipseCommandList.AddEllipse(data);
     }
 
-    void Renderer2DMain::DrawSector(const glm::vec2 &center, float radius,
+    void Renderer2D::DrawSector(const glm::vec2 &center, float radius,
                                 float startAngle, float endAngle,
                                 const glm::u8vec4 &color,
                                 std::optional<int> overrideDepth, const ClipRegion *clip) {
@@ -827,7 +822,7 @@ Engine {
         mEllipseCommandList.AddEllipse(data);
     }
 
-    void Renderer2DMain::DrawSectorTextureVirtual(const glm::vec2 &center, float radius,
+    void Renderer2D::DrawSectorTextureVirtual(const glm::vec2 &center, float radius,
                                               float startAngle, float endAngle,
                                               uint32_t virtualTextureID,
                                               const glm::u8vec4 &tintColor,
@@ -838,7 +833,7 @@ Engine {
         mEllipseCommandList.AddEllipse(data);
     }
 
-    uint32_t Renderer2DMain::DrawSectorTextureManaged(const glm::vec2 &center, float radius,
+    uint32_t Renderer2D::DrawSectorTextureManaged(const glm::vec2 &center, float radius,
                                                   float startAngle, float endAngle,
                                                   const nvrhi::TextureHandle &texture,
                                                   const glm::u8vec4 &tintColor,
@@ -851,7 +846,7 @@ Engine {
         return virtualTextureID;
     }
 
-    void Renderer2DMain::DrawArc(const glm::vec2 &center, float radius, float thickness,
+    void Renderer2D::DrawArc(const glm::vec2 &center, float radius, float thickness,
                              float startAngle, float endAngle,
                              const glm::u8vec4 &color,
                              std::optional<int> overrideDepth, const ClipRegion *clip) {
@@ -860,7 +855,7 @@ Engine {
         mEllipseCommandList.AddEllipse(data);
     }
 
-    void Renderer2DMain::DrawEllipseSector(const glm::vec2 &center, const glm::vec2 &radii,
+    void Renderer2D::DrawEllipseSector(const glm::vec2 &center, const glm::vec2 &radii,
                                        float rotation, float startAngle, float endAngle,
                                        const glm::u8vec4 &color,
                                        std::optional<int> overrideDepth, const ClipRegion *clip) {
@@ -869,7 +864,7 @@ Engine {
         mEllipseCommandList.AddEllipse(data);
     }
 
-    void Renderer2DMain::DrawEllipseSectorTextureVirtual(const glm::vec2 &center, const glm::vec2 &radii,
+    void Renderer2D::DrawEllipseSectorTextureVirtual(const glm::vec2 &center, const glm::vec2 &radii,
                                                      float rotation, float startAngle, float endAngle,
                                                      uint32_t virtualTextureID,
                                                      const glm::u8vec4 &tintColor,
@@ -880,7 +875,7 @@ Engine {
         mEllipseCommandList.AddEllipse(data);
     }
 
-    void Renderer2DMain::DrawEllipseArc(const glm::vec2 &center, const glm::vec2 &radii,
+    void Renderer2D::DrawEllipseArc(const glm::vec2 &center, const glm::vec2 &radii,
                                     float rotation, float thickness,
                                     float startAngle, float endAngle,
                                     const glm::u8vec4 &color,
@@ -891,7 +886,7 @@ Engine {
         mEllipseCommandList.AddEllipse(data);
     }
 
-    void Renderer2DMain::DrawCircleTextureVirtual(const glm::vec2 &center, float radius,
+    void Renderer2D::DrawCircleTextureVirtual(const glm::vec2 &center, float radius,
                                               uint32_t virtualTextureID,
                                               const glm::u8vec4 &tintColor,
                                               std::optional<int> overrideDepth, const ClipRegion *clip) {
@@ -905,7 +900,7 @@ Engine {
         mEllipseCommandList.AddEllipse(data);
     }
 
-    uint32_t Renderer2DMain::DrawCircleTextureManaged(const glm::vec2 &center, float radius,
+    uint32_t Renderer2D::DrawCircleTextureManaged(const glm::vec2 &center, float radius,
                                                   const nvrhi::TextureHandle &texture,
                                                   const glm::u8vec4 &tintColor,
                                                   std::optional<int> overrideDepth, const ClipRegion *clip) {
@@ -914,7 +909,7 @@ Engine {
         return virtualTextureID;
     }
 
-    void Renderer2DMain::DrawEllipseTextureVirtual(const glm::vec2 &center, const glm::vec2 &radii,
+    void Renderer2D::DrawEllipseTextureVirtual(const glm::vec2 &center, const glm::vec2 &radii,
                                                float rotation, uint32_t virtualTextureID,
                                                const glm::u8vec4 &tintColor,
                                                std::optional<int> overrideDepth, const ClipRegion *clip) {
@@ -929,7 +924,7 @@ Engine {
         mEllipseCommandList.AddEllipse(data);
     }
 
-    uint32_t Renderer2DMain::DrawEllipseTextureManaged(const glm::vec2 &center, const glm::vec2 &radii,
+    uint32_t Renderer2D::DrawEllipseTextureManaged(const glm::vec2 &center, const glm::vec2 &radii,
                                                    float rotation,
                                                    const nvrhi::TextureHandle &texture,
                                                    const glm::u8vec4 &tintColor,
@@ -939,524 +934,3 @@ Engine {
         return virtualTextureID;
     }
 }
-
-#pragma region implementation
-
-namespace
-Engine {
-    ClipRegion ClipRegion::Triangle(const glm::mat3x2 &points, Frosty::ClipMode clipMode) {
-        return ClipRegion{
-            .Points = {
-                points[0],
-                points[1],
-                points[2],
-                {}
-            },
-            .PointCount = 3,
-            .ClipMode = clipMode
-        };
-    }
-
-    ClipRegion ClipRegion::Quad(const glm::mat4x2 &points, Frosty::ClipMode clipMode) {
-        return ClipRegion{
-            .Points = {
-                points[0],
-                points[1],
-                points[2],
-                points[3]
-            },
-            .PointCount = 4,
-            .ClipMode = clipMode
-        };
-    }
-
-    TriangleRenderingData TriangleRenderingData::Triangle(const glm::vec2 &p0, const glm::vec2 &uv0,
-                                                          const glm::vec2 &p1, const glm::vec2 &uv1,
-                                                          const glm::vec2 &p2, const glm::vec2 &uv2,
-                                                          int textureIndex,
-                                                          glm::u8vec4 tintColor, int depth,
-                                                          const ClipRegion *clip) {
-        return {
-            .Positions = {p0, p1, p2, {}},
-            .TexCoords = {uv0, uv1, uv2, {}},
-            .IsQuad = false,
-            .VirtualTextureID = textureIndex,
-            .TintColor = tintColor,
-            .Depth = depth,
-            .Clip = clip ? std::optional{*clip} : std::nullopt
-        };
-    }
-
-    TriangleRenderingData TriangleRenderingData::Quad(const glm::vec2 &p0, const glm::vec2 &uv0,
-                                                      const glm::vec2 &p1, const glm::vec2 &uv1,
-                                                      const glm::vec2 &p2, const glm::vec2 &uv2,
-                                                      const glm::vec2 &p3, const glm::vec2 &uv3,
-                                                      int virtualTextureID,
-                                                      glm::u8vec4 tintColor, int depth,
-                                                      const ClipRegion *clip) {
-        return {
-            .Positions = {p0, p1, p2, p3},
-            .TexCoords = {uv0, uv1, uv2, uv3},
-            .IsQuad = true,
-            .VirtualTextureID = virtualTextureID,
-            .TintColor = tintColor,
-            .Depth = depth,
-            .Clip = clip ? std::optional{*clip} : std::nullopt
-        };
-    }
-
-    TriangleRenderingData TriangleRenderingData::QuadFont(const glm::vec2 &p0, const glm::vec2 &uv0,
-                                                          const glm::vec2 &p1,
-                                                          const glm::vec2 &uv1, const glm::vec2 &p2,
-                                                          const glm::vec2 &uv2, const glm::vec2 &p3,
-                                                          const glm::vec2 &uv3,
-                                                          int virtualTextureID, glm::u8vec4 tintColor,
-                                                          float msdfPixelRange, int depth, const ClipRegion *clip) {
-        return {
-            .Positions = {p0, p1, p2, p3},
-            .TexCoords = {uv0, uv1, uv2, uv3},
-            .IsQuad = true,
-            .VirtualTextureID = virtualTextureID,
-            .TintColor = tintColor,
-            .Depth = depth,
-            .Clip = clip ? std::optional{*clip} : std::nullopt,
-            .RenderingMode = InstanceRenderingMode::MSDF,
-            .MSDFPixelRange = msdfPixelRange
-        };
-    }
-
-    void TriangleRenderingSubmissionData::Clear() {
-        VertexData.clear();
-        IndexData.clear();
-        InstanceData.clear();
-        ClipData.clear();
-    }
-
-    void TriangleRenderingCommandList::AddTriangle(const glm::vec2 &p0, const glm::vec2 &uv0,
-                                                   const glm::vec2 &p1, const glm::vec2 &uv1,
-                                                   const glm::vec2 &p2, const glm::vec2 &uv2,
-                                                   int virtualTextureID,
-                                                   glm::u8vec4 tintColor,
-                                                   int depth, const ClipRegion *clip) {
-        Instances.emplace_back(
-            TriangleRenderingData::Triangle(
-                p0, uv0, p1, uv1, p2, uv2, virtualTextureID, tintColor, depth, clip));
-    }
-
-    void TriangleRenderingCommandList::AddQuad(const glm::vec2 &p0, const glm::vec2 &uv0,
-                                               const glm::vec2 &p1, const glm::vec2 &uv1,
-                                               const glm::vec2 &p2, const glm::vec2 &uv2,
-                                               const glm::vec2 &p3, const glm::vec2 &uv3,
-                                               int virtualTextureID,
-                                               glm::u8vec4 tintColor,
-                                               int depth, const ClipRegion *clip) {
-        Instances.emplace_back(
-            TriangleRenderingData::Quad(
-                p0, uv0, p1, uv1, p2, uv2, p3, uv3, virtualTextureID, tintColor, depth, clip));
-    }
-
-    void TriangleRenderingCommandList::AddQuadFont(const glm::vec2 &p0, const glm::vec2 &uv0, const glm::vec2 &p1,
-        const glm::vec2 &uv1, const glm::vec2 &p2, const glm::vec2 &uv2, const glm::vec2 &p3, const glm::vec2 &uv3,
-        int virtualTextureID, glm::u8vec4 tintColor, float msdfPixelRange, int depth, const ClipRegion *clip) {
-        Instances.emplace_back(
-            TriangleRenderingData::QuadFont(
-                p0, uv0, p1, uv1, p2, uv2, p3, uv3, virtualTextureID, tintColor, msdfPixelRange, depth, clip));
-    }
-
-    void TriangleRenderingCommandList::Clear() {
-        Instances.clear();
-    }
-
-    std::vector<TriangleRenderingSubmissionData> TriangleRenderingCommandList::RecordRendererSubmissionData(
-        size_t triangleBufferInstanceSizeMax) {
-        std::ranges::sort(Instances, [](const auto &a, const auto &b) {
-            if (a.Depth != b.Depth) return a.Depth < b.Depth;
-            if (a.RenderingMode != b.RenderingMode) return a.RenderingMode > b.RenderingMode;
-            return a.VirtualTextureID < b.VirtualTextureID;
-        });
-
-        std::vector<TriangleRenderingSubmissionData> submissions;
-        if (Instances.empty()) return submissions;
-
-        auto lastFrameSubmissionIt = mLastFrameCache.begin();
-
-        TriangleRenderingSubmissionData currentSubmission;
-        if (lastFrameSubmissionIt != mLastFrameCache.end()) {
-            currentSubmission = std::move(*lastFrameSubmissionIt);
-            currentSubmission.VertexData.clear();
-            currentSubmission.IndexData.clear();
-            currentSubmission.InstanceData.clear();
-            currentSubmission.ClipData.clear();
-            ++lastFrameSubmissionIt;
-        }
-
-        auto finalizeSubmission = [&]() mutable {
-            if (!currentSubmission.VertexData.empty()) {
-                submissions.push_back(std::move(currentSubmission));
-
-                if (lastFrameSubmissionIt == mLastFrameCache.end()) {
-                    currentSubmission.Clear();
-                } else {
-                    currentSubmission = std::move(*lastFrameSubmissionIt);
-                    currentSubmission.VertexData.clear();
-                    currentSubmission.IndexData.clear();
-                    currentSubmission.InstanceData.clear();
-                    currentSubmission.ClipData.clear();
-                    ++lastFrameSubmissionIt;
-                }
-            }
-        };
-
-        for (const auto &instance: Instances) {
-            // check if we need to finalize due to vertex/index buffer size
-            if (currentSubmission.InstanceData.size() + 1 >
-                triangleBufferInstanceSizeMax) {
-                finalizeSubmission();
-            }
-
-            int32_t finalTextureIndex = instance.VirtualTextureID;
-
-            // Handle clip region
-            int32_t clipIndex = -1;
-            if (instance.Clip.has_value()) {
-                clipIndex = static_cast<int32_t>(currentSubmission.ClipData.size());
-                currentSubmission.ClipData.push_back(instance.Clip.value());
-            }
-
-            // Fill Instance Data
-            auto instanceIndex = static_cast<uint32_t>(currentSubmission.InstanceData.size());
-
-            currentSubmission.InstanceData.reserve(currentSubmission.InstanceData.size());
-
-            currentSubmission.InstanceData.push_back({
-                .TintColor = static_cast<uint32_t>(instance.TintColor.r) << 24 | instance.TintColor.g << 16 | instance.TintColor.b << 8 | instance.TintColor.a,
-                .TextureIndex = finalTextureIndex,
-                .ClipIndex = clipIndex,
-                .RenderingMode = instance.RenderingMode,
-                .MSDFPixelRange = instance.MSDFPixelRange
-            });
-
-            uint32_t baseVtx = static_cast<uint32_t>(currentSubmission.VertexData.size());
-
-            if (!instance.IsQuad) {
-                currentSubmission.VertexData.resize(currentSubmission.VertexData.size() + 3);
-                for (int i = 0; i < 3; ++i) {
-                    TriangleVertexData *v = &currentSubmission.VertexData[baseVtx + i];
-                    v->Position = instance.Positions[i];
-                    v->TexCoords = instance.TexCoords[i];
-                    v->InstanceIndex = instanceIndex;
-                }
-                currentSubmission.IndexData.resize(currentSubmission.IndexData.size() + 3);
-                uint32_t *idx0 = &currentSubmission.IndexData[currentSubmission.IndexData.size() - 3];
-                idx0[0] = baseVtx + 0;
-                idx0[1] = baseVtx + 1;
-                idx0[2] = baseVtx + 2;
-            } else {
-                // Quad (Assume TL, TR, BR, BL)
-                currentSubmission.VertexData.resize(currentSubmission.VertexData.size() + 4);
-                for (int i = 0; i < 4; ++i) {
-                    TriangleVertexData *v = &currentSubmission.VertexData[baseVtx + i];
-                    v->Position = instance.Positions[i];
-                    v->TexCoords = instance.TexCoords[i];
-                    v->InstanceIndex = instanceIndex;
-                }
-                currentSubmission.IndexData.resize(currentSubmission.IndexData.size() + 6);
-                uint32_t *idx0 = &currentSubmission.IndexData[currentSubmission.IndexData.size() - 6];
-                idx0[0] = baseVtx + 0;
-                idx0[1] = baseVtx + 1;
-                idx0[2] = baseVtx + 2;
-                idx0[3] = baseVtx + 0;
-                idx0[4] = baseVtx + 2;
-                idx0[5] = baseVtx + 3;
-            }
-        }
-
-        finalizeSubmission();
-
-        return submissions;
-    }
-
-    void TriangleRenderingCommandList::GiveBackForNextFrame(std::vector<TriangleRenderingSubmissionData> &&thisCache) {
-        mLastFrameCache = std::move(thisCache);
-        mLastFrameCache.resize(0);
-    }
-
-    void LineRenderingSubmissionData::Clear() {
-        VertexData.clear();
-    }
-
-    void LineRenderingCommandList::Clear() {
-        VertexData.clear();
-    }
-
-
-    void LineRenderingCommandList::AddLine(const glm::vec2 &p0, const glm::u8vec4 &color0,
-                                           const glm::vec2 &p1, const glm::u8vec4 &color1) {
-        VertexData.resize(VertexData.size() + 2);
-        LineVertexData *v0 = &VertexData[VertexData.size() - 2];
-        v0->Position = p0;
-
-        v0->Color = static_cast<uint32_t>(color0.r) << 24 | color0.g << 16 | color0.b << 8 | color0.a;
-
-        LineVertexData *v1 = &VertexData[VertexData.size() - 1];
-        v1->Position = p1;
-        v1->Color = static_cast<uint32_t>(color1.r) << 24 | color1.g << 16 | color1.b << 8 | color1.a;
-    }
-
-
-    std::vector<LineRenderingSubmissionData> LineRenderingCommandList::RecordRendererSubmissionData(
-        size_t lineBufferInstanceSizeMax) {
-        std::vector<LineRenderingSubmissionData> submissions;
-        if (VertexData.empty()) return submissions;
-
-        auto lastFrameSubmissionIt = mLastFrameCache.begin();
-
-        LineRenderingSubmissionData currentSubmission;
-        if (lastFrameSubmissionIt != mLastFrameCache.end()) {
-            currentSubmission = std::move(*lastFrameSubmissionIt);
-            currentSubmission.VertexData.clear();
-            ++lastFrameSubmissionIt;
-        }
-
-        auto finalizeSubmission = [&]() mutable {
-            if (!currentSubmission.VertexData.empty()) {
-                submissions.push_back(std::move(currentSubmission));
-
-                if (lastFrameSubmissionIt == mLastFrameCache.end()) {
-                    currentSubmission.Clear();
-                } else {
-                    currentSubmission = std::move(*lastFrameSubmissionIt);
-                    currentSubmission.VertexData.clear();
-                    ++lastFrameSubmissionIt;
-                }
-            }
-        };
-
-        for (const auto &vertex: VertexData) {
-            // check if we need to finalize due to vertex buffer size
-            if (currentSubmission.VertexData.size() + 1 >
-                lineBufferInstanceSizeMax) {
-                finalizeSubmission();
-            }
-
-            currentSubmission.VertexData.push_back(vertex);
-        }
-
-        finalizeSubmission();
-
-        return submissions;
-    }
-
-    void LineRenderingCommandList::GiveBackForNextFrame(std::vector<LineRenderingSubmissionData> &&thisCache) {
-        mLastFrameCache = std::move(thisCache);
-        mLastFrameCache.resize(0);
-    }
-
-    EllipseRenderingData EllipseRenderingData::Circle(const glm::vec2 &center, float radius,
-                                                      const glm::u8vec4 &color, int depth,
-                                                      const ClipRegion *clip) {
-        EllipseRenderingData data;
-        data.Center = center;
-        data.Radii = glm::vec2(radius, radius);
-        data.TintColor = color;
-        data.Depth = depth;
-        if (clip != nullptr) {
-            data.Clip = *clip;
-        }
-        return data;
-    }
-
-    EllipseRenderingData EllipseRenderingData::Ellipse(const glm::vec2 &center, const glm::vec2 &radii,
-                                                       float rotation, const glm::u8vec4 &color, int depth,
-                                                       const ClipRegion *clip) {
-        EllipseRenderingData data;
-        data.Center = center;
-        data.Radii = radii;
-        data.Rotation = rotation;
-        data.TintColor = color;
-        data.Depth = depth;
-        if (clip != nullptr) {
-            data.Clip = *clip;
-        }
-        return data;
-    }
-
-    EllipseRenderingData EllipseRenderingData::Ring(const glm::vec2 &center, float outerRadius, float innerRadius,
-                                                    const glm::u8vec4 &color, int depth,
-                                                    const ClipRegion *clip) {
-        EllipseRenderingData data;
-        data.Center = center;
-        data.Radii = glm::vec2(outerRadius, outerRadius);
-        data.InnerScale = innerRadius / outerRadius;
-        data.TintColor = color;
-        data.Depth = depth;
-        if (clip != nullptr) {
-            data.Clip = *clip;
-        }
-        return data;
-    }
-
-    EllipseRenderingData EllipseRenderingData::Sector(const glm::vec2 &center, float radius,
-                                                      float startAngle, float endAngle,
-                                                      const glm::u8vec4 &color, int textureIndex, int depth,
-                                                      const ClipRegion *clip) {
-        EllipseRenderingData data;
-        data.Center = center;
-        data.Radii = glm::vec2(radius, radius);
-        data.StartAngle = startAngle;
-        data.EndAngle = endAngle;
-        data.VirtualTextureID = textureIndex;
-        data.TintColor = color;
-        data.Depth = depth;
-        if (clip != nullptr) {
-            data.Clip = *clip;
-        }
-        return data;
-    }
-
-    EllipseRenderingData EllipseRenderingData::Arc(const glm::vec2 &center, float radius, float thickness,
-                                                   float startAngle, float endAngle,
-                                                   const glm::u8vec4 &color, int depth,
-                                                   const ClipRegion *clip) {
-        EllipseRenderingData data;
-        data.Center = center;
-        data.Radii = glm::vec2(radius, radius);
-        data.InnerScale = (radius - thickness) / radius;
-        data.StartAngle = startAngle;
-        data.EndAngle = endAngle;
-        data.TintColor = color;
-        data.Depth = depth;
-        if (clip != nullptr) {
-            data.Clip = *clip;
-        }
-        return data;
-    }
-
-    EllipseRenderingData EllipseRenderingData::EllipseSector(const glm::vec2 &center, const glm::vec2 &radii,
-                                                             float rotation, float startAngle, float endAngle,
-                                                             const glm::u8vec4 &color, int textureIndex, int depth,
-                                                             const ClipRegion *clip) {
-        EllipseRenderingData data;
-        data.Center = center;
-        data.Radii = radii;
-        data.Rotation = rotation;
-        data.StartAngle = startAngle;
-        data.EndAngle = endAngle;
-        data.VirtualTextureID = textureIndex;
-        data.TintColor = color;
-        data.Depth = depth;
-        if (clip != nullptr) {
-            data.Clip = *clip;
-        }
-        return data;
-    }
-
-    EllipseRenderingData EllipseRenderingData::EllipseArc(const glm::vec2 &center, const glm::vec2 &radii,
-                                                          float rotation, float thickness,
-                                                          float startAngle, float endAngle,
-                                                          const glm::u8vec4 &color, int depth,
-                                                          const ClipRegion *clip) {
-        EllipseRenderingData data;
-        data.Center = center;
-        data.Radii = radii;
-        data.Rotation = rotation;
-        float minRadius = glm::min(radii.x, radii.y);
-        data.InnerScale = glm::max(0.0f, (minRadius - thickness) / minRadius);
-        data.StartAngle = startAngle;
-        data.EndAngle = endAngle;
-        data.TintColor = color;
-        data.Depth = depth;
-        if (clip != nullptr) {
-            data.Clip = *clip;
-        }
-        return data;
-    }
-
-    void EllipseRenderingSubmissionData::Clear() {
-        ShapeData.clear();
-        ClipData.clear();
-    }
-
-    void EllipseRenderingCommandList::Clear() {
-        Instances.clear();
-    }
-
-    void EllipseRenderingCommandList::AddEllipse(const EllipseRenderingData &data) {
-        Instances.push_back(data);
-    }
-
-    std::vector<EllipseRenderingSubmissionData> EllipseRenderingCommandList::RecordRendererSubmissionData(
-        size_t ellipseBufferInstanceSizeMax) {
-        std::ranges::sort(Instances, [](const EllipseRenderingData &a, const EllipseRenderingData &b)-> bool {
-            if (a.Depth != b.Depth) return a.Depth < b.Depth;
-            return a.VirtualTextureID < b.VirtualTextureID;
-        });
-
-
-        std::vector<EllipseRenderingSubmissionData> submissions;
-        if (Instances.empty()) return submissions;
-
-        auto lastFrameSubmissionIt = mLastFrameCache.begin();
-
-        EllipseRenderingSubmissionData currentSubmission;
-        if (lastFrameSubmissionIt != mLastFrameCache.end()) {
-            currentSubmission = std::move(*lastFrameSubmissionIt);
-            currentSubmission.ShapeData.clear();
-            currentSubmission.ClipData.clear();
-            ++lastFrameSubmissionIt;
-        }
-
-        auto finalizeSubmission = [&]() mutable {
-            if (!currentSubmission.ShapeData.empty()) {
-                submissions.push_back(std::move(currentSubmission));
-
-                if (lastFrameSubmissionIt == mLastFrameCache.end()) {
-                    currentSubmission.Clear();
-                } else {
-                    currentSubmission = std::move(*lastFrameSubmissionIt);
-                    currentSubmission.ShapeData.clear();
-                    currentSubmission.ClipData.clear();
-                    ++lastFrameSubmissionIt;
-                }
-            }
-        };
-
-        for (const auto &instance: Instances) {
-            if (currentSubmission.ShapeData.size() + 1 > ellipseBufferInstanceSizeMax) {
-                finalizeSubmission();
-            }
-
-            // Handle clip region
-            int32_t clipIndex = -1;
-            if (instance.Clip.has_value()) {
-                clipIndex = static_cast<int32_t>(currentSubmission.ClipData.size());
-                currentSubmission.ClipData.push_back(instance.Clip.value());
-            }
-
-            EllipseShapeData shapeData;
-            shapeData.Center = instance.Center;
-            shapeData.Radii = instance.Radii;
-            shapeData.Rotation = instance.Rotation;
-            shapeData.InnerScale = instance.InnerScale;
-            shapeData.StartAngle = instance.StartAngle;
-            shapeData.EndAngle = instance.EndAngle;
-            shapeData.TintColor = static_cast<uint32_t>(instance.TintColor.r) << 24 | instance.TintColor.g << 16 | instance.TintColor.b << 8 | instance.TintColor.a;
-            shapeData.TextureIndex = instance.VirtualTextureID;
-            shapeData.EdgeSoftness = instance.EdgeSoftness;
-            shapeData.ClipIndex = clipIndex;
-
-            currentSubmission.ShapeData.push_back(shapeData);
-        }
-
-        finalizeSubmission();
-
-        return submissions;
-    }
-
-    void EllipseRenderingCommandList::GiveBackForNextFrame(std::vector<EllipseRenderingSubmissionData> &&thisCache) {
-        mLastFrameCache = std::move(thisCache);
-        mLastFrameCache.resize(0);
-    }
-}
-
-#pragma endregion
