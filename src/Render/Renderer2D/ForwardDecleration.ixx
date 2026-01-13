@@ -28,4 +28,8 @@ namespace Engine {
     struct EllipseRenderingCommandList;
     struct EllipseBatchRenderingResources;
 
+    export struct DrawCommand;
+    export class TriangleDrawCommand;
+    export class QuadDrawCommand;
+    export class CircularDrawCommand;
 }

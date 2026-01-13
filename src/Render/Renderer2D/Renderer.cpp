@@ -933,4 +933,69 @@ Engine {
         DrawEllipseTextureVirtual(center, radii, rotation, virtualTextureID, tintColor, overrideDepth, clip);
         return virtualTextureID;
     }
+
+    template<>
+    void Renderer2D::Draw<TriangleDrawCommand>(const TriangleDrawCommand &command) {
+        mTriangleCommandList.AddTriangle(
+            command.mPositions[0],
+            command.mUVs[0],
+            command.mPositions[1],
+            command.mUVs[1],
+            command.mPositions[2],
+            command.mUVs[2],
+            command.mVirtualTextureID,
+            command.mTintColor,
+            command.mOverrideDepth.value_or(mCurrentDepth),
+            command.mClip.has_value() ? &command.mClip.value() : nullptr
+        );
+    }
+
+    template<>
+    void Renderer2D::Draw<>(const QuadDrawCommand &command) {
+        if (command.mRenderingMode == InstanceRenderingMode::Texture) {
+            mTriangleCommandList.AddQuad(
+                command.mFirstPoint, command.mFirstUV,
+                glm::vec2(command.mSecondPoint.x, command.mFirstPoint.y),
+                glm::vec2(command.mSecondUV.x, command.mFirstUV.y),
+                command.mSecondPoint, command.mSecondUV,
+                glm::vec2(command.mFirstPoint.x, command.mSecondPoint.y),
+                glm::vec2(command.mFirstUV.x, command.mSecondUV.y),
+                command.mVirtualTextureID,
+                command.mTintColor,
+                command.mOverrideDepth.value_or(mCurrentDepth),
+                command.mClip.has_value() ? &command.mClip.value() : nullptr
+            );
+        } else if (command.mRenderingMode == InstanceRenderingMode::MSDF) {
+            mTriangleCommandList.AddQuadFont(
+                command.mFirstPoint, command.mFirstUV,
+                glm::vec2(command.mSecondPoint.x, command.mFirstPoint.y),
+                glm::vec2(command.mSecondUV.x, command.mFirstUV.y),
+                command.mSecondPoint, command.mSecondUV,
+                glm::vec2(command.mFirstPoint.x, command.mSecondPoint.y),
+                glm::vec2(command.mFirstUV.x, command.mSecondUV.y),
+                command.mVirtualTextureID,
+                command.mTintColor,
+                command.mMSDFPixelRange,
+                command.mOverrideDepth.value_or(mCurrentDepth),
+                command.mClip.has_value() ? &command.mClip.value() : nullptr
+            );
+        }
+    }
+
+    template<>
+    void Renderer2D::Draw<>(const CircularDrawCommand &command) {
+        mEllipseCommandList.Instances.push_back({
+            .Center = command.mCenter,
+            .Radii = command.mRadii,
+            .Rotation = command.mRotation,
+            .InnerScale = command.mInnerScale,
+            .StartAngle = command.mStartAngle,
+            .EndAngle = command.mEndAngle,
+            .VirtualTextureID = command.mVirtualTextureID,
+            .TintColor = command.mTintColor,
+            .EdgeSoftness = command.mEdgeSoftness,
+            .Depth = command.mOverrideDepth.value_or(mCurrentDepth),
+            .Clip = command.mClip
+        });
+    }
 }
