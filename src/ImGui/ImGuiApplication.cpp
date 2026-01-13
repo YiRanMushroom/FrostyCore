@@ -114,7 +114,7 @@ Engine {
         if (deltaTime < mTargetFrameTimeWhenMinimized && mMinimized) {
             // Sleep to target ~100 FPS when minimized
             std::this_thread::sleep_for(mTargetFrameTimeWhenMinimized -
-                std::chrono::duration<float, std::milli>(deltaTime));
+                                        std::chrono::duration<float, std::milli>(deltaTime));
         }
 
         Application::OnUpdate(deltaTime);
@@ -149,7 +149,6 @@ Engine {
 
         auto &io = ImGui::GetIO();
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-
             if (mMinimized)
                 ImGui::Render();
 

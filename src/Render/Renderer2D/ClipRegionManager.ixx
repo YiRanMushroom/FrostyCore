@@ -5,14 +5,15 @@ import :Misc;
 import Core.Prelude;
 import Vendor.ApplicationAPI;
 
-namespace Engine {
+namespace
+Engine {
     export class ClipRegionManager {
     public:
         explicit ClipRegionManager(nvrhi::DeviceHandle device);
 
         // Register a clip region for this frame, returns the index
         // Returns -1 if region is null (no clipping)
-        int RegisterClipRegion(const ClipRegion& region);
+        int RegisterClipRegion(const ClipRegion &region);
 
         // Get the index for "no clipping"
         static constexpr int NoClipping() { return -1; }
@@ -21,10 +22,10 @@ namespace Engine {
         void ClearForNewFrame();
 
         // Prepare the buffer for rendering (copy all regions to GPU)
-        void PrepareForRendering(nvrhi::ICommandList* commandList);
+        void PrepareForRendering(nvrhi::ICommandList *commandList);
 
         // Get the current buffer handle
-        [[nodiscard]] nvrhi::IBuffer* GetClipRegionBuffer() const;
+        [[nodiscard]] nvrhi::IBuffer *GetClipRegionBuffer() const;
 
         // Get the current count of registered regions
         [[nodiscard]] uint32_t GetRegisteredCount() const;

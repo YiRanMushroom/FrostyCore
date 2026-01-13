@@ -205,7 +205,7 @@ Engine {
         static constexpr char matchString2[] = "VUID-vkQueueSubmit-pSignalSemaphores";
         static constexpr size_t length2 = sizeof(matchString2) / sizeof(char) - 1;
 
-        static const char* targetString = pCallbackData->pMessageIdName;
+        static const char *targetString = pCallbackData->pMessageIdName;
 
         if (strncmp(matchString1, targetString, length1) == 0 || strncmp(matchString2, targetString, length2) == 0) {
             return vk::False;

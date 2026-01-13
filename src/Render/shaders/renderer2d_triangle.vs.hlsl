@@ -1,11 +1,16 @@
-cbuffer GlobalConstants : register(b0, space0) {
+cbuffer GlobalConstants : 
+register (b0
+,
+space0
+)
+ {
     float4x4 u_ViewProjectionMatrix;
 };
 
 struct VSInput {
-    float2 position : POSITION;
-    float2 texCoord : TEXCOORD0;
-    uint constantIndex : CONSTANTINDEX0;
+    float2 position: POSITION;
+    float2 texCoord: TEXCOORD0;
+    uint constantIndex: CONSTANTINDEX0;
 };
 
 struct SpriteData {
@@ -18,17 +23,21 @@ struct SpriteData {
 };
 
 struct PSInput {
-    float4 position : SV_POSITION;
-    float2 texCoord : TEXCOORD0;
-    float4 tintColor : COLOR0;
-    nointerpolation int textureIndex : TEXCOORD1;
-    float2 worldPos : TEXCOORD2;
-    nointerpolation int clipRegionId : CLIP_REGION_ID;
-    nointerpolation float pxRange : PX_RANGE;
-    nointerpolation uint mode : RENDER_MODE;
+    float4 position: SV_POSITION;
+    float2 texCoord: TEXCOORD0;
+    float4 tintColor: COLOR0;
+    nointerpolation int textureIndex: TEXCOORD1;
+    float2 worldPos: TEXCOORD2;
+    nointerpolation int clipRegionId: CLIP_REGION_ID;
+    nointerpolation float pxRange: PX_RANGE;
+    nointerpolation uint mode: RENDER_MODE;
 };
 
-StructuredBuffer<SpriteData> u_SpriteData : register(t0, space0);
+StructuredBuffer<SpriteData> u_SpriteData : 
+register (t0
+,
+space0
+);
 
 PSInput main(VSInput vertexInput) {
     PSInput pixelInput;

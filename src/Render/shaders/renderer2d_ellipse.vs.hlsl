@@ -1,4 +1,9 @@
-cbuffer GlobalConstants : register(b0, space0) {
+cbuffer GlobalConstants : 
+register (b0
+,
+space0
+)
+ {
     float4x4 u_ViewProjectionMatrix;
 };
 
@@ -12,32 +17,36 @@ struct EllipseShapeData {
     uint tintColor;
     int textureIndex;
     float edgeSoftness;
-    int clipRegionId;  // -1 = no clipping
+    int clipRegionId; // -1 = no clipping
 };
 
 struct PSInput {
-    float4 position : SV_POSITION;
-    float2 worldPos : TEXCOORD0;
-    float4 tintColor : COLOR0;
-    nointerpolation float2 center : CENTER;
-    nointerpolation float2 radii : RADII;
-    nointerpolation float rotation : ROTATION;
-    nointerpolation float innerScale : INNER_SCALE;
-    nointerpolation float startAngle : ANGLE_START;
-    nointerpolation float endAngle : ANGLE_END;
-    nointerpolation int textureIndex : TEXCOORD1;
-    nointerpolation float edgeSoftness : EDGE_SOFTNESS;
-    nointerpolation int clipRegionId : CLIP_REGION_ID;
+    float4 position: SV_POSITION;
+    float2 worldPos: TEXCOORD0;
+    float4 tintColor: COLOR0;
+    nointerpolation float2 center: CENTER;
+    nointerpolation float2 radii: RADII;
+    nointerpolation float rotation: ROTATION;
+    nointerpolation float innerScale: INNER_SCALE;
+    nointerpolation float startAngle: ANGLE_START;
+    nointerpolation float endAngle: ANGLE_END;
+    nointerpolation int textureIndex: TEXCOORD1;
+    nointerpolation float edgeSoftness: EDGE_SOFTNESS;
+    nointerpolation int clipRegionId: CLIP_REGION_ID;
 };
 
-StructuredBuffer<EllipseShapeData> u_ShapeBuffer : register(t0, space0);
+StructuredBuffer<EllipseShapeData> u_ShapeBuffer : 
+register (t0
+,
+space0
+);
 
 static const float2 kQuadVertices[6] = {
     float2(-1.0, -1.0), float2(1.0, -1.0), float2(-1.0, 1.0), // Triangle 1
-    float2(-1.0, 1.0),  float2(1.0, -1.0), float2(1.0, 1.0)   // Triangle 2
+    float2(-1.0, 1.0), float2(1.0, -1.0), float2(1.0, 1.0) // Triangle 2
 };
 
-PSInput main(uint vID : SV_VertexID) {
+PSInput main(uint vID: SV_VertexID) {
     PSInput output;
 
     uint shapeIndex = vID / 6;

@@ -53,7 +53,7 @@ namespace Engine {
             }
         };
 
-        for (const auto &renderingData : RenderingData) {
+        for (const auto &renderingData: RenderingData) {
             // check if we need to finalize due to vertex buffer size
             if (currentSubmission.VertexData.size() + 1 >
                 lineBufferInstanceSizeMax) {
@@ -63,11 +63,13 @@ namespace Engine {
             currentSubmission.VertexData.reserve(currentSubmission.VertexData.size() + 2);
             currentSubmission.VertexData.push_back({
                 .Position = renderingData.Positions[0],
-                .Color = static_cast<uint32_t>(renderingData.Color.r) << 24 | renderingData.Color.g << 16 | renderingData.Color.b << 8 | renderingData.Color.a
+                .Color = static_cast<uint32_t>(renderingData.Color.r) << 24 | renderingData.Color.g << 16 |
+                         renderingData.Color.b << 8 | renderingData.Color.a
             });
             currentSubmission.VertexData.push_back({
                 .Position = renderingData.Positions[1],
-                .Color = static_cast<uint32_t>(renderingData.Color.r) << 24 | renderingData.Color.g << 16 | renderingData.Color.b << 8 | renderingData.Color.a
+                .Color = static_cast<uint32_t>(renderingData.Color.r) << 24 | renderingData.Color.g << 16 |
+                         renderingData.Color.b << 8 | renderingData.Color.a
             });
         }
 

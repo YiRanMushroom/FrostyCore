@@ -1,9 +1,9 @@
 struct VSOutput {
-    float4 pos : SV_Position;
-    float2 uv  : TEXCOORD;
+    float4 pos: SV_Position;
+    float2 uv: TEXCOORD;
 };
 
-VSOutput main(uint vertexID : SV_VertexID) {
+VSOutput main(uint vertexID: SV_VertexID) {
     VSOutput output;
 
     output.uv = float2((vertexID << 1) & 2, vertexID & 2);

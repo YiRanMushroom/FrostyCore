@@ -6,7 +6,7 @@ import :Eclipse;
 
 namespace
 Engine {
-        EllipseRenderingData EllipseRenderingData::Circle(const glm::vec2 &center, float radius,
+    EllipseRenderingData EllipseRenderingData::Circle(const glm::vec2 &center, float radius,
                                                       const glm::u8vec4 &color, int depth,
                                                       int clipRegionId) {
         EllipseRenderingData data;
@@ -173,7 +173,8 @@ Engine {
             shapeData.InnerScale = instance.InnerScale;
             shapeData.StartAngle = instance.StartAngle;
             shapeData.EndAngle = instance.EndAngle;
-            shapeData.TintColor = static_cast<uint32_t>(instance.TintColor.r) << 24 | instance.TintColor.g << 16 | instance.TintColor.b << 8 | instance.TintColor.a;
+            shapeData.TintColor = static_cast<uint32_t>(instance.TintColor.r) << 24 | instance.TintColor.g << 16 |
+                                  instance.TintColor.b << 8 | instance.TintColor.a;
             shapeData.TextureIndex = instance.VirtualTextureID;
             shapeData.EdgeSoftness = instance.EdgeSoftness;
             shapeData.ClipRegionId = clipIndex;

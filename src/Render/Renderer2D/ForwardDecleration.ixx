@@ -2,7 +2,8 @@ export module Render.Renderer2D:ForwardDecleration;
 
 import Core.Prelude;
 
-namespace Engine {
+namespace
+Engine {
     export class Renderer2D;
     export struct Renderer2DDescriptor;
     export enum class ClipMode : uint32_t;

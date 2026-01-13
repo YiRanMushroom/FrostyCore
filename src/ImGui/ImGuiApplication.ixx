@@ -8,10 +8,15 @@ namespace Engine {
     export class ImGuiApplication : public Application {
     public:
         virtual void Init(WindowCreationInfo info) override;
+
         virtual void Destroy() override;
+
         virtual void OnUpdate(std::chrono::duration<float> deltaTime) override;
+
         virtual void OnRender(const nvrhi::CommandListHandle &, const nvrhi::FramebufferHandle &) override;
+
         virtual void OnEvent(const Event &event) override;
+
         virtual void OnPostRender() override;
 
         virtual const nvrhi::SamplerHandle &GetImGuiTextureSampler() const {

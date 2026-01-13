@@ -5,7 +5,7 @@ import :Misc;
 import Core.Prelude;
 
 namespace Engine {
-ClipRegion ClipRegion::Triangle(const glm::mat3x2 &points, Frosty::ClipMode clipMode) {
+    ClipRegion ClipRegion::Triangle(const glm::mat3x2 &points, Frosty::ClipMode clipMode) {
         return ClipRegion{
             .Points = {
                 points[0],
@@ -72,7 +72,7 @@ ClipRegion ClipRegion::Triangle(const glm::mat3x2 &points, Frosty::ClipMode clip
                                                           const glm::vec2 &uv2, const glm::vec2 &p3,
                                                           const glm::vec2 &uv3,
                                                           int virtualTextureID, glm::u8vec4 tintColor,
-                                                          float msdfPixelRange, int depth, int clipRegionId) {
+                                                          float MTSDFPixelRange, int depth, int clipRegionId) {
         return {
             .Positions = {p0, p1, p2, p3},
             .TexCoords = {uv0, uv1, uv2, uv3},
@@ -81,8 +81,8 @@ ClipRegion ClipRegion::Triangle(const glm::mat3x2 &points, Frosty::ClipMode clip
             .TintColor = tintColor,
             .Depth = depth,
             .ClipRegionId = clipRegionId,
-            .RenderingMode = InstanceRenderingMode::MSDF,
-            .MSDFPixelRange = msdfPixelRange
+            .RenderingMode = InstanceRenderingMode::MTSDF,
+            .MTSDFPixelRange = MTSDFPixelRange
         };
     }
 
@@ -116,11 +116,13 @@ ClipRegion ClipRegion::Triangle(const glm::mat3x2 &points, Frosty::ClipMode clip
     }
 
     void TriangleRenderingCommandList::AddQuadFont(const glm::vec2 &p0, const glm::vec2 &uv0, const glm::vec2 &p1,
-        const glm::vec2 &uv1, const glm::vec2 &p2, const glm::vec2 &uv2, const glm::vec2 &p3, const glm::vec2 &uv3,
-        int virtualTextureID, glm::u8vec4 tintColor, float msdfPixelRange, int depth, int clipRegionId) {
+                                                   const glm::vec2 &uv1, const glm::vec2 &p2, const glm::vec2 &uv2,
+                                                   const glm::vec2 &p3, const glm::vec2 &uv3,
+                                                   int virtualTextureID, glm::u8vec4 tintColor, float MTSDFPixelRange,
+                                                   int depth, int clipRegionId) {
         Instances.emplace_back(
             TriangleRenderingData::QuadFont(
-                p0, uv0, p1, uv1, p2, uv2, p3, uv3, virtualTextureID, tintColor, msdfPixelRange, depth, clipRegionId));
+                p0, uv0, p1, uv1, p2, uv2, p3, uv3, virtualTextureID, tintColor, MTSDFPixelRange, depth, clipRegionId));
     }
 
     void TriangleRenderingCommandList::Clear() {
@@ -183,11 +185,12 @@ ClipRegion ClipRegion::Triangle(const glm::mat3x2 &points, Frosty::ClipMode clip
             currentSubmission.InstanceData.reserve(currentSubmission.InstanceData.size());
 
             currentSubmission.InstanceData.push_back({
-                .TintColor = static_cast<uint32_t>(instance.TintColor.r) << 24 | instance.TintColor.g << 16 | instance.TintColor.b << 8 | instance.TintColor.a,
+                .TintColor = static_cast<uint32_t>(instance.TintColor.r) << 24 | instance.TintColor.g << 16 | instance.
+                             TintColor.b << 8 | instance.TintColor.a,
                 .TextureIndex = finalTextureIndex,
                 .ClipIndex = clipIndex,
                 .RenderingMode = instance.RenderingMode,
-                .MSDFPixelRange = instance.MSDFPixelRange
+                .MTSDFPixelRange = instance.MTSDFPixelRange
             });
 
             uint32_t baseVtx = static_cast<uint32_t>(currentSubmission.VertexData.size());

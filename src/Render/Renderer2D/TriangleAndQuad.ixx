@@ -18,9 +18,9 @@ Engine {
         int32_t TextureIndex;
         int32_t ClipIndex; // < 0 means no clipping
 
-        // now we add data for msdf font rendering
+        // now we add data for MTSDF font rendering
         InstanceRenderingMode RenderingMode = InstanceRenderingMode::Texture;
-        float MSDFPixelRange = 4.0f;
+        float MTSDFPixelRange = 4.0f;
 
         uint32_t Padding[3];
     };
@@ -37,7 +37,7 @@ Engine {
         int ClipRegionId;
 
         InstanceRenderingMode RenderingMode = InstanceRenderingMode::Texture;
-        float MSDFPixelRange = 4.0f;
+        float MTSDFPixelRange = 4.0f;
 
         static TriangleRenderingData Triangle(const glm::vec2 &p0, const glm::vec2 &uv0,
                                               const glm::vec2 &p1, const glm::vec2 &uv1,
@@ -57,7 +57,7 @@ Engine {
                                               const glm::vec2 &p2, const glm::vec2 &uv2,
                                               const glm::vec2 &p3, const glm::vec2 &uv3,
                                               int virtualTextureID, glm::u8vec4 tintColor,
-                                              float msdfPixelRange, int depth = 0,
+                                              float MTSDFPixelRange, int depth = 0,
                                               int clipRegionId = -1);
     };
 
@@ -98,7 +98,7 @@ Engine {
                          const glm::vec2 &p2, const glm::vec2 &uv2,
                          const glm::vec2 &p3, const glm::vec2 &uv3,
                          int virtualTextureID, glm::u8vec4 tintColor,
-                         float msdfPixelRange, int depth,
+                         float MTSDFPixelRange, int depth,
                          int clipRegionId = -1);
 
         std::vector<TriangleRenderingSubmissionData> RecordRendererSubmissionData(size_t triangleBufferInstanceSizeMax);

@@ -4,7 +4,7 @@ import Vendor.ApplicationAPI;
 import Core.Prelude;
 
 namespace Engine {
-    VirtualTextureManager::VirtualTextureManager(nvrhi::IDevice* device, uint32_t initialMax)
+    VirtualTextureManager::VirtualTextureManager(nvrhi::IDevice *device, uint32_t initialMax)
         : mDevice(device), mMaxTextures(initialMax) {
         mBindingSetDesc.bindings.reserve(mMaxTextures);
     }
@@ -42,7 +42,7 @@ namespace Engine {
         Reset();
     }
 
-    nvrhi::BindingSetHandle VirtualTextureManager::GetBindingSet(nvrhi::IBindingLayout* layout) {
+    nvrhi::BindingSetHandle VirtualTextureManager::GetBindingSet(nvrhi::IBindingLayout *layout) {
         if (mIsDirty || !mCurrentBindingSet) {
             mCurrentBindingSet = mDevice->createBindingSet(mBindingSetDesc, layout);
             mIsDirty = false;
@@ -72,4 +72,3 @@ namespace Engine {
         return mMaxTextures;
     }
 }
-

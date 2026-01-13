@@ -1,15 +1,20 @@
-cbuffer GlobalConstants : register(b0, space0) {
+cbuffer GlobalConstants : 
+register (b0
+,
+space0
+)
+ {
     float4x4 u_ViewProjectionMatrix;
 };
 
 struct VSInput {
-    float2 position : POSITION;
-    uint color : COLOR0;
+    float2 position: POSITION;
+    uint color: COLOR0;
 };
 
 struct PSInput {
-    float4 position : SV_POSITION;
-    float4 color : COLOR0;
+    float4 position: SV_POSITION;
+    float4 color: COLOR0;
 };
 
 PSInput main(VSInput vertexInput) {

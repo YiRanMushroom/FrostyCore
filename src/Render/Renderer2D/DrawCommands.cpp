@@ -9,6 +9,4 @@ import :Renderer;
 import Core.Prelude;
 
 namespace
-Engine {
-
-}
+Engine {}

@@ -5,7 +5,8 @@ import :Misc;
 import Core.Prelude;
 import Vendor.ApplicationAPI;
 
-namespace Engine {
+namespace
+Engine {
     struct LineVertexData {
         glm::vec2 Position;
         uint32_t Color;
@@ -27,12 +28,12 @@ namespace Engine {
 
         void Clear();
 
-        void AddLine(const glm::vec2& p0,
-                     const glm::vec2& p1, glm::u8vec4 color);
+        void AddLine(const glm::vec2 &p0,
+                     const glm::vec2 &p1, glm::u8vec4 color);
 
         std::vector<LineRenderingSubmissionData> RecordRendererSubmissionData(size_t lineBufferInstanceSizeMax);
 
-        void GiveBackForNextFrame(std::vector<LineRenderingSubmissionData>&& thisCache);
+        void GiveBackForNextFrame(std::vector<LineRenderingSubmissionData> &&thisCache);
 
     private:
         std::vector<LineRenderingSubmissionData> mLastFrameCache;

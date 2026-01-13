@@ -134,10 +134,10 @@ Engine {
             return *this;
         }
 
-        QuadDrawCommand &SetFontAtlas(int virtualTextureID, float msdfPixelRange) {
+        QuadDrawCommand &SetFontAtlas(int virtualTextureID, float MTSDFPixelRange) {
             mVirtualTextureID = virtualTextureID;
-            mRenderingMode = InstanceRenderingMode::MSDF;
-            mMSDFPixelRange = msdfPixelRange;
+            mRenderingMode = InstanceRenderingMode::MTSDF;
+            mMTSDFPixelRange = MTSDFPixelRange;
             return *this;
         }
 
@@ -171,7 +171,7 @@ Engine {
         int mClipRegionId = -1;
 
         InstanceRenderingMode mRenderingMode = InstanceRenderingMode::Texture;
-        float mMSDFPixelRange;
+        float mMTSDFPixelRange;
     };
 
     // No need to provide draw command for line because it is simple enough

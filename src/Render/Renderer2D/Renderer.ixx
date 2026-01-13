@@ -49,7 +49,7 @@ Engine {
 
         uint32_t RegisterVirtualTextureForThisFrame(const nvrhi::TextureHandle &texture);
 
-        ClipRegionManager& GetClipRegionManager();
+        ClipRegionManager &GetClipRegionManager();
 
         void DrawTriangleColored(const glm::mat3x2 &positions, const glm::u8vec4 &color,
                                  std::optional<int> overrideDepth = std::nullopt,
@@ -84,7 +84,7 @@ Engine {
         void DrawQuadFontColoredVirtual(const glm::mat4x2 &positions, const glm::mat4x2 &uvs,
                                         uint32_t virtualTextureID,
                                         glm::u8vec4 tintColor,
-                                        float msdfPixelRange,
+                                        float MTSDFPixelRange,
                                         std::optional<int> overrideDepth = std::nullopt,
                                         int clipRegionId = -1);
 

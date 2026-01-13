@@ -157,7 +157,8 @@ Engine {
             nvrhi::BindingSetDesc bindingSetDesc;
             bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, mTriangleConstantBuffer));
             bindingSetDesc.addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(0, resources.InstanceBuffer));
-            bindingSetDesc.addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(1, mClipRegionManager.GetClipRegionBuffer()));
+            bindingSetDesc.addItem(
+                nvrhi::BindingSetItem::StructuredBuffer_SRV(1, mClipRegionManager.GetClipRegionBuffer()));
             bindingSetDesc.addItem(nvrhi::BindingSetItem::Sampler(0, mTextureSampler)); // point sampler
             bindingSetDesc.addItem(nvrhi::BindingSetItem::Sampler(1, mFontSampler)); // linear sampler
             resources.mBindingSetSpace0 = mDevice->createBindingSet(bindingSetDesc, mTriangleBindingLayoutSpace0);
@@ -210,7 +211,8 @@ Engine {
             nvrhi::BindingSetDesc bindingSetDesc;
             bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, mEllipseConstantBuffer));
             bindingSetDesc.addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(0, resources.ShapeBuffer));
-            bindingSetDesc.addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(1, mClipRegionManager.GetClipRegionBuffer()));
+            bindingSetDesc.addItem(
+                nvrhi::BindingSetItem::StructuredBuffer_SRV(1, mClipRegionManager.GetClipRegionBuffer()));
             bindingSetDesc.addItem(nvrhi::BindingSetItem::Sampler(0, mTextureSampler));
             resources.mBindingSetSpace0 = mDevice->createBindingSet(bindingSetDesc, mEllipseBindingLayoutSpace0);
 
@@ -658,7 +660,7 @@ Engine {
         return mVirtualTextureManager.RegisterTexture(texture);
     }
 
-    ClipRegionManager& Renderer2D::GetClipRegionManager() {
+    ClipRegionManager &Renderer2D::GetClipRegionManager() {
         return mClipRegionManager;
     }
 
@@ -759,8 +761,9 @@ Engine {
     }
 
     void Renderer2D::DrawQuadFontColoredVirtual(const glm::mat4x2 &positions, const glm::mat4x2 &uvs,
-        uint32_t virtualTextureID, glm::u8vec4 tintColor, float msdfPixelRange, std::optional<int> overrideDepth,
-        int clipRegionId) {
+                                                uint32_t virtualTextureID, glm::u8vec4 tintColor, float MTSDFPixelRange,
+                                                std::optional<int> overrideDepth,
+                                                int clipRegionId) {
         mTriangleCommandList.AddQuadFont(
             positions[0], uvs[0],
             positions[1], uvs[1],
@@ -768,7 +771,7 @@ Engine {
             positions[3], uvs[3],
             static_cast<int>(virtualTextureID),
             tintColor,
-            msdfPixelRange,
+            MTSDFPixelRange,
             overrideDepth.has_value() ? overrideDepth.value() : mCurrentDepth,
             clipRegionId);
     }
@@ -840,7 +843,8 @@ Engine {
                              const glm::u8vec4 &color,
                              std::optional<int> overrideDepth, int clipRegionId) {
         EllipseRenderingData data = EllipseRenderingData::Arc(
-            center, radius, thickness, startAngle, endAngle, color, overrideDepth.value_or(mCurrentDepth), clipRegionId);
+            center, radius, thickness, startAngle, endAngle, color, overrideDepth.value_or(mCurrentDepth),
+            clipRegionId);
         mEllipseCommandList.AddEllipse(data);
     }
 
@@ -849,7 +853,8 @@ Engine {
                                        const glm::u8vec4 &color,
                                        std::optional<int> overrideDepth, int clipRegionId) {
         EllipseRenderingData data = EllipseRenderingData::EllipseSector(
-            center, radii, rotation, startAngle, endAngle, color, -1, overrideDepth.value_or(mCurrentDepth), clipRegionId);
+            center, radii, rotation, startAngle, endAngle, color, -1, overrideDepth.value_or(mCurrentDepth),
+            clipRegionId);
         mEllipseCommandList.AddEllipse(data);
     }
 
@@ -954,7 +959,7 @@ Engine {
                 command.mOverrideDepth.value_or(mCurrentDepth),
                 command.mClipRegionId
             );
-        } else if (command.mRenderingMode == InstanceRenderingMode::MSDF) {
+        } else if (command.mRenderingMode == InstanceRenderingMode::MTSDF) {
             mTriangleCommandList.AddQuadFont(
                 command.mFirstPoint, command.mFirstUV,
                 glm::vec2(command.mSecondPoint.x, command.mFirstPoint.y),
@@ -964,7 +969,7 @@ Engine {
                 glm::vec2(command.mFirstUV.x, command.mSecondUV.y),
                 command.mVirtualTextureID,
                 command.mTintColor,
-                command.mMSDFPixelRange,
+                command.mMTSDFPixelRange,
                 command.mOverrideDepth.value_or(mCurrentDepth),
                 command.mClipRegionId
             );

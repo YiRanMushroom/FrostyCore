@@ -1,6 +1,18 @@
-Texture2D u_Textures[]          : register(t0, space1);
-SamplerState u_TextureSamplier  : register(s0, space0);
-SamplerState u_FontSamplier     : register(s1, space0);
+Texture2D u_Textures[] : 
+register (t0
+,
+space1
+);
+SamplerState u_TextureSamplier : 
+register (s0
+,
+space0
+);
+SamplerState u_FontSamplier : 
+register (s1
+,
+space0
+);
 
 struct ClipRegion {
     float2 points[4];
@@ -8,17 +20,21 @@ struct ClipRegion {
     uint clipMode;
 };
 
-StructuredBuffer<ClipRegion> u_ClipBuffer : register(t1, space0);
+StructuredBuffer<ClipRegion> u_ClipBuffer : 
+register (t1
+,
+space0
+);
 
 struct PSInput {
-    float4 position                 : SV_Position;
-    float2 texCoord                 : TEXCOORD0;
-    float4 tintColor                : COLOR0;
-    nointerpolation int textureIndex : TEXCOORD1;
-    float2 worldPos                 : TEXCOORD2;
-    nointerpolation int clipRegionId : CLIP_REGION_ID;
-    nointerpolation float pxRange   : PX_RANGE;
-    nointerpolation uint mode       : RENDER_MODE;
+    float4 position: SV_Position;
+    float2 texCoord: TEXCOORD0;
+    float4 tintColor: COLOR0;
+    nointerpolation int textureIndex: TEXCOORD1;
+    float2 worldPos: TEXCOORD2;
+    nointerpolation int clipRegionId: CLIP_REGION_ID;
+    nointerpolation float pxRange: PX_RANGE;
+    nointerpolation uint mode: RENDER_MODE;
 };
 
 float median(float r, float g, float b) {
@@ -38,7 +54,7 @@ bool isPointInPolygon(float2 p, float2 points[4], uint count) {
     return inside;
 }
 
-float4 main(PSInput input) : SV_Target {
+float4 main(PSInput input) : SV_Target{
     // 1. Clipping Logic - Load clip region in pixel shader
     if (input.clipRegionId >= 0) {
         ClipRegion clipRegion = u_ClipBuffer[input.clipRegionId];
@@ -46,11 +62,15 @@ float4 main(PSInput input) : SV_Target {
             float2 clipPoints[4];
             for (uint i = 0; i < 4; ++i) {
                 clipPoints[i] = (i < clipRegion.pointCount) ? clipRegion.points[i] : float2(0, 0);
+            
+            
             }
 
             bool inside = isPointInPolygon(input.worldPos, clipPoints, clipRegion.pointCount);
             if ((clipRegion.clipMode == 0 && !inside) || (clipRegion.clipMode == 1 && inside)) {
                 discard;
+            
+            
             }
         }
     }
@@ -58,20 +78,27 @@ float4 main(PSInput input) : SV_Target {
     float4 sampledColor = float4(1.0, 1.0, 1.0, 1.0);
 
     if (input.textureIndex >= 0) {
-        if (input.mode == 1) { // MSDF Mode
-            float3 msd = u_Textures[NonUniformResourceIndex(input.textureIndex)].Sample(u_FontSamplier, input.texCoord).rgb;
-            float sd = median(msd.r, msd.g, msd.b);
+        if (input.mode == 1) { // MTSDF Mode
+            float4 mtsdf = u_Textures[NonUniformResourceIndex(input.textureIndex)].Sample(
+                       u_FontSamplier, input.texCoord);
 
-            // Standard MSDF formula: convert distance field to screen space
-            // fwidth returns the sum of absolute derivatives (approximation of gradient magnitude)
-            float screenPxDistance = input.pxRange * (sd - 0.5) / length(fwidth(input.texCoord));
+            float sd = median(mtsdf.r, mtsdf.g, mtsdf.b);
 
+            float2 unitRange = float2(input.pxRange, input.pxRange) / fwidth(input.texCoord);
+            float screenUnitRange = min(unitRange.x, unitRange.y);
+
+            float screenPxDistance = (sd - 0.5) * screenUnitRange;
             float opacity = clamp(screenPxDistance + 0.5, 0.0, 1.0);
 
             sampledColor = float4(1.0, 1.0, 1.0, opacity);
+        
+        
         }
         else { // Standard Texture Mode
-            sampledColor = u_Textures[NonUniformResourceIndex(input.textureIndex)].SampleLevel(u_TextureSamplier, input.texCoord, 0);
+            sampledColor = u_Textures[NonUniformResourceIndex(input.textureIndex)].SampleLevel(
+                u_TextureSamplier, input.texCoord, 0);
+        
+        
         }
     }
 
@@ -81,7 +108,11 @@ float4 main(PSInput input) : SV_Target {
     // Alpha Test: discard fragments that are nearly transparent
     if (outColor.a < 0.001f) {
         discard;
+    
+    
     }
 
     return outColor;
+
+
 }

@@ -7,7 +7,7 @@ import std;
 namespace
 Engine {
     thread_local bool handling_fatal_exception = false;
-    
+
     std::string process_stack_trace(const std::stacktrace &trace) {
         std::string result = "stack trace:\n";
 
@@ -27,17 +27,17 @@ Engine {
                                       frame.source_file().empty() ? "<unknown file>" : frame.source_file(),
                                       frame.source_line(), frame.description());
             }
-             }
+        }
 
         handling_fatal_exception = false;
 
         return result;
     }
-    
+
     export class RuntimeException : public std::runtime_error {
     public:
         RuntimeException(std::string_view message,
-                                   const std::stacktrace &trace = std::stacktrace::current())
+                         const std::stacktrace &trace = std::stacktrace::current())
             : std::runtime_error(
                 std::format("{}\n{}",
                             message,
@@ -88,7 +88,7 @@ Engine {
             const std::stacktrace &trace = std::stacktrace::current())
             : RuntimeException("UnknownSystemFatalException", trace) {}
     };
-    
+
     void veh_fatal_exception_handler(unsigned int code, EXCEPTION_POINTERS *ep) {
         // if debugging, break into the debugger
 #if defined(_DEBUG)

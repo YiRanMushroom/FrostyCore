@@ -5,7 +5,8 @@ import :Misc;
 import Core.Prelude;
 import Vendor.ApplicationAPI;
 
-namespace Engine {
+namespace
+Engine {
     ClipRegionManager::ClipRegionManager(nvrhi::DeviceHandle device)
         : mDevice(device) {
         mClipRegionBuffer = mDevice->createBuffer({
@@ -20,7 +21,7 @@ namespace Engine {
         });
     }
 
-    int ClipRegionManager::RegisterClipRegion(const ClipRegion& region) {
+    int ClipRegionManager::RegisterClipRegion(const ClipRegion &region) {
         mClipRegions.emplace_back(region);
         return static_cast<int>(mClipRegions.size() - 1);
     }
@@ -29,7 +30,7 @@ namespace Engine {
         mClipRegions.clear();
     }
 
-    void ClipRegionManager::PrepareForRendering(nvrhi::ICommandList* commandList) {
+    void ClipRegionManager::PrepareForRendering(nvrhi::ICommandList *commandList) {
         if (mClipRegions.empty()) {
             return;
         }
@@ -42,7 +43,7 @@ namespace Engine {
                                  mClipRegions.size() * sizeof(ClipRegion));
     }
 
-    nvrhi::IBuffer* ClipRegionManager::GetClipRegionBuffer() const {
+    nvrhi::IBuffer *ClipRegionManager::GetClipRegionBuffer() const {
         return mClipRegionBuffer;
     }
 
@@ -52,7 +53,7 @@ namespace Engine {
 
     void ClipRegionManager::EnsureCapacity(size_t requiredCapacity) {
         if (requiredCapacity <= mCurrentCapacity) {
-            return;  // Already have enough capacity
+            return; // Already have enough capacity
         }
 
         // Double the capacity until it's enough

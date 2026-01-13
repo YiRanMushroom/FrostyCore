@@ -31,26 +31,26 @@ namespace Engine {
         PlatformSwapchain() = default;
 
         /// Create swapchain with all necessary resources
-        PlatformSwapchain(SDL_Window* window,
-                          const vk::SharedSurfaceKHR& platformSurface,
-                          const vk::SharedPhysicalDevice& physicalDevice,
-                          const vk::SharedDevice& device,
-                          const nvrhi::vulkan::DeviceHandle& nvrhiDevice,
+        PlatformSwapchain(SDL_Window *window,
+                          const vk::SharedSurfaceKHR &platformSurface,
+                          const vk::SharedPhysicalDevice &physicalDevice,
+                          const vk::SharedDevice &device,
+                          const nvrhi::vulkan::DeviceHandle &nvrhiDevice,
                           vk::SwapchainKHR oldSwapchain = nullptr);
 
         /// Recreate swapchain (e.g., on window resize)
-        void Recreate(SDL_Window* window,
-                      const vk::SharedSurfaceKHR& platformSurface,
-                      const vk::SharedPhysicalDevice& physicalDevice,
-                      const vk::SharedDevice& device,
-                      const nvrhi::vulkan::DeviceHandle& nvrhiDevice);
+        void Recreate(SDL_Window *window,
+                      const vk::SharedSurfaceKHR &platformSurface,
+                      const vk::SharedPhysicalDevice &physicalDevice,
+                      const vk::SharedDevice &device,
+                      const nvrhi::vulkan::DeviceHandle &nvrhiDevice);
 
         // ============================================
         // Core Swapchain Info
         // ============================================
 
         /// Get the underlying Vulkan swapchain handle
-        [[nodiscard]] const vk::SharedSwapchainKHR& GetSwapchain() const { return mSwapchain; }
+        [[nodiscard]] const vk::SharedSwapchainKHR &GetSwapchain() const { return mSwapchain; }
 
         /// Get the number of swapchain images
         [[nodiscard]] uint32_t GetImageCount() const { return static_cast<uint32_t>(mBackBuffers.size()); }
@@ -71,8 +71,9 @@ namespace Engine {
 
         /// Get NVRHI format from framebuffers (safe getter)
         [[nodiscard]] nvrhi::Format GetNvrhiFormat() const {
-            return mFramebuffers.empty() ? nvrhi::Format::UNKNOWN
-                                         : mFramebuffers[0]->getFramebufferInfo().colorFormats[0];
+            return mFramebuffers.empty()
+                       ? nvrhi::Format::UNKNOWN
+                       : mFramebuffers[0]->getFramebufferInfo().colorFormats[0];
         }
 
         // ============================================
@@ -80,33 +81,35 @@ namespace Engine {
         // ============================================
 
         /// Get all Vulkan shared images
-        [[nodiscard]] const std::vector<vk::SharedImage>& GetSwapchainImages() const { return mSwapchainImages; }
+        [[nodiscard]] const std::vector<vk::SharedImage> &GetSwapchainImages() const { return mSwapchainImages; }
 
         /// Get specific Vulkan image by index
-        [[nodiscard]] const vk::SharedImage& GetSwapchainImage(uint32_t index) const { return mSwapchainImages[index]; }
+        [[nodiscard]] const vk::SharedImage &GetSwapchainImage(uint32_t index) const { return mSwapchainImages[index]; }
 
         /// Get all NVRHI back buffer textures
-        [[nodiscard]] const std::vector<nvrhi::TextureHandle>& GetBackBuffers() const { return mBackBuffers; }
+        [[nodiscard]] const std::vector<nvrhi::TextureHandle> &GetBackBuffers() const { return mBackBuffers; }
 
         /// Get specific back buffer by index
-        [[nodiscard]] const nvrhi::TextureHandle& GetBackBuffer(uint32_t index) const { return mBackBuffers[index]; }
+        [[nodiscard]] const nvrhi::TextureHandle &GetBackBuffer(uint32_t index) const { return mBackBuffers[index]; }
 
         /// Get all NVRHI framebuffers
-        [[nodiscard]] const std::vector<nvrhi::FramebufferHandle>& GetFramebuffers() const { return mFramebuffers; }
+        [[nodiscard]] const std::vector<nvrhi::FramebufferHandle> &GetFramebuffers() const { return mFramebuffers; }
 
         /// Get specific framebuffer by index
-        [[nodiscard]] const nvrhi::FramebufferHandle& GetFramebuffer(uint32_t index) const { return mFramebuffers[index]; }
+        [[nodiscard]] const nvrhi::FramebufferHandle &GetFramebuffer(uint32_t index) const {
+            return mFramebuffers[index];
+        }
 
         /// Get current acquired image index (valid only after successful AcquireNextImage)
         [[nodiscard]] uint32_t GetCurrentImageIndex() const { return mCurrentImageIndex; }
 
         /// Get current framebuffer (valid only after successful AcquireNextImage)
-        [[nodiscard]] const nvrhi::FramebufferHandle& GetCurrentFramebuffer() const {
+        [[nodiscard]] const nvrhi::FramebufferHandle &GetCurrentFramebuffer() const {
             return mFramebuffers[mCurrentImageIndex];
         }
 
         /// Get current back buffer (valid only after successful AcquireNextImage)
-        [[nodiscard]] const nvrhi::TextureHandle& GetCurrentBackBuffer() const {
+        [[nodiscard]] const nvrhi::TextureHandle &GetCurrentBackBuffer() const {
             return mBackBuffers[mCurrentImageIndex];
         }
 
@@ -115,17 +118,17 @@ namespace Engine {
         // ============================================
 
         /// Get render complete semaphore for a specific image
-        [[nodiscard]] const vk::SharedSemaphore& GetRenderCompleteSemaphore(uint32_t imageIndex) const {
+        [[nodiscard]] const vk::SharedSemaphore &GetRenderCompleteSemaphore(uint32_t imageIndex) const {
             return mRenderCompleteSemaphores[imageIndex];
         }
 
         /// Get current image's render complete semaphore
-        [[nodiscard]] const vk::SharedSemaphore& GetCurrentRenderCompleteSemaphore() const {
+        [[nodiscard]] const vk::SharedSemaphore &GetCurrentRenderCompleteSemaphore() const {
             return mRenderCompleteSemaphores[mCurrentImageIndex];
         }
 
         /// Get all render complete semaphores
-        [[nodiscard]] const std::vector<vk::SharedSemaphore>& GetRenderCompleteSemaphores() const {
+        [[nodiscard]] const std::vector<vk::SharedSemaphore> &GetRenderCompleteSemaphores() const {
             return mRenderCompleteSemaphores;
         }
 
@@ -138,18 +141,18 @@ namespace Engine {
         /// @param timeout Timeout in nanoseconds (default: infinite)
         /// @return Result containing image index and vk::Result
         SwapchainAcquireResult AcquireNextImage(vk::Semaphore acquireSemaphore,
-                                                 uint64_t timeout = UINT64_MAX);
+                                                uint64_t timeout = UINT64_MAX);
 
         /// Present the current image
         /// @param queue The queue to present on
         /// @return vk::Result of the present operation
-        vk::Result Present(const vk::SharedQueue& queue);
+        vk::Result Present(const vk::SharedQueue &queue);
 
         /// Present a specific image
         /// @param queue The queue to present on
         /// @param imageIndex The image index to present
         /// @return vk::Result of the present operation
-        vk::Result Present(const vk::SharedQueue& queue, uint32_t imageIndex);
+        vk::Result Present(const vk::SharedQueue &queue, uint32_t imageIndex);
 
         // ============================================
         // State Query
@@ -173,11 +176,11 @@ namespace Engine {
 
     private:
         static PlatformSwapchain CreateSwapchainInternal(
-            SDL_Window* window,
-            const vk::SharedSurfaceKHR& platformSurface,
-            const vk::SharedPhysicalDevice& physicalDevice,
-            const vk::SharedDevice& device,
-            const nvrhi::vulkan::DeviceHandle& nvrhiDevice,
+            SDL_Window *window,
+            const vk::SharedSurfaceKHR &platformSurface,
+            const vk::SharedPhysicalDevice &physicalDevice,
+            const vk::SharedDevice &device,
+            const nvrhi::vulkan::DeviceHandle &nvrhiDevice,
             vk::SwapchainKHR oldSwapchain = nullptr);
 
     private:
@@ -203,21 +206,21 @@ namespace Engine {
     // ========================================================================
 
     inline PlatformSwapchain::PlatformSwapchain(
-        SDL_Window* window,
-        const vk::SharedSurfaceKHR& platformSurface,
-        const vk::SharedPhysicalDevice& physicalDevice,
-        const vk::SharedDevice& device,
-        const nvrhi::vulkan::DeviceHandle& nvrhiDevice,
+        SDL_Window *window,
+        const vk::SharedSurfaceKHR &platformSurface,
+        const vk::SharedPhysicalDevice &physicalDevice,
+        const vk::SharedDevice &device,
+        const nvrhi::vulkan::DeviceHandle &nvrhiDevice,
         vk::SwapchainKHR oldSwapchain) {
         *this = CreateSwapchainInternal(window, platformSurface, physicalDevice, device, nvrhiDevice, oldSwapchain);
     }
 
     inline void PlatformSwapchain::Recreate(
-        SDL_Window* window,
-        const vk::SharedSurfaceKHR& platformSurface,
-        const vk::SharedPhysicalDevice& physicalDevice,
-        const vk::SharedDevice& device,
-        const nvrhi::vulkan::DeviceHandle& nvrhiDevice) {
+        SDL_Window *window,
+        const vk::SharedSurfaceKHR &platformSurface,
+        const vk::SharedPhysicalDevice &physicalDevice,
+        const vk::SharedDevice &device,
+        const nvrhi::vulkan::DeviceHandle &nvrhiDevice) {
         device->waitIdle();
         vk::SwapchainKHR oldSwapchain = mSwapchain ? mSwapchain.get() : nullptr;
         *this = CreateSwapchainInternal(window, platformSurface, physicalDevice, device, nvrhiDevice, oldSwapchain);
@@ -247,13 +250,13 @@ namespace Engine {
         return result;
     }
 
-    inline vk::Result PlatformSwapchain::Present(const vk::SharedQueue& queue) {
+    inline vk::Result PlatformSwapchain::Present(const vk::SharedQueue &queue) {
         return Present(queue, mCurrentImageIndex);
     }
 
-    inline vk::Result PlatformSwapchain::Present(const vk::SharedQueue& queue, uint32_t imageIndex) {
+    inline vk::Result PlatformSwapchain::Present(const vk::SharedQueue &queue, uint32_t imageIndex) {
         vk::SwapchainKHR rawSwapchain = mSwapchain.get();
-        vk::Semaphore waitSemaphores[] = { mRenderCompleteSemaphores[imageIndex].get() };
+        vk::Semaphore waitSemaphores[] = {mRenderCompleteSemaphores[imageIndex].get()};
 
         vk::PresentInfoKHR presentInfo;
         presentInfo.waitSemaphoreCount = 1;
@@ -266,13 +269,12 @@ namespace Engine {
     }
 
     inline PlatformSwapchain PlatformSwapchain::CreateSwapchainInternal(
-        SDL_Window* window,
-        const vk::SharedSurfaceKHR& platformSurface,
-        const vk::SharedPhysicalDevice& physicalDevice,
-        const vk::SharedDevice& device,
-        const nvrhi::vulkan::DeviceHandle& nvrhiDevice,
+        SDL_Window *window,
+        const vk::SharedSurfaceKHR &platformSurface,
+        const vk::SharedPhysicalDevice &physicalDevice,
+        const vk::SharedDevice &device,
+        const nvrhi::vulkan::DeviceHandle &nvrhiDevice,
         vk::SwapchainKHR oldSwapchain) {
-
         vk::SurfaceCapabilitiesKHR capabilities = physicalDevice.get().getSurfaceCapabilitiesKHR(platformSurface.get());
 
         int width, height;
@@ -282,18 +284,18 @@ namespace Engine {
                                        capabilities.maxImageCount > 0 ? capabilities.maxImageCount : UINT32_MAX);
 
         vk::SwapchainCreateInfoKHR swapchainCreationInfo = vk::SwapchainCreateInfoKHR()
-            .setSurface(platformSurface.get())
-            .setMinImageCount(imageCount)
-            .setImageFormat(vk::Format::eB8G8R8A8Unorm)  // More common format
-            .setImageColorSpace(vk::ColorSpaceKHR::eSrgbNonlinear)
-            .setImageExtent(vk::Extent2D(static_cast<uint32_t>(width), static_cast<uint32_t>(height)))
-            .setImageArrayLayers(1)
-            .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst)
-            .setPreTransform(capabilities.currentTransform)
-            .setCompositeAlpha(vk::CompositeAlphaFlagBitsKHR::eOpaque)
-            .setPresentMode(vk::PresentModeKHR::eFifoRelaxed)
-            .setClipped(vk::True)
-            .setOldSwapchain(oldSwapchain);
+                .setSurface(platformSurface.get())
+                .setMinImageCount(imageCount)
+                .setImageFormat(vk::Format::eB8G8R8A8Unorm) // More common format
+                .setImageColorSpace(vk::ColorSpaceKHR::eSrgbNonlinear)
+                .setImageExtent(vk::Extent2D(static_cast<uint32_t>(width), static_cast<uint32_t>(height)))
+                .setImageArrayLayers(1)
+                .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst)
+                .setPreTransform(capabilities.currentTransform)
+                .setCompositeAlpha(vk::CompositeAlphaFlagBitsKHR::eOpaque)
+                .setPresentMode(vk::PresentModeKHR::eFifoRelaxed)
+                .setClipped(vk::True)
+                .setOldSwapchain(oldSwapchain);
 
         vk::SharedSwapchainKHR swapchain(
             device.get().createSwapchainKHR(swapchainCreationInfo),
@@ -302,11 +304,11 @@ namespace Engine {
 
         // Retrieve swapchain images
         std::vector<vk::SharedImage> sharedImages =
-            device.get().getSwapchainImagesKHR(swapchain.get())
-            | std::views::transform([&device](const vk::Image& img) {
-                return vk::SharedImage(img, device, vk::SwapchainOwns::yes);
-            })
-            | std::ranges::to<std::vector<vk::SharedImage>>();
+                device.get().getSwapchainImagesKHR(swapchain.get())
+                | std::views::transform([&device](const vk::Image &img) {
+                    return vk::SharedImage(img, device, vk::SwapchainOwns::yes);
+                })
+                | std::ranges::to<std::vector<vk::SharedImage>>();
 
         // Create backbuffers and framebuffers
         std::vector<nvrhi::TextureHandle> backBuffers;
@@ -314,16 +316,16 @@ namespace Engine {
         backBuffers.reserve(sharedImages.size());
         framebuffers.reserve(sharedImages.size());
 
-        for (const auto& img : sharedImages) {
+        for (const auto &img: sharedImages) {
             auto textureDesc = nvrhi::TextureDesc()
-                .setDimension(nvrhi::TextureDimension::Texture2D)
-                .setFormat(nvrhi::Format::BGRA8_UNORM)
-                .setWidth(static_cast<uint32_t>(width))
-                .setHeight(static_cast<uint32_t>(height))
-                .setIsRenderTarget(true)
-                .setDebugName("BackBuffer")
-                .setInitialState(nvrhi::ResourceStates::Present)
-                .setKeepInitialState(true);
+                    .setDimension(nvrhi::TextureDimension::Texture2D)
+                    .setFormat(nvrhi::Format::BGRA8_UNORM)
+                    .setWidth(static_cast<uint32_t>(width))
+                    .setHeight(static_cast<uint32_t>(height))
+                    .setIsRenderTarget(true)
+                    .setDebugName("BackBuffer")
+                    .setInitialState(nvrhi::ResourceStates::Present)
+                    .setKeepInitialState(true);
 
             nvrhi::TextureHandle handle = nvrhiDevice->createHandleForNativeTexture(
                 nvrhi::ObjectTypes::VK_Image,
@@ -348,7 +350,7 @@ namespace Engine {
 
         PlatformSwapchain result;
         result.mSwapchain = std::move(swapchain);
-        result.mDevice = device;  // Save device reference for acquire/present operations
+        result.mDevice = device; // Save device reference for acquire/present operations
         result.mSwapchainImages = std::move(sharedImages);
         result.mBackBuffers = std::move(backBuffers);
         result.mFramebuffers = std::move(framebuffers);

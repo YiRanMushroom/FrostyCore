@@ -84,15 +84,15 @@ Engine {
         }
     };
 
-    export CPUSimpleImage LoadImageFromFile(const std::filesystem::path& filePath) {
+    export CPUSimpleImage LoadImageFromFile(const std::filesystem::path &filePath) {
         int width, height, channels;
-        stbi_uc* imgData = stbi_load(filePath.string().c_str(), &width, &height, &channels, 4);
+        stbi_uc *imgData = stbi_load(filePath.string().c_str(), &width, &height, &channels, 4);
         if (!imgData) {
             throw std::runtime_error("Failed to load image: " + filePath.string());
         }
 
-        auto data = std::shared_ptr<uint32_t[]>(reinterpret_cast<uint32_t*>(imgData), [](uint32_t* p) {
-            stbi_image_free(reinterpret_cast<stbi_uc*>(p));
+        auto data = std::shared_ptr<uint32_t[]>(reinterpret_cast<uint32_t *>(imgData), [](uint32_t *p) {
+            stbi_image_free(reinterpret_cast<stbi_uc *>(p));
         });
 
         return CPUSimpleImage{
@@ -102,7 +102,7 @@ Engine {
         };
     }
 
-    export std::future<CPUSimpleImage> LoadImageFromFileAsync(const std::filesystem::path& filePath) {
+    export std::future<CPUSimpleImage> LoadImageFromFileAsync(const std::filesystem::path &filePath) {
         return std::async(std::launch::async, [filePath]() {
             return LoadImageFromFile(filePath);
         });

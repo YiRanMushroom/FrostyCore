@@ -4,16 +4,17 @@ import Vendor.ApplicationAPI;
 import Core.Prelude;
 import Render.GeneratedShaders;
 
-namespace Engine {
-    FramebufferPresenter::FramebufferPresenter(nvrhi::IDevice* device,
-                                               const nvrhi::FramebufferInfo& targetFramebufferInfo)
+namespace
+Engine {
+    FramebufferPresenter::FramebufferPresenter(nvrhi::IDevice *device,
+                                               const nvrhi::FramebufferInfo &targetFramebufferInfo)
         : mDevice(device) {
         CreateResources(targetFramebufferInfo);
     }
 
-    void FramebufferPresenter::Present(nvrhi::ICommandList* commandList,
-                                       nvrhi::ITexture* sourceTexture,
-                                       nvrhi::IFramebuffer* targetFramebuffer) {
+    void FramebufferPresenter::Present(nvrhi::ICommandList *commandList,
+                                       nvrhi::ITexture *sourceTexture,
+                                       nvrhi::IFramebuffer *targetFramebuffer) {
         nvrhi::BindingSetDesc setDesc;
         setDesc.bindings = {
             nvrhi::BindingSetItem::Texture_SRV(0, sourceTexture),
@@ -34,7 +35,7 @@ namespace Engine {
         commandList->draw(nvrhi::DrawArguments().setVertexCount(3));
     }
 
-    void FramebufferPresenter::CreateResources(const nvrhi::FramebufferInfo& targetFramebufferInfo) {
+    void FramebufferPresenter::CreateResources(const nvrhi::FramebufferInfo &targetFramebufferInfo) {
         mSampler = mDevice->createSampler(nvrhi::SamplerDesc()
             .setAllAddressModes(nvrhi::SamplerAddressMode::Clamp)
             .setAllFilters(true));
