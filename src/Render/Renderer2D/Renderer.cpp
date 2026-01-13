@@ -635,14 +635,21 @@ Engine {
         float halfVisibleWidth = static_cast<float>(mOutputSize.x) / (2.0f * uniformScale);
         float halfVisibleHeight = static_cast<float>(mOutputSize.y) / (2.0f * uniformScale);
 
-        mViewProjectionMatrix = glm::ortho(
-            -halfVisibleWidth, // Left
-            halfVisibleWidth, // Right
-            halfVisibleHeight, // Bottom
-            -halfVisibleHeight, // Top
-            -1.0f, // zNear
-            1.0f // zFar
-        );
+        glm::mat4 projection = glm::ortho(-halfVisibleWidth, halfVisibleWidth,
+            -halfVisibleHeight, halfVisibleHeight, -1.f, 1.f);
+
+        // Now this projection is in Vulkan NDC space, we need to convert it to OpenGL NDC space
+        // to account for nvrhi using OpenGL/DirectX style NDC with Y up
+        // constexpr glm::mat4 adaptNDC = glm::mat4(
+        //     -1.0f,  0.0f, 0.0f, 0.0f,
+        //      0.0f, -1.0f, 0.0f, 0.0f,
+        //      0.0f,  0.0f, 1.0f, 0.0f,
+        //      0.0f,  0.0f, 0.0f, 1.0f
+        // );
+
+        // mViewProjectionMatrix = adaptNDC * projection;
+
+        mViewProjectionMatrix = projection;
     }
 
     nvrhi::ITexture *Renderer2D::GetTexture() const {

@@ -1,9 +1,5 @@
 cbuffer GlobalConstants : 
-register (b0
-,
-space0
-)
- {
+register (b0, space0) {
     float4x4 u_ViewProjectionMatrix;
 };
 

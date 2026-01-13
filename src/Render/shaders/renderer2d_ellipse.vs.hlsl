@@ -1,9 +1,4 @@
-cbuffer GlobalConstants : 
-register (b0
-,
-space0
-)
- {
+cbuffer GlobalConstants : register (b0, space0) {
     float4x4 u_ViewProjectionMatrix;
 };
 
@@ -35,11 +30,7 @@ struct PSInput {
     nointerpolation int clipRegionId: CLIP_REGION_ID;
 };
 
-StructuredBuffer<EllipseShapeData> u_ShapeBuffer : 
-register (t0
-,
-space0
-);
+StructuredBuffer<EllipseShapeData> u_ShapeBuffer : register (t0, space0);
 
 static const float2 kQuadVertices[6] = {
     float2(-1.0, -1.0), float2(1.0, -1.0), float2(-1.0, 1.0), // Triangle 1

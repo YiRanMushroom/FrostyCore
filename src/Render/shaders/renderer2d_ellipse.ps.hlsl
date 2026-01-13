@@ -1,13 +1,5 @@
-Texture2D u_Textures[] : 
-register (t0
-,
-space1
-);
-SamplerState u_Sampler : 
-register (s0
-,
-space0
-);
+Texture2D u_Textures[] : register (t0, space1);
+SamplerState u_Sampler : register (s0, space0);
 
 struct ClipRegion {
     float2 points[4];
@@ -15,11 +7,7 @@ struct ClipRegion {
     uint clipMode;
 };
 
-StructuredBuffer<ClipRegion> u_ClipBuffer : 
-register (t1
-,
-space0
-);
+StructuredBuffer<ClipRegion> u_ClipBuffer : register (t1, space0);
 
 static const float PI = 3.14159265359;
 static const float TWO_PI = 6.28318530718;
@@ -97,8 +85,6 @@ float4 main(PSInput input) : SV_TARGET{
             float2 clipPoints[4];
             for (uint i = 0; i < 4; ++i) {
                 clipPoints[i] = (i < clipRegion.pointCount) ? clipRegion.points[i] : float2(0, 0);
-            
-            
             }
 
             bool inside = isPointInPolygon(input.worldPos, clipPoints, clipRegion.pointCount);
@@ -106,12 +92,8 @@ float4 main(PSInput input) : SV_TARGET{
             // clipMode: 0 = show inside (discard outside), 1 = show outside (discard inside)
             if (clipRegion.clipMode == 0 && !inside) {
                 discard;
-            
-            
-            }else if (clipRegion.clipMode == 1 && inside) {
+            } else if (clipRegion.clipMode == 1 && inside) {
                 discard;
-            
-            
             }
         }
     }
@@ -153,8 +135,6 @@ float4 main(PSInput input) : SV_TARGET{
         float2 innerRadii = input.radii * input.innerScale;
         float innerDist = ellipseSDF(localPos, innerRadii);
         alpha *= smoothstep(-fw, fw, innerDist);
-    
-    
     }
 
     float angleDiff = abs(input.endAngle - input.startAngle);
@@ -171,21 +151,15 @@ float4 main(PSInput input) : SV_TARGET{
             if (angle < start && angle > end) {
                 alpha *= smoothstep(0.0, angleSoftness, min(start - angle, angle - end));
                 alpha = 0.0;
-            
-            
             }
         } else {
             if (angle < start) {
                 alpha *= smoothstep(0.0, angleSoftness, start - angle);
                 alpha = 0.0;
-            
-            
             }
             if (angle > end) {
                 alpha *= smoothstep(0.0, angleSoftness, angle - end);
                 alpha = 0.0;
-            
-            
             }
         }
     }
@@ -196,19 +170,13 @@ float4 main(PSInput input) : SV_TARGET{
         float2 uv = localPos / (input.radii * 2.0) + 0.5;
         float4 sampled = u_Textures[NonUniformResourceIndex(input.textureIndex)].Sample(u_Sampler, uv);
         outColor *= sampled;
-    
-    
     }
 
     outColor.a *= alpha;
 
     if (outColor.a < 0.001) {
         discard;
-    
-    
     }
 
     return outColor;
-
-
 }

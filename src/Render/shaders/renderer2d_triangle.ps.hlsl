@@ -1,18 +1,6 @@
-Texture2D u_Textures[] : 
-register (t0
-,
-space1
-);
-SamplerState u_TextureSamplier : 
-register (s0
-,
-space0
-);
-SamplerState u_FontSamplier : 
-register (s1
-,
-space0
-);
+Texture2D u_Textures[] : register (t0, space1);
+SamplerState u_TextureSamplier : register (s0, space0);
+SamplerState u_FontSamplier : register (s1, space0);
 
 struct ClipRegion {
     float2 points[4];
@@ -20,11 +8,7 @@ struct ClipRegion {
     uint clipMode;
 };
 
-StructuredBuffer<ClipRegion> u_ClipBuffer : 
-register (t1
-,
-space0
-);
+StructuredBuffer<ClipRegion> u_ClipBuffer : register (t1, space0);
 
 struct PSInput {
     float4 position: SV_Position;
@@ -91,14 +75,10 @@ float4 main(PSInput input) : SV_Target{
             float opacity = clamp(screenPxDistance + 0.5, 0.0, 1.0);
 
             sampledColor = float4(1.0, 1.0, 1.0, opacity);
-        
-        
         }
         else { // Standard Texture Mode
             sampledColor = u_Textures[NonUniformResourceIndex(input.textureIndex)].SampleLevel(
                 u_TextureSamplier, input.texCoord, 0);
-        
-        
         }
     }
 
@@ -108,11 +88,7 @@ float4 main(PSInput input) : SV_Target{
     // Alpha Test: discard fragments that are nearly transparent
     if (outColor.a < 0.001f) {
         discard;
-    
-    
     }
 
     return outColor;
-
-
 }

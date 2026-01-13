@@ -1,9 +1,4 @@
-cbuffer GlobalConstants : 
-register (b0
-,
-space0
-)
- {
+cbuffer GlobalConstants : register (b0, space0) {
     float4x4 u_ViewProjectionMatrix;
 };
 
@@ -33,11 +28,7 @@ struct PSInput {
     nointerpolation uint mode: RENDER_MODE;
 };
 
-StructuredBuffer<SpriteData> u_SpriteData : 
-register (t0
-,
-space0
-);
+StructuredBuffer<SpriteData> u_SpriteData : register (t0, space0);
 
 PSInput main(VSInput vertexInput) {
     PSInput pixelInput;
