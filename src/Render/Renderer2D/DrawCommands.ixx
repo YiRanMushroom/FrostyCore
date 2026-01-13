@@ -9,7 +9,7 @@ import Core.Prelude;
 
 namespace
 Engine {
-    struct DrawCommand {};
+    export struct DrawCommand {};
 
     export class TriangleDrawCommand : public virtual DrawCommand {
     public:
