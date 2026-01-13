@@ -8,52 +8,46 @@ namespace
 Engine {
         EllipseRenderingData EllipseRenderingData::Circle(const glm::vec2 &center, float radius,
                                                       const glm::u8vec4 &color, int depth,
-                                                      const ClipRegion *clip) {
+                                                      int clipRegionId) {
         EllipseRenderingData data;
         data.Center = center;
         data.Radii = glm::vec2(radius, radius);
         data.TintColor = color;
         data.Depth = depth;
-        if (clip != nullptr) {
-            data.Clip = *clip;
-        }
+        data.ClipRegionId = clipRegionId;
         return data;
     }
 
     EllipseRenderingData EllipseRenderingData::Ellipse(const glm::vec2 &center, const glm::vec2 &radii,
                                                        float rotation, const glm::u8vec4 &color, int depth,
-                                                       const ClipRegion *clip) {
+                                                       int clipRegionId) {
         EllipseRenderingData data;
         data.Center = center;
         data.Radii = radii;
         data.Rotation = rotation;
         data.TintColor = color;
         data.Depth = depth;
-        if (clip != nullptr) {
-            data.Clip = *clip;
-        }
+        data.ClipRegionId = clipRegionId;
         return data;
     }
 
     EllipseRenderingData EllipseRenderingData::Ring(const glm::vec2 &center, float outerRadius, float innerRadius,
                                                     const glm::u8vec4 &color, int depth,
-                                                    const ClipRegion *clip) {
+                                                    int clipRegionId) {
         EllipseRenderingData data;
         data.Center = center;
         data.Radii = glm::vec2(outerRadius, outerRadius);
         data.InnerScale = innerRadius / outerRadius;
         data.TintColor = color;
         data.Depth = depth;
-        if (clip != nullptr) {
-            data.Clip = *clip;
-        }
+        data.ClipRegionId = clipRegionId;
         return data;
     }
 
     EllipseRenderingData EllipseRenderingData::Sector(const glm::vec2 &center, float radius,
                                                       float startAngle, float endAngle,
                                                       const glm::u8vec4 &color, int textureIndex, int depth,
-                                                      const ClipRegion *clip) {
+                                                      int clipRegionId) {
         EllipseRenderingData data;
         data.Center = center;
         data.Radii = glm::vec2(radius, radius);
@@ -62,16 +56,14 @@ Engine {
         data.VirtualTextureID = textureIndex;
         data.TintColor = color;
         data.Depth = depth;
-        if (clip != nullptr) {
-            data.Clip = *clip;
-        }
+        data.ClipRegionId = clipRegionId;
         return data;
     }
 
     EllipseRenderingData EllipseRenderingData::Arc(const glm::vec2 &center, float radius, float thickness,
                                                    float startAngle, float endAngle,
                                                    const glm::u8vec4 &color, int depth,
-                                                   const ClipRegion *clip) {
+                                                   int clipRegionId) {
         EllipseRenderingData data;
         data.Center = center;
         data.Radii = glm::vec2(radius, radius);
@@ -80,16 +72,14 @@ Engine {
         data.EndAngle = endAngle;
         data.TintColor = color;
         data.Depth = depth;
-        if (clip != nullptr) {
-            data.Clip = *clip;
-        }
+        data.ClipRegionId = clipRegionId;
         return data;
     }
 
     EllipseRenderingData EllipseRenderingData::EllipseSector(const glm::vec2 &center, const glm::vec2 &radii,
                                                              float rotation, float startAngle, float endAngle,
                                                              const glm::u8vec4 &color, int textureIndex, int depth,
-                                                             const ClipRegion *clip) {
+                                                             int clipRegionId) {
         EllipseRenderingData data;
         data.Center = center;
         data.Radii = radii;
@@ -99,9 +89,7 @@ Engine {
         data.VirtualTextureID = textureIndex;
         data.TintColor = color;
         data.Depth = depth;
-        if (clip != nullptr) {
-            data.Clip = *clip;
-        }
+        data.ClipRegionId = clipRegionId;
         return data;
     }
 
@@ -109,7 +97,7 @@ Engine {
                                                           float rotation, float thickness,
                                                           float startAngle, float endAngle,
                                                           const glm::u8vec4 &color, int depth,
-                                                          const ClipRegion *clip) {
+                                                          int clipRegionId) {
         EllipseRenderingData data;
         data.Center = center;
         data.Radii = radii;
@@ -120,15 +108,12 @@ Engine {
         data.EndAngle = endAngle;
         data.TintColor = color;
         data.Depth = depth;
-        if (clip != nullptr) {
-            data.Clip = *clip;
-        }
+        data.ClipRegionId = clipRegionId;
         return data;
     }
 
     void EllipseRenderingSubmissionData::Clear() {
         ShapeData.clear();
-        ClipData.clear();
     }
 
     void EllipseRenderingCommandList::Clear() {
@@ -156,7 +141,6 @@ Engine {
         if (lastFrameSubmissionIt != mLastFrameCache.end()) {
             currentSubmission = std::move(*lastFrameSubmissionIt);
             currentSubmission.ShapeData.clear();
-            currentSubmission.ClipData.clear();
             ++lastFrameSubmissionIt;
         }
 
@@ -169,7 +153,6 @@ Engine {
                 } else {
                     currentSubmission = std::move(*lastFrameSubmissionIt);
                     currentSubmission.ShapeData.clear();
-                    currentSubmission.ClipData.clear();
                     ++lastFrameSubmissionIt;
                 }
             }
@@ -180,12 +163,8 @@ Engine {
                 finalizeSubmission();
             }
 
-            // Handle clip region
-            int32_t clipIndex = -1;
-            if (instance.Clip.has_value()) {
-                clipIndex = static_cast<int32_t>(currentSubmission.ClipData.size());
-                currentSubmission.ClipData.push_back(instance.Clip.value());
-            }
+            // ClipRegionId is already set correctly in the instance
+            int32_t clipIndex = instance.ClipRegionId;
 
             EllipseShapeData shapeData;
             shapeData.Center = instance.Center;
@@ -197,7 +176,7 @@ Engine {
             shapeData.TintColor = static_cast<uint32_t>(instance.TintColor.r) << 24 | instance.TintColor.g << 16 | instance.TintColor.b << 8 | instance.TintColor.a;
             shapeData.TextureIndex = instance.VirtualTextureID;
             shapeData.EdgeSoftness = instance.EdgeSoftness;
-            shapeData.ClipIndex = clipIndex;
+            shapeData.ClipRegionId = clipIndex;
 
             currentSubmission.ShapeData.push_back(shapeData);
         }

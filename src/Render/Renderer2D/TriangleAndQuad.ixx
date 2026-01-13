@@ -34,7 +34,7 @@ Engine {
         int VirtualTextureID;
         glm::u8vec4 TintColor;
         int Depth;
-        std::optional<ClipRegion> Clip;
+        int ClipRegionId;
 
         InstanceRenderingMode RenderingMode = InstanceRenderingMode::Texture;
         float MSDFPixelRange = 4.0f;
@@ -43,14 +43,14 @@ Engine {
                                               const glm::vec2 &p1, const glm::vec2 &uv1,
                                               const glm::vec2 &p2, const glm::vec2 &uv2,
                                               int textureIndex, glm::u8vec4 tintColor, int depth = 0,
-                                              const ClipRegion *clip = nullptr);
+                                              int clipRegionId = -1);
 
         static TriangleRenderingData Quad(const glm::vec2 &p0, const glm::vec2 &uv0,
                                           const glm::vec2 &p1, const glm::vec2 &uv1,
                                           const glm::vec2 &p2, const glm::vec2 &uv2,
                                           const glm::vec2 &p3, const glm::vec2 &uv3,
                                           int virtualTextureID, glm::u8vec4 tintColor, int depth = 0,
-                                          const ClipRegion *clip = nullptr);
+                                          int clipRegionId = -1);
 
         static TriangleRenderingData QuadFont(const glm::vec2 &p0, const glm::vec2 &uv0,
                                               const glm::vec2 &p1, const glm::vec2 &uv1,
@@ -58,14 +58,13 @@ Engine {
                                               const glm::vec2 &p3, const glm::vec2 &uv3,
                                               int virtualTextureID, glm::u8vec4 tintColor,
                                               float msdfPixelRange, int depth = 0,
-                                              const ClipRegion *clip = nullptr);
+                                              int clipRegionId = -1);
     };
 
     struct TriangleRenderingSubmissionData {
         std::vector<TriangleVertexData> VertexData;
         std::vector<uint32_t> IndexData;
         std::vector<TriangleInstanceData> InstanceData;
-        std::vector<ClipRegion> ClipData; // Index 0 is reserved for "no clip"
 
         TriangleRenderingSubmissionData() = default;
 
@@ -85,14 +84,14 @@ Engine {
                          const glm::vec2 &p1, const glm::vec2 &uv1,
                          const glm::vec2 &p2, const glm::vec2 &uv2,
                          int virtualTextureID, glm::u8vec4 tintColor, int depth,
-                         const ClipRegion *clip = nullptr);
+                         int clipRegionId = -1);
 
         void AddQuad(const glm::vec2 &p0, const glm::vec2 &uv0,
                      const glm::vec2 &p1, const glm::vec2 &uv1,
                      const glm::vec2 &p2, const glm::vec2 &uv2,
                      const glm::vec2 &p3, const glm::vec2 &uv3,
                      int virtualTextureID, glm::u8vec4 tintColor, int depth,
-                     const ClipRegion *clip = nullptr);
+                     int clipRegionId = -1);
 
         void AddQuadFont(const glm::vec2 &p0, const glm::vec2 &uv0,
                          const glm::vec2 &p1, const glm::vec2 &uv1,
@@ -100,7 +99,7 @@ Engine {
                          const glm::vec2 &p3, const glm::vec2 &uv3,
                          int virtualTextureID, glm::u8vec4 tintColor,
                          float msdfPixelRange, int depth,
-                         const ClipRegion *clip = nullptr);
+                         int clipRegionId = -1);
 
         std::vector<TriangleRenderingSubmissionData> RecordRendererSubmissionData(size_t triangleBufferInstanceSizeMax);
 
@@ -114,7 +113,6 @@ Engine {
         nvrhi::BufferHandle VertexBuffer;
         nvrhi::BufferHandle IndexBuffer;
         nvrhi::BufferHandle InstanceBuffer;
-        nvrhi::BufferHandle ClipBuffer; // ClipRegion buffer
         nvrhi::BindingSetHandle mBindingSetSpace0;
     };
 }

@@ -17,7 +17,7 @@ Engine {
         uint32_t TintColor;
         int32_t TextureIndex;
         float EdgeSoftness;
-        int32_t ClipIndex; // < 0 means no clipping
+        int32_t ClipRegionId; // -1 means no clipping
     };
 
     export struct EllipseRenderingData {
@@ -31,45 +31,44 @@ Engine {
         glm::u8vec4 TintColor = glm::u8vec4(255u, 255u, 255u, 255u);
         float EdgeSoftness = 1.0f;
         int Depth = 0;
-        std::optional<ClipRegion> Clip;
+        int ClipRegionId = -1;
 
         static EllipseRenderingData Circle(const glm::vec2 &center, float radius,
                                            const glm::u8vec4 &color, int depth = 0,
-                                           const ClipRegion *clip = nullptr);
+                                           int clipRegionId = -1);
 
         static EllipseRenderingData Ellipse(const glm::vec2 &center, const glm::vec2 &radii,
                                             float rotation, const glm::u8vec4 &color, int depth = 0,
-                                            const ClipRegion *clip = nullptr);
+                                            int clipRegionId = -1);
 
         static EllipseRenderingData Ring(const glm::vec2 &center, float outerRadius, float innerRadius,
                                          const glm::u8vec4 &color, int depth = 0,
-                                         const ClipRegion *clip = nullptr);
+                                         int clipRegionId = -1);
 
         static EllipseRenderingData Sector(const glm::vec2 &center, float radius,
                                            float startAngle, float endAngle,
                                            const glm::u8vec4 &color, int textureIndex = -1, int depth = 0,
-                                           const ClipRegion *clip = nullptr);
+                                           int clipRegionId = -1);
 
         static EllipseRenderingData Arc(const glm::vec2 &center, float radius, float thickness,
                                         float startAngle, float endAngle,
                                         const glm::u8vec4 &color, int depth = 0,
-                                        const ClipRegion *clip = nullptr);
+                                        int clipRegionId = -1);
 
         static EllipseRenderingData EllipseSector(const glm::vec2 &center, const glm::vec2 &radii,
                                                   float rotation, float startAngle, float endAngle,
                                                   const glm::u8vec4 &color, int textureIndex = -1, int depth = 0,
-                                                  const ClipRegion *clip = nullptr);
+                                                  int clipRegionId = -1);
 
         static EllipseRenderingData EllipseArc(const glm::vec2 &center, const glm::vec2 &radii,
                                                float rotation, float thickness,
                                                float startAngle, float endAngle,
                                                const glm::u8vec4 &color, int depth = 0,
-                                               const ClipRegion *clip = nullptr);
+                                               int clipRegionId = -1);
     };
 
     struct EllipseRenderingSubmissionData {
         std::vector<EllipseShapeData> ShapeData;
-        std::vector<ClipRegion> ClipData; // Index 0 is reserved for "no clip"
 
         EllipseRenderingSubmissionData() = default;
 
@@ -97,7 +96,6 @@ Engine {
 
     struct EllipseBatchRenderingResources {
         nvrhi::BufferHandle ShapeBuffer;
-        nvrhi::BufferHandle ClipBuffer; // ClipRegion buffer
         nvrhi::BindingSetHandle mBindingSetSpace0;
     };
 }

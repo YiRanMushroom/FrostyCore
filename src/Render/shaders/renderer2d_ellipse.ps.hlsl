@@ -1,6 +1,14 @@
 Texture2D u_Textures[] : register(t0, space1);
 SamplerState u_Sampler  : register(s0, space0);
 
+struct ClipRegion {
+    float2 points[4];
+    uint pointCount;
+    uint clipMode;
+};
+
+StructuredBuffer<ClipRegion> u_ClipBuffer : register(t1, space0);
+
 static const float PI = 3.14159265359;
 static const float TWO_PI = 6.28318530718;
 
@@ -33,9 +41,7 @@ struct PSInput {
     nointerpolation float endAngle : ANGLE_END;
     nointerpolation int textureIndex : TEXCOORD1;
     nointerpolation float edgeSoftness : EDGE_SOFTNESS;
-    nointerpolation float2 clipPoints[4] : CLIP_POINTS;
-    nointerpolation uint clipPointCount : CLIP_COUNT;
-    nointerpolation uint clipMode : CLIP_MODE;
+    nointerpolation int clipRegionId : CLIP_REGION_ID;
 };
 
 float ellipseSDF(float2 p, float2 radii) {
@@ -73,14 +79,22 @@ float checkAngleInSector(float angle, float startAngle, float endAngle, float so
 
 float4 main(PSInput input) : SV_TARGET {
     // Perform clipping test if enabled (in virtual/world space)
-    if (input.clipPointCount > 0) {
-        bool inside = isPointInPolygon(input.worldPos, input.clipPoints, input.clipPointCount);
+    if (input.clipRegionId >= 0) {
+        ClipRegion clipRegion = u_ClipBuffer[input.clipRegionId];
+        if (clipRegion.pointCount > 0) {
+            float2 clipPoints[4];
+            for (uint i = 0; i < 4; ++i) {
+                clipPoints[i] = (i < clipRegion.pointCount) ? clipRegion.points[i] : float2(0, 0);
+            }
 
-        // clipMode: 0 = show inside (discard outside), 1 = show outside (discard inside)
-        if (input.clipMode == 0 && !inside) {
-            discard;
-        } else if (input.clipMode == 1 && inside) {
-            discard;
+            bool inside = isPointInPolygon(input.worldPos, clipPoints, clipRegion.pointCount);
+
+            // clipMode: 0 = show inside (discard outside), 1 = show outside (discard inside)
+            if (clipRegion.clipMode == 0 && !inside) {
+                discard;
+            } else if (clipRegion.clipMode == 1 && inside) {
+                discard;
+            }
         }
     }
 

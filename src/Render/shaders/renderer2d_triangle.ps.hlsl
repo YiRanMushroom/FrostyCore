@@ -2,15 +2,21 @@ Texture2D u_Textures[]          : register(t0, space1);
 SamplerState u_TextureSamplier  : register(s0, space0);
 SamplerState u_FontSamplier     : register(s1, space0);
 
+struct ClipRegion {
+    float2 points[4];
+    uint pointCount;
+    uint clipMode;
+};
+
+StructuredBuffer<ClipRegion> u_ClipBuffer : register(t1, space0);
+
 struct PSInput {
     float4 position                 : SV_Position;
     float2 texCoord                 : TEXCOORD0;
     float4 tintColor                : COLOR0;
     nointerpolation int textureIndex : TEXCOORD1;
     float2 worldPos                 : TEXCOORD2;
-    nointerpolation float2 clipPoints[4] : CLIP_POINTS;
-    nointerpolation uint clipPointCount : CLIP_COUNT;
-    nointerpolation uint clipMode   : CLIP_MODE;
+    nointerpolation int clipRegionId : CLIP_REGION_ID;
     nointerpolation float pxRange   : PX_RANGE;
     nointerpolation uint mode       : RENDER_MODE;
 };
@@ -33,11 +39,19 @@ bool isPointInPolygon(float2 p, float2 points[4], uint count) {
 }
 
 float4 main(PSInput input) : SV_Target {
-    // 1. Clipping Logic (Keep it as is, but be careful of performance)
-    if (input.clipPointCount > 0) {
-        bool inside = isPointInPolygon(input.worldPos, input.clipPoints, input.clipPointCount);
-        if ((input.clipMode == 0 && !inside) || (input.clipMode == 1 && inside)) {
-            discard;
+    // 1. Clipping Logic - Load clip region in pixel shader
+    if (input.clipRegionId >= 0) {
+        ClipRegion clipRegion = u_ClipBuffer[input.clipRegionId];
+        if (clipRegion.pointCount > 0) {
+            float2 clipPoints[4];
+            for (uint i = 0; i < 4; ++i) {
+                clipPoints[i] = (i < clipRegion.pointCount) ? clipRegion.points[i] : float2(0, 0);
+            }
+
+            bool inside = isPointInPolygon(input.worldPos, clipPoints, clipRegion.pointCount);
+            if ((clipRegion.clipMode == 0 && !inside) || (clipRegion.clipMode == 1 && inside)) {
+                discard;
+            }
         }
     }
 

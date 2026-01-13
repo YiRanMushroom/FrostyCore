@@ -7,6 +7,7 @@ namespace Engine {
     export struct Renderer2DDescriptor;
     export enum class ClipMode : uint32_t;
     export struct ClipRegion;
+    export class ClipRegionManager;
 
     struct TriangleVertexData;
     export enum class InstanceRenderingMode : uint32_t;

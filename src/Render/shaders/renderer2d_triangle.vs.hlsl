@@ -11,16 +11,10 @@ struct VSInput {
 struct SpriteData {
     uint tintColor;
     int textureIndex;
-    int clipIndex;
+    int clipRegionId;
     uint mode;
     float pxRange;
     float padding[3];
-};
-
-struct ClipRegion {
-    float2 points[4];
-    uint pointCount;
-    uint clipMode;
 };
 
 struct PSInput {
@@ -29,15 +23,12 @@ struct PSInput {
     float4 tintColor : COLOR0;
     nointerpolation int textureIndex : TEXCOORD1;
     float2 worldPos : TEXCOORD2;
-    nointerpolation float2 clipPoints[4] : CLIP_POINTS;
-    nointerpolation uint clipPointCount : CLIP_COUNT;
-    nointerpolation uint clipMode : CLIP_MODE;
+    nointerpolation int clipRegionId : CLIP_REGION_ID;
     nointerpolation float pxRange : PX_RANGE;
     nointerpolation uint mode : RENDER_MODE;
 };
 
 StructuredBuffer<SpriteData> u_SpriteData : register(t0, space0);
-StructuredBuffer<ClipRegion> u_ClipBuffer : register(t1, space0);
 
 PSInput main(VSInput vertexInput) {
     PSInput pixelInput;
@@ -58,18 +49,7 @@ PSInput main(VSInput vertexInput) {
     pixelInput.worldPos = vertexInput.position;
     pixelInput.mode = sprite.mode;
     pixelInput.pxRange = sprite.pxRange;
-
-    if (sprite.clipIndex >= 0) {
-        ClipRegion clipRegion = u_ClipBuffer[sprite.clipIndex];
-        pixelInput.clipPointCount = clipRegion.pointCount;
-        pixelInput.clipMode = clipRegion.clipMode;
-        for (uint i = 0; i < 4; ++i) {
-            pixelInput.clipPoints[i] = (i < clipRegion.pointCount) ? clipRegion.points[i] : float2(0, 0);
-        }
-    } else {
-        pixelInput.clipPointCount = 0;
-        pixelInput.clipMode = 0;
-    }
+    pixelInput.clipRegionId = sprite.clipRegionId;
 
     return pixelInput;
 }

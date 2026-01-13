@@ -6,5 +6,6 @@ export import :Line;
 export import :Misc;
 export import :Eclipse;
 export import :DrawCommands;
+export import :ClipRegionManager;
 export import :Renderer;
 

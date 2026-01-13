@@ -11,19 +11,6 @@ namespace
 Engine {
     struct DrawCommand {};
 
-    /*
-        glm::mat4x2 Positions;
-        glm::mat4x2 TexCoords;
-        bool IsQuad;
-        int VirtualTextureID;
-        glm::u8vec4 TintColor;
-        int Depth;
-        std::optional<ClipRegion> Clip;
-
-        InstanceRenderingMode RenderingMode = InstanceRenderingMode::Texture;
-        float MSDFPixelRange = 4.0f;
-     */
-
     export class TriangleDrawCommand : public virtual DrawCommand {
     public:
         TriangleDrawCommand() = default;
@@ -87,8 +74,8 @@ Engine {
             return *this;
         }
 
-        TriangleDrawCommand &SetClipRegion(const ClipRegion &clip) {
-            mClip = clip;
+        TriangleDrawCommand &SetClipRegionId(int clipRegionId) {
+            mClipRegionId = clipRegionId;
             return *this;
         }
 
@@ -100,7 +87,7 @@ Engine {
         int mVirtualTextureID;
         glm::u8vec4 mTintColor = glm::u8vec4(0u, 0u, 0u, 255u);
         std::optional<int> mOverrideDepth = std::nullopt;
-        std::optional<ClipRegion> mClip;
+        int mClipRegionId = -1;
     };
 
     export class QuadDrawCommand : public virtual DrawCommand {
@@ -108,9 +95,7 @@ Engine {
         QuadDrawCommand() = default;
 
         QuadDrawCommand &SetPositions(const glm::vec2 &p0,
-                                      const glm::vec2 &p1,
-                                      const glm::vec2 &p2,
-                                      const glm::vec2 &p3) {
+                                      const glm::vec2 &p2) {
             mFirstPoint = p0;
             mSecondPoint = p2;
             return *this;
@@ -166,8 +151,8 @@ Engine {
             return *this;
         }
 
-        QuadDrawCommand &SetClipRegion(const ClipRegion &clip) {
-            mClip = clip;
+        QuadDrawCommand &SetClipRegionId(int clipRegionId) {
+            mClipRegionId = clipRegionId;
             return *this;
         }
 
@@ -177,33 +162,19 @@ Engine {
         glm::vec2 mFirstPoint;
         glm::vec2 mSecondPoint;
 
-        glm::vec2 mFirstUV;
-        glm::vec2 mSecondUV;
+        glm::vec2 mFirstUV = glm::vec2(0.0f, 0.0f);
+        glm::vec2 mSecondUV = glm::vec2(1.0f, 1.0f);
 
         int mVirtualTextureID;
         glm::u8vec4 mTintColor = glm::u8vec4(0u, 0u, 0u, 255u);
         std::optional<int> mOverrideDepth = std::nullopt;
-        std::optional<ClipRegion> mClip;
+        int mClipRegionId = -1;
 
         InstanceRenderingMode mRenderingMode = InstanceRenderingMode::Texture;
         float mMSDFPixelRange;
     };
 
     // No need to provide draw command for line because it is simple enough
-
-    /*
-        glm::vec2 Center;
-        glm::vec2 Radii;
-        float Rotation = 0.0f;
-        float InnerScale = 0.0f;
-        float StartAngle = 0.0f;
-        float EndAngle = 0.0f;
-        int VirtualTextureID = -1;
-        glm::u8vec4 TintColor = glm::u8vec4(255u, 255u, 255u, 255u);
-        float EdgeSoftness = 1.0f;
-        int Depth = 0;
-        std::optional<ClipRegion> Clip;
-     */
 
     // Now we add circular draw command.
     export class CircularDrawCommand : public virtual DrawCommand {
@@ -260,8 +231,8 @@ Engine {
             return *this;
         }
 
-        CircularDrawCommand &SetClipRegion(const ClipRegion &clip) {
-            mClip = clip;
+        CircularDrawCommand &SetClipRegionId(int clipRegionId) {
+            mClipRegionId = clipRegionId;
             return *this;
         }
 
@@ -278,6 +249,6 @@ Engine {
         glm::u8vec4 mTintColor = glm::u8vec4(0u, 0u, 0u, 255u);
         float mEdgeSoftness = 1.0f;
         std::optional<int> mOverrideDepth = 0;
-        std::optional<ClipRegion> mClip;
+        int mClipRegionId = -1;
     };
 }
