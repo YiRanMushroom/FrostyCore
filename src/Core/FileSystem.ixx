@@ -2,10 +2,11 @@ export module Core.FileSystem;
 
 import Core.Prelude;
 import Vendor.PlatformAPI;
+import Core.Coroutine;
 
 namespace
 Engine {
-    export std::future<std::vector<std::filesystem::path>> OpenFileDialogAsync(
+    export Awaitable<std::vector<std::filesystem::path>> OpenFileDialogAsync(
         SDL_Window *parentWindow,
         const std::span<SDL_DialogFileFilter> &filterPatterns) {
         std::promise<std::vector<std::filesystem::path>> *promise = new std::promise<std::vector<
@@ -27,7 +28,9 @@ Engine {
         SDL_ShowOpenFileDialog(callback, promise, parentWindow, filterPatterns.data(),
                                static_cast<int>(filterPatterns.size()), nullptr, true);
 
-        return future;
+        return Engine::AsynchronousOf([future = std::move(future)]() mutable {
+            return future.get();
+        })();
     }
 
     const std::filesystem::path ExecutablePath = std::filesystem::current_path();

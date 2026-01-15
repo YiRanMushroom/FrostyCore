@@ -2,10 +2,11 @@ export module Render.Image;
 import Vendor.GraphicsAPI;
 import "stb_image.h";
 import Core.Prelude;
+import Core.Coroutine;
 
 namespace
 Engine {
-    export struct SimpleGPUImageDescriptor {
+    export struct GPUImageDescriptor {
         uint32_t width{};
         uint32_t height{};
         std::span<const uint32_t> imageData{};
@@ -19,7 +20,7 @@ Engine {
     };
 
     export std::vector<nvrhi::TextureHandle> UploadImagesToGPU(
-        std::span<const SimpleGPUImageDescriptor> descriptors,
+        std::span<const GPUImageDescriptor> descriptors,
         const nvrhi::DeviceHandle &device,
         const nvrhi::CommandListHandle &commandList) {
         std::vector<nvrhi::TextureHandle> textures;
@@ -62,20 +63,20 @@ Engine {
     }
 
     export nvrhi::TextureHandle UploadImageToGPU(
-        const SimpleGPUImageDescriptor &descriptor,
+        const GPUImageDescriptor &descriptor,
         const nvrhi::DeviceHandle &device,
         const nvrhi::CommandListHandle &commandList) {
         auto results = UploadImagesToGPU(std::span{&descriptor, 1}, device, commandList);
         return std::move(results.front());
     }
 
-    export struct CPUSimpleImage {
+    export struct CPUImage {
         uint32_t width{};
         uint32_t height{};
         std::shared_ptr<uint32_t[]> data{};
 
-        SimpleGPUImageDescriptor GetGPUDescriptor(std::string_view debugName = "CPUSimpleImage") const {
-            return SimpleGPUImageDescriptor{
+        GPUImageDescriptor GetGPUDescriptor(std::string_view debugName = "CPUImage") const {
+            return GPUImageDescriptor{
                 .width = width,
                 .height = height,
                 .imageData = std::span<const uint32_t>(data.get(), width * height),
@@ -84,7 +85,7 @@ Engine {
         }
     };
 
-    export CPUSimpleImage LoadImageFromFile(const std::filesystem::path &filePath) {
+    export CPUImage LoadImageFromFile(const std::filesystem::path &filePath) {
         int width, height, channels;
         stbi_uc *imgData = stbi_load(filePath.string().c_str(), &width, &height, &channels, 4);
         if (!imgData) {
@@ -95,16 +96,14 @@ Engine {
             stbi_image_free(reinterpret_cast<stbi_uc *>(p));
         });
 
-        return CPUSimpleImage{
+        return CPUImage{
             .width = static_cast<uint32_t>(width),
             .height = static_cast<uint32_t>(height),
             .data = data
         };
     }
 
-    export std::future<CPUSimpleImage> LoadImageFromFileAsync(const std::filesystem::path &filePath) {
-        return std::async(std::launch::async, [filePath]() {
-            return LoadImageFromFile(filePath);
-        });
+    export Awaitable<CPUImage> LoadImageFromFileAsync(const std::filesystem::path &filePath) {
+        co_return LoadImageFromFile(filePath);
     }
 }
