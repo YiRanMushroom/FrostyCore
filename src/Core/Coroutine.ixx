@@ -58,7 +58,7 @@ Engine {
 
     public:
         StandardThreadPool() {
-            const unsigned int threadCount = std::thread::hardware_concurrency();
+            const unsigned int threadCount = std::max(std::thread::hardware_concurrency(), 4u);
             for (unsigned int i = 0; i < threadCount; ++i) {
                 mWorkers.emplace_back([this] {
                     while (true) {

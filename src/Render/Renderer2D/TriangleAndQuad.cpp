@@ -134,7 +134,7 @@ Engine {
         size_t triangleBufferInstanceSizeMax) {
         std::ranges::sort(Instances, [](const auto &a, const auto &b) {
             if (a.Depth != b.Depth) return a.Depth < b.Depth;
-            if (a.RenderingMode != b.RenderingMode) return a.RenderingMode > b.RenderingMode;
+            if (a.RenderingMode != b.RenderingMode) return a.RenderingMode < b.RenderingMode;
             return a.VirtualTextureID < b.VirtualTextureID;
         });
 
@@ -182,8 +182,6 @@ Engine {
 
             // Fill Instance Data
             auto instanceIndex = static_cast<uint32_t>(currentSubmission.InstanceData.size());
-
-            currentSubmission.InstanceData.reserve(currentSubmission.InstanceData.size());
 
             currentSubmission.InstanceData.push_back({
                 .TintColor = static_cast<uint32_t>(instance.TintColor.r) << 24 | instance.TintColor.g << 16 | instance.
