@@ -547,7 +547,7 @@ Engine {
         }
     }
 
-    void Layer::OnAttach(const std::shared_ptr<Application> &app) {
+    void Layer::OnAttach(const Ref<Application> &app) {
         mApp = app;
     }
 
@@ -560,6 +560,6 @@ Engine {
     }
 
     void Layer::OnDetach() {
-        mApp.reset();
+        mApp.Reset();
     }
 }

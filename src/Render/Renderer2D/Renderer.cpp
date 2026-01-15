@@ -645,7 +645,7 @@ Engine {
         return matrix;
     }
 
-    void Renderer2D::SetTransforms(std::vector<Ref<ITransform>> transforms) {
+    void Renderer2D::SetTransforms(std::vector<Ref<RefTransform>> transforms) {
         mTransforms = std::move(transforms);
     }
 

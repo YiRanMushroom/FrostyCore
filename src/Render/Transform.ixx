@@ -6,7 +6,7 @@ import "glm/gtx/transform.hpp";
 
 namespace
 Engine {
-    export class ITransform : public RefCounted<ITransform> {
+    export class ITransform {
     public:
         virtual ~ITransform() = default;
 
@@ -14,4 +14,9 @@ Engine {
 
         virtual void DoTransform(glm::mat4 &matrix) = 0;
     };
+
+    // export class RefTransform : public ITransform, public Engine::RefCounted<RefTransform> {
+    //
+    // };
+    export using RefTransform = RefInterface<ITransform>;
 }

@@ -11,7 +11,7 @@ namespace
 Engine {
     export struct DrawCommand {};
 
-    export class TriangleDrawCommand : public virtual DrawCommand {
+    export class TriangleDrawCommand : public DrawCommand {
     public:
         TriangleDrawCommand() = default;
 
@@ -90,7 +90,7 @@ Engine {
         int ClipRegionId = -1;
     };
 
-    export class QuadDrawCommand : public virtual DrawCommand {
+    export class QuadDrawCommand : public DrawCommand {
     public:
         QuadDrawCommand() = default;
 
@@ -177,7 +177,7 @@ Engine {
     // No need to provide draw command for line because it is simple enough
 
     // Now we add circular draw command.
-    export class CircularDrawCommand : public virtual DrawCommand {
+    export class CircularDrawCommand : public DrawCommand {
     public:
         CircularDrawCommand() = default;
 

@@ -6,6 +6,7 @@ import Render.Color;
 import Core.Layer;
 import Core.Events;
 import Render.Swapchain;
+import Core.Utilities;
 import "SDL3/SDL.h";
 import "SDL3/SDL_video.h";
 
@@ -13,11 +14,11 @@ namespace
 Engine {
     export class Application;
 
-    export class Layer {
+    export class Layer : public RefCounted<Layer> {
     public:
         virtual ~Layer() = default;
 
-        virtual void OnAttach(const std::shared_ptr<Application> &app);
+        virtual void OnAttach(const Ref<Application> &app);
 
         virtual void OnUpdate(std::chrono::duration<float> deltaTime) {}
 
@@ -37,7 +38,7 @@ Engine {
         virtual void OnDetach();
 
     protected:
-        std::shared_ptr<Application> mApp{};
+        Ref<Application> mApp{};
     };
 }
 
@@ -55,7 +56,7 @@ Engine {
     };
 
     // Application class with all inline implementations
-    class Application : public std::enable_shared_from_this<Application> {
+    class Application : public Engine::RefCounted<Application> {
     public:
         constexpr static size_t MaxFramesInFlight = 3;
 
@@ -207,19 +208,19 @@ Engine {
 
         std::chrono::duration<float> mGCTimeCounter{};
 
-        std::vector<std::shared_ptr<Layer>> mLayers;
+        std::vector<Ref<Layer>> mLayers;
 
         // tasks to execute
         std::vector<std::function<void()>> mDeferredTasks;
 
     public:
-        void PushLayer(const std::shared_ptr<Layer> &layer) {
+        void PushLayer(const Ref<Layer> &layer) {
             mLayers.push_back(layer);
-            layer->OnAttach(shared_from_this());
+            layer->OnAttach(this->RefFromThis());
         }
 
-        std::shared_ptr<Layer> PopLayer(std::weak_ptr<Layer> layer) {
-            if (auto locked = layer.lock()) {
+        Ref<Layer> PopLayer(Weak<Layer> layer) {
+            if (auto locked = layer.Lock()) {
                 std::erase(mLayers, locked);
                 locked->OnDetach();
                 return locked;
@@ -228,19 +229,19 @@ Engine {
         }
 
         template<typename T, typename... Args>
-        std::shared_ptr<T> EmplaceLayer(Args &&... args) {
+        Ref<T> EmplaceLayer(Args &&... args) {
             static_assert(std::is_base_of_v<Layer, T>, "T must be derived from Layer");
-            auto layer = std::make_shared<T>(std::forward<Args>(args)...);
+            auto layer = Engine::MakeRef<T>(std::forward<Args>(args)...);
             PushLayer(layer);
             return layer;
         }
 
-        void TransitionToLayer(std::shared_ptr<Layer> oldLayer, std::shared_ptr<Layer> newLayer) {
+        void TransitionToLayer(Ref<Layer> oldLayer, Ref<Layer> newLayer) {
             for (auto &layer: mLayers) {
                 if (layer == oldLayer) {
                     std::swap(layer, newLayer);
                     oldLayer->OnDetach();
-                    newLayer->OnAttach(shared_from_this());
+                    newLayer->OnAttach(this->RefFromThis());
                     return;
                 }
             }

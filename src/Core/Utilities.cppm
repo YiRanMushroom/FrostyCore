@@ -68,13 +68,25 @@ Engine {
     export template<typename T>
     class Weak;
 
+    template<typename T>
+    using RefCntPtr = isptr::intrusive_shared_ptr<T, isptr::ref_counted_traits>;
+
+    template<typename T>
+    using WeakCntPtr = isptr::ref_counted<T, isptr::ref_counted_flags::provide_weak_references>::weak_ptr;
+
     export template<typename T>
-    class RefCounted : public isptr::ref_counted<T, isptr::ref_counted_flags::provide_weak_references> {
+    class RefCounted : private isptr::ref_counted<T, isptr::ref_counted_flags::provide_weak_references> {
         friend isptr::ref_counted<T, isptr::ref_counted_flags::provide_weak_references>;
+        friend isptr::weak_reference<T>;
+        friend isptr::ref_counted_traits;
+        friend T;
+
+    private:
+        RefCounted() = default;
 
     public:
         Ref<T> RefFromThis() {
-            return Ref<T>(isptr::refcnt_retain(static_cast<T *>(this)));
+            return Ref<T>(RefCntPtr<T>::ref(static_cast<T *>(this)));
         }
 
         Weak<T> WeakFromThis() {
@@ -86,13 +98,13 @@ Engine {
     };
 
     template<typename T, typename U>
-    concept IsImplicitlyConvertibleTo = requires(T* t, U* u) {
+    concept IsImplicitlyConvertibleTo = requires(T *t, U *u) {
         u = t;
     };
 
     template<typename T, typename U>
-    concept IsExplicitlyConvertibleTo = requires(T* t) {
-        static_cast<U*>(t);
+    concept IsExplicitlyConvertibleTo = requires(T *t) {
+        static_cast<U *>(t);
     };
 
     template<typename T>
@@ -100,13 +112,17 @@ Engine {
     public:
         Ref() noexcept = default;
 
-        friend class RefCounted<T>;
-        explicit Ref(isptr::refcnt_ptr<T> ptr) : mPtr(std::move(ptr)) {}
-    public:
+        Ref(nullptr_t) noexcept : mPtr(nullptr) {}
 
+        friend class RefCounted<T>;
+        friend class Weak<T>;
+
+        explicit Ref(RefCntPtr<T> ptr) : mPtr(std::move(ptr)) {}
+
+    public:
         template<typename... Args>
         static Ref Create(Args &&... args) {
-            return Ref(isptr::make_refcnt<T>(std::forward<Args>(args)...));
+            return Ref(RefCntPtr<T>::noref(new T(std::forward<Args>(args)...)));
         }
 
         T *Get() const noexcept { return mPtr.get(); }
@@ -119,22 +135,30 @@ Engine {
 
         template<typename U> requires IsImplicitlyConvertibleTo<T, U>
         operator Ref<U>() const noexcept {
-            return Ref<U>(isptr::refcnt_ptr<U>::ref(static_cast<U*>(mPtr.get())));
+            return Ref<U>(RefCntPtr<U>::ref(static_cast<U *>(mPtr.get())));
         }
 
         template<typename U> requires IsExplicitlyConvertibleTo<T, U>
         explicit operator Ref<U>() const noexcept {
-            return Ref<U>(isptr::refcnt_ptr<U>::ref(static_cast<U*>(mPtr.get())));
+            return Ref<U>(RefCntPtr<U>::ref(static_cast<U *>(mPtr.get())));
         }
 
         template<typename U> requires IsExplicitlyConvertibleTo<T, U>
         Ref<U> As() const noexcept {
-            return Ref<U>(isptr::refcnt_ptr<U>::ref(static_cast<U*>(mPtr.get())));
+            return Ref<U>(RefCntPtr<U>::ref(static_cast<U *>(mPtr.get())));
+        }
+
+        auto operator<=>(const Ref &other) const noexcept = default;
+
+        auto operator<=>(nullptr_t) const noexcept {
+            if (mPtr) {
+                return std::strong_ordering::greater;
+            }
+            return std::strong_ordering::equal;
         }
 
     private:
-        friend class Weak<T>;
-        isptr::refcnt_ptr<T> mPtr{nullptr};
+        RefCntPtr<T> mPtr{};
     };
 
     template<typename T>
@@ -145,15 +169,18 @@ Engine {
         Weak(const Ref<T> &ref) : mWeakPtr(ref.mPtr) {}
 
         Ref<T> Lock() const noexcept {
-            return Ref<T>(mWeakPtr.lock());
+            return Ref<T>(mWeakPtr->lock());
         }
 
     private:
-        isptr::refcnt_ptr<T>::weak mWeakPtr;
+        WeakCntPtr<T> mWeakPtr{};
     };
 
     export template<typename T, typename... Args>
     Ref<T> MakeRef(Args &&... args) {
         return Ref<T>::Create(std::forward<Args>(args)...);
     }
+
+    export template<typename I>
+    class RefInterface : public I, public RefCounted<RefInterface<I>> {};
 }
