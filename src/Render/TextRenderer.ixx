@@ -1,4 +1,4 @@
-export module Render.FontRenderer;
+export module Render.TextRenderer;
 
 import Core.Prelude;
 import Render.FontResource;
@@ -6,86 +6,74 @@ import Render.Renderer2D;
 
 namespace
 Engine {
-    export struct DrawTextAsciiCommand : Engine::DrawCommand {
+    export struct DrawSimpleTextAsciiCommand : Engine::DrawCommand {
         std::string_view Text;
         glm::vec2 StartPosition; // Left top
         glm::vec2 EndPosition; // Right bottom
-        glm::vec2 ClipTopLeft;
-        glm::vec2 ClipBottomRight;
+        // glm::vec2 ClipTopLeft;
+        // glm::vec2 ClipBottomRight;
+        int ClipRegionId = -1;
         glm::u8vec4 Color;
         float FontSize;
         FontAtlasData *Context;
         uint32_t VirtualFontTextureId;
 
-        DrawTextAsciiCommand &SetText(std::string_view text) {
+        DrawSimpleTextAsciiCommand &SetText(std::string_view text) {
             Text = text;
             return *this;
         }
 
-        DrawTextAsciiCommand &SetPosition(const glm::vec2 &start, const glm::vec2 &end) {
+        DrawSimpleTextAsciiCommand &SetPosition(const glm::vec2 &start, const glm::vec2 &end) {
             StartPosition = start;
             EndPosition = end;
             return *this;
         }
 
-        DrawTextAsciiCommand &SetStartPosition(const glm::vec2 &start) {
+        DrawSimpleTextAsciiCommand &SetStartPosition(const glm::vec2 &start) {
             StartPosition = start;
             return *this;
         }
 
-        DrawTextAsciiCommand &SetEndPosition(const glm::vec2 &end) {
+        DrawSimpleTextAsciiCommand &SetEndPosition(const glm::vec2 &end) {
             EndPosition = end;
             return *this;
         }
 
-        DrawTextAsciiCommand &SetClipRegion(const glm::vec2 &topLeft, const glm::vec2 &bottomRight) {
-            ClipTopLeft = topLeft;
-            ClipBottomRight = bottomRight;
+        DrawSimpleTextAsciiCommand &SetClipRegionID(int clipRegionId) {
+            ClipRegionId = clipRegionId;
             return *this;
         }
 
-        DrawTextAsciiCommand &SetColor(const glm::u8vec4 &color) {
+        DrawSimpleTextAsciiCommand &SetColor(const glm::u8vec4 &color) {
             Color = color;
             return *this;
         }
 
-        DrawTextAsciiCommand &SetFontSize(float fontSize) {
+        DrawSimpleTextAsciiCommand &SetFontSize(float fontSize) {
             FontSize = fontSize;
             return *this;
         }
 
-        DrawTextAsciiCommand &SetFontContext(FontAtlasData *context) {
+        DrawSimpleTextAsciiCommand &SetFontContext(FontAtlasData *context) {
             Context = context;
             return *this;
         }
 
-        DrawTextAsciiCommand &SetVirtualFontTextureId(uint32_t textureId) {
+        DrawSimpleTextAsciiCommand &SetVirtualFontTextureId(uint32_t textureId) {
             VirtualFontTextureId = textureId;
             return *this;
         }
     };
 
     export template<>
-    void Renderer2D::Draw<DrawTextAsciiCommand>(const DrawTextAsciiCommand &cmd) {
+    void Renderer2D::Draw<DrawSimpleTextAsciiCommand>(const DrawSimpleTextAsciiCommand &cmd) {
         if (!cmd.Context) return;
         Engine::FontAtlasData &ctx = *cmd.Context;
-
-        // 1. Clipping (Standard Rect)
-        Engine::ClipRegion clipRegion;
-        clipRegion.ClipMode = Engine::ClipMode::ShowInside;
-        clipRegion.Points = {
-            cmd.ClipTopLeft,
-            {cmd.ClipBottomRight.x, cmd.ClipTopLeft.y},
-            cmd.ClipBottomRight,
-            {cmd.ClipTopLeft.x, cmd.ClipBottomRight.y}
-        };
-        clipRegion.PointCount = 4;
-        uint32_t clipRegionId = mClipRegionManager.RegisterClipRegion(clipRegion);
 
         Engine::QuadDrawCommand quadDrawCommand;
         quadDrawCommand.SetFontAtlas(cmd.VirtualFontTextureId, ctx.MTSDFPixelRange)
                 .SetTintColor(cmd.Color)
-                .SetClipRegionId(clipRegionId);
+                .SetClipRegionId(cmd.ClipRegionId);
 
         float scale = cmd.FontSize;
         float cursorX = cmd.StartPosition.x;

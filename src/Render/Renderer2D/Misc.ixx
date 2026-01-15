@@ -18,7 +18,7 @@ Engine {
         static ClipRegion Triangle(const glm::mat3x2 &points,
                                    Engine::ClipMode clipMode = Engine::ClipMode::ShowInside);
 
-        static ClipRegion Quad(const glm::mat4x2 &points,
+        static ClipRegion Quad(const glm::mat2x2 &points,
                                Engine::ClipMode clipMode = Engine::ClipMode::ShowInside);
     };
 

@@ -5,6 +5,7 @@ import Core.Prelude;
 import Render.GeneratedShaders;
 import Render.VirtualTextureManager;
 import glm;
+import Core.Utilities;
 
 import :ForwardDecleration;
 import :Misc;
@@ -25,7 +26,7 @@ Engine {
         nvrhi::Color ClearColor = nvrhi::Color(0, 0, 0, 0);
     };
 
-    export class Renderer2D {
+    export class Renderer2D : public Engine::RefCounted<Renderer2D> {
     public:
         Renderer2D(const Renderer2DDescriptor &desc, nvrhi::DeviceHandle device);
 

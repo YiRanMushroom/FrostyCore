@@ -9,7 +9,7 @@ namespace
 Engine {
     export class ClipRegionManager {
     public:
-        explicit ClipRegionManager(nvrhi::DeviceHandle device);
+        ClipRegionManager(nvrhi::DeviceHandle device);
 
         // Register a clip region for this frame, returns the index
         // Returns -1 if region is null (no clipping)

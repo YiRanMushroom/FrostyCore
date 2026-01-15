@@ -18,76 +18,76 @@ Engine {
         TriangleDrawCommand &SetPositions(const glm::vec2 &p0,
                                           const glm::vec2 &p1,
                                           const glm::vec2 &p2) {
-            mPositions = {p0, p1, p2};
+            Positions = {p0, p1, p2};
             return *this;
         }
 
         TriangleDrawCommand &SetFirstPoint(const glm::vec2 &p0) {
-            mPositions[0] = p0;
+            Positions[0] = p0;
             return *this;
         }
 
         TriangleDrawCommand &SetSecondPoint(const glm::vec2 &p1) {
-            mPositions[1] = p1;
+            Positions[1] = p1;
             return *this;
         }
 
         TriangleDrawCommand &SetThirdPoint(const glm::vec2 &p2) {
-            mPositions[2] = p2;
+            Positions[2] = p2;
             return *this;
         }
 
         TriangleDrawCommand &SetUVs(const glm::vec2 &uv0,
                                     const glm::vec2 &uv1,
                                     const glm::vec2 &uv2) {
-            mUVs = {uv0, uv1, uv2};
+            UVs = {uv0, uv1, uv2};
             return *this;
         }
 
         TriangleDrawCommand &SetFirstUV(const glm::vec2 &uv0) {
-            mUVs[0] = uv0;
+            UVs[0] = uv0;
             return *this;
         }
 
         TriangleDrawCommand &SetSecondUV(const glm::vec2 &uv1) {
-            mUVs[1] = uv1;
+            UVs[1] = uv1;
             return *this;
         }
 
         TriangleDrawCommand &SetThirdUV(const glm::vec2 &uv2) {
-            mUVs[2] = uv2;
+            UVs[2] = uv2;
             return *this;
         }
 
         TriangleDrawCommand &SetTexture(int virtualTextureID) {
-            mVirtualTextureID = virtualTextureID;
+            VirtualTextureID = virtualTextureID;
             return *this;
         }
 
         TriangleDrawCommand &SetTintColor(const glm::u8vec4 &tintColor) {
-            mTintColor = tintColor;
+            TintColor = tintColor;
             return *this;
         }
 
         TriangleDrawCommand &SetDepth(int overrideDepth) {
-            mOverrideDepth = overrideDepth;
+            OverrideDepth = overrideDepth;
             return *this;
         }
 
         TriangleDrawCommand &SetClipRegionId(int clipRegionId) {
-            mClipRegionId = clipRegionId;
+            ClipRegionId = clipRegionId;
             return *this;
         }
 
         friend class Renderer2D;
 
-    private:
-        std::array<glm::vec2, 3> mPositions;
-        std::array<glm::vec2, 3> mUVs;
-        int mVirtualTextureID;
-        glm::u8vec4 mTintColor = glm::u8vec4(0u, 0u, 0u, 255u);
-        std::optional<int> mOverrideDepth = std::nullopt;
-        int mClipRegionId = -1;
+    public:
+        std::array<glm::vec2, 3> Positions;
+        std::array<glm::vec2, 3> UVs;
+        int VirtualTextureID;
+        glm::u8vec4 TintColor = glm::u8vec4(0u, 0u, 0u, 255u);
+        std::optional<int> OverrideDepth = std::nullopt;
+        int ClipRegionId = -1;
     };
 
     export class QuadDrawCommand : public virtual DrawCommand {
@@ -96,82 +96,82 @@ Engine {
 
         QuadDrawCommand &SetPositions(const glm::vec2 &p0,
                                       const glm::vec2 &p2) {
-            mFirstPoint = p0;
-            mSecondPoint = p2;
+            FirstPoint = p0;
+            SecondPoint = p2;
             return *this;
         }
 
         QuadDrawCommand &SetFirstPoint(const glm::vec2 &p0) {
-            mFirstPoint = p0;
+            FirstPoint = p0;
             return *this;
         }
 
         QuadDrawCommand &SetSecondPoint(const glm::vec2 &p2) {
-            mSecondPoint = p2;
+            SecondPoint = p2;
             return *this;
         }
 
         QuadDrawCommand &SetUVs(const glm::vec2 &uv0,
                                 const glm::vec2 &uv1) {
-            mFirstUV = uv0;
-            mSecondUV = uv1;
+            FirstUV = uv0;
+            SecondUV = uv1;
             return *this;
         }
 
         QuadDrawCommand &SetFirstUV(const glm::vec2 &uv0) {
-            mFirstUV = uv0;
+            FirstUV = uv0;
             return *this;
         }
 
         QuadDrawCommand &SetSecondUV(const glm::vec2 &uv1) {
-            mSecondUV = uv1;
+            SecondUV = uv1;
             return *this;
         }
 
         QuadDrawCommand &SetTexture(int virtualTextureID) {
-            mVirtualTextureID = virtualTextureID;
-            mRenderingMode = InstanceRenderingMode::Texture;
+            VirtualTextureID = virtualTextureID;
+            RenderingMode = InstanceRenderingMode::Texture;
             return *this;
         }
 
         QuadDrawCommand &SetFontAtlas(int virtualTextureID, float MTSDFPixelRange) {
-            mVirtualTextureID = virtualTextureID;
-            mRenderingMode = InstanceRenderingMode::MTSDF;
-            mMTSDFPixelRange = MTSDFPixelRange;
+            VirtualTextureID = virtualTextureID;
+            RenderingMode = InstanceRenderingMode::MTSDF;
+            this->MTSDFPixelRange = MTSDFPixelRange;
             return *this;
         }
 
         QuadDrawCommand &SetTintColor(const glm::u8vec4 &tintColor) {
-            mTintColor = tintColor;
+            TintColor = tintColor;
             return *this;
         }
 
         QuadDrawCommand &SetDepth(int overrideDepth) {
-            mOverrideDepth = overrideDepth;
+            OverrideDepth = overrideDepth;
             return *this;
         }
 
         QuadDrawCommand &SetClipRegionId(int clipRegionId) {
-            mClipRegionId = clipRegionId;
+            ClipRegionId = clipRegionId;
             return *this;
         }
 
         friend class Renderer2D;
 
-    private:
-        glm::vec2 mFirstPoint;
-        glm::vec2 mSecondPoint;
+    public:
+        glm::vec2 FirstPoint;
+        glm::vec2 SecondPoint;
 
-        glm::vec2 mFirstUV = glm::vec2(0.0f, 0.0f);
-        glm::vec2 mSecondUV = glm::vec2(1.0f, 1.0f);
+        glm::vec2 FirstUV = glm::vec2(0.0f, 0.0f);
+        glm::vec2 SecondUV = glm::vec2(1.0f, 1.0f);
 
-        int mVirtualTextureID;
-        glm::u8vec4 mTintColor = glm::u8vec4(0u, 0u, 0u, 255u);
-        std::optional<int> mOverrideDepth = std::nullopt;
-        int mClipRegionId = -1;
+        int VirtualTextureID;
+        glm::u8vec4 TintColor = glm::u8vec4(0u, 0u, 0u, 255u);
+        std::optional<int> OverrideDepth = std::nullopt;
+        int ClipRegionId = -1;
 
-        InstanceRenderingMode mRenderingMode = InstanceRenderingMode::Texture;
-        float mMTSDFPixelRange;
+        InstanceRenderingMode RenderingMode = InstanceRenderingMode::Texture;
+        float MTSDFPixelRange;
     };
 
     // No need to provide draw command for line because it is simple enough
@@ -182,73 +182,73 @@ Engine {
         CircularDrawCommand() = default;
 
         CircularDrawCommand &SetCenter(const glm::vec2 &center) {
-            mCenter = center;
+            Center = center;
             return *this;
         }
 
         CircularDrawCommand &SetRadii(const glm::vec2 &radii) {
-            mRadii = radii;
+            Radii = radii;
             return *this;
         }
 
         CircularDrawCommand &SetRadius(float radius) {
-            mRadii = glm::vec2(radius, radius);
+            Radii = glm::vec2(radius, radius);
             return *this;
         }
 
         CircularDrawCommand &SetRotation(float rotation) {
-            mRotation = rotation;
+            Rotation = rotation;
             return *this;
         }
 
         CircularDrawCommand &SetStartAngle(float startAngle) {
-            mStartAngle = startAngle;
+            StartAngle = startAngle;
             return *this;
         }
 
         CircularDrawCommand &SetEndAngle(float endAngle) {
-            mEndAngle = endAngle;
+            EndAngle = endAngle;
             return *this;
         }
 
         CircularDrawCommand &SetTexture(int virtualTextureID) {
-            mVirtualTextureID = virtualTextureID;
+            VirtualTextureID = virtualTextureID;
             return *this;
         }
 
         CircularDrawCommand &SetTintColor(const glm::u8vec4 &tintColor) {
-            mTintColor = tintColor;
+            TintColor = tintColor;
             return *this;
         }
 
         CircularDrawCommand &SetEdgeSoftness(float edgeSoftness) {
-            mEdgeSoftness = edgeSoftness;
+            EdgeSoftness = edgeSoftness;
             return *this;
         }
 
         CircularDrawCommand &SetDepth(int overrideDepth) {
-            mOverrideDepth = overrideDepth;
+            OverrideDepth = overrideDepth;
             return *this;
         }
 
         CircularDrawCommand &SetClipRegionId(int clipRegionId) {
-            mClipRegionId = clipRegionId;
+            ClipRegionId = clipRegionId;
             return *this;
         }
 
         friend class Renderer2D;
 
-    private:
-        glm::vec2 mCenter;
-        glm::vec2 mRadii;
-        float mRotation = 0.0f;
-        float mInnerScale = 0.0f;
-        float mStartAngle = 0.0f;
-        float mEndAngle = std::numbers::pi_v<float> * 2.0f;
-        int mVirtualTextureID = -1;
-        glm::u8vec4 mTintColor = glm::u8vec4(0u, 0u, 0u, 255u);
-        float mEdgeSoftness = 1.0f;
-        std::optional<int> mOverrideDepth = 0;
-        int mClipRegionId = -1;
+    public:
+        glm::vec2 Center;
+        glm::vec2 Radii;
+        float Rotation = 0.0f;
+        float InnerScale = 0.0f;
+        float StartAngle = 0.0f;
+        float EndAngle = std::numbers::pi_v<float> * 2.0f;
+        int VirtualTextureID = -1;
+        glm::u8vec4 TintColor = glm::u8vec4(0u, 0u, 0u, 255u);
+        float EdgeSoftness = 1.0f;
+        std::optional<int> OverrideDepth = 0;
+        int ClipRegionId = -1;
     };
 }

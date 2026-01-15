@@ -4,7 +4,8 @@ import :ForwardDecleration;
 import :Misc;
 import Core.Prelude;
 
-namespace Engine {
+namespace
+Engine {
     ClipRegion ClipRegion::Triangle(const glm::mat3x2 &points, Frosty::ClipMode clipMode) {
         return ClipRegion{
             .Points = {
@@ -18,13 +19,13 @@ namespace Engine {
         };
     }
 
-    ClipRegion ClipRegion::Quad(const glm::mat4x2 &points, Frosty::ClipMode clipMode) {
+    ClipRegion ClipRegion::Quad(const glm::mat2x2 &points, Frosty::ClipMode clipMode) {
         return ClipRegion{
             .Points = {
                 points[0],
+                {points[1].x, points[0].y},
                 points[1],
-                points[2],
-                points[3]
+                {points[0].x, points[1].y}
             },
             .PointCount = 4,
             .ClipMode = clipMode

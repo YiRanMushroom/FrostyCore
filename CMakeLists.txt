@@ -73,18 +73,16 @@ set(MSDF_ATLAS_DYNAMIC_RUNTIME ON CACHE BOOL "Use static runtime library" FORCE)
 find_package(Vulkan REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC Vulkan::Vulkan)
 
-include(FetchContent)
-if (NOT FreeType_POPULATED)
-    message(STATUS "Fetching FreeType...")
-    FetchContent_Declare(FreeType
-            GIT_REPOSITORY https://github.com/freetype/freetype
-            GIT_TAG VER-2-14-1)
-    FetchContent_MakeAvailable(FreeType)
-endif ()
+#include(FetchContent)
+#if (NOT FreeType_POPULATED)
+#    message(STATUS "Fetching FreeType...")
+#    FetchContent_Declare(FreeType
+#            GIT_REPOSITORY https://github.com/freetype/freetype
+#            GIT_TAG VER-2-14-1)
+#    FetchContent_MakeAvailable(FreeType)
+#endif ()
 
-if(TARGET freetype AND NOT TARGET Freetype::Freetype)
-    add_library(Freetype::Freetype ALIAS freetype)
-endif()
+
 
 # we need to link FreeType to msdf-atlas-gen
 
@@ -93,7 +91,14 @@ add_subdirectory(vendor/nvrhi)
 add_subdirectory(vendor/imgui)
 add_subdirectory(vendor/stb)
 add_subdirectory(vendor/glm)
+
+add_subdirectory(vendor/freetype)
+if(TARGET freetype AND NOT TARGET Freetype::Freetype)
+    add_library(Freetype::Freetype ALIAS freetype)
+endif()
+
 add_subdirectory(vendor/msdf-atlas-gen)
+add_subdirectory(vendor/intrusive_shared_ptr)
 
 target_link_libraries(nvrhi_vk PUBLIC Vulkan::Vulkan)
 target_link_libraries(imgui PUBLIC SDL3::SDL3 Vulkan::Vulkan nvrhi nvrhi_vk)
@@ -122,6 +127,7 @@ target_link_libraries(
         glm
         msdf-atlas-gen::msdf-atlas-gen
         msdfgen::msdfgen
+        intrusive-shared-ptr
 )
 
 target_sources(

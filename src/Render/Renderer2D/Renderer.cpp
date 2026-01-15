@@ -938,47 +938,47 @@ Engine {
     template<>
     void Renderer2D::Draw<TriangleDrawCommand>(const TriangleDrawCommand &command) {
         mTriangleCommandList.AddTriangle(
-            command.mPositions[0],
-            command.mUVs[0],
-            command.mPositions[1],
-            command.mUVs[1],
-            command.mPositions[2],
-            command.mUVs[2],
-            command.mVirtualTextureID,
-            command.mTintColor,
-            command.mOverrideDepth.value_or(mCurrentDepth),
-            command.mClipRegionId
+            command.Positions[0],
+            command.UVs[0],
+            command.Positions[1],
+            command.UVs[1],
+            command.Positions[2],
+            command.UVs[2],
+            command.VirtualTextureID,
+            command.TintColor,
+            command.OverrideDepth.value_or(mCurrentDepth),
+            command.ClipRegionId
         );
     }
 
     template<>
     void Renderer2D::Draw<>(const QuadDrawCommand &command) {
-        if (command.mRenderingMode == InstanceRenderingMode::Texture) {
+        if (command.RenderingMode == InstanceRenderingMode::Texture) {
             mTriangleCommandList.AddQuad(
-                command.mFirstPoint, command.mFirstUV,
-                glm::vec2(command.mSecondPoint.x, command.mFirstPoint.y),
-                glm::vec2(command.mSecondUV.x, command.mFirstUV.y),
-                command.mSecondPoint, command.mSecondUV,
-                glm::vec2(command.mFirstPoint.x, command.mSecondPoint.y),
-                glm::vec2(command.mFirstUV.x, command.mSecondUV.y),
-                command.mVirtualTextureID,
-                command.mTintColor,
-                command.mOverrideDepth.value_or(mCurrentDepth),
-                command.mClipRegionId
+                command.FirstPoint, command.FirstUV,
+                glm::vec2(command.SecondPoint.x, command.FirstPoint.y),
+                glm::vec2(command.SecondUV.x, command.FirstUV.y),
+                command.SecondPoint, command.SecondUV,
+                glm::vec2(command.FirstPoint.x, command.SecondPoint.y),
+                glm::vec2(command.FirstUV.x, command.SecondUV.y),
+                command.VirtualTextureID,
+                command.TintColor,
+                command.OverrideDepth.value_or(mCurrentDepth),
+                command.ClipRegionId
             );
-        } else if (command.mRenderingMode == InstanceRenderingMode::MTSDF) {
+        } else if (command.RenderingMode == InstanceRenderingMode::MTSDF) {
             mTriangleCommandList.AddQuadFont(
-                command.mFirstPoint, command.mFirstUV,
-                glm::vec2(command.mSecondPoint.x, command.mFirstPoint.y),
-                glm::vec2(command.mSecondUV.x, command.mFirstUV.y),
-                command.mSecondPoint, command.mSecondUV,
-                glm::vec2(command.mFirstPoint.x, command.mSecondPoint.y),
-                glm::vec2(command.mFirstUV.x, command.mSecondUV.y),
-                command.mVirtualTextureID,
-                command.mTintColor,
-                command.mMTSDFPixelRange,
-                command.mOverrideDepth.value_or(mCurrentDepth),
-                command.mClipRegionId
+                command.FirstPoint, command.FirstUV,
+                glm::vec2(command.SecondPoint.x, command.FirstPoint.y),
+                glm::vec2(command.SecondUV.x, command.FirstUV.y),
+                command.SecondPoint, command.SecondUV,
+                glm::vec2(command.FirstPoint.x, command.SecondPoint.y),
+                glm::vec2(command.FirstUV.x, command.SecondUV.y),
+                command.VirtualTextureID,
+                command.TintColor,
+                command.MTSDFPixelRange,
+                command.OverrideDepth.value_or(mCurrentDepth),
+                command.ClipRegionId
             );
         }
     }
@@ -986,17 +986,17 @@ Engine {
     template<>
     void Renderer2D::Draw<>(const CircularDrawCommand &command) {
         mEllipseCommandList.Instances.push_back({
-            .Center = command.mCenter,
-            .Radii = command.mRadii,
-            .Rotation = command.mRotation,
-            .InnerScale = command.mInnerScale,
-            .StartAngle = command.mStartAngle,
-            .EndAngle = command.mEndAngle,
-            .VirtualTextureID = command.mVirtualTextureID,
-            .TintColor = command.mTintColor,
-            .EdgeSoftness = command.mEdgeSoftness,
-            .Depth = command.mOverrideDepth.value_or(mCurrentDepth),
-            .ClipRegionId = command.mClipRegionId
+            .Center = command.Center,
+            .Radii = command.Radii,
+            .Rotation = command.Rotation,
+            .InnerScale = command.InnerScale,
+            .StartAngle = command.StartAngle,
+            .EndAngle = command.EndAngle,
+            .VirtualTextureID = command.VirtualTextureID,
+            .TintColor = command.TintColor,
+            .EdgeSoftness = command.EdgeSoftness,
+            .Depth = command.OverrideDepth.value_or(mCurrentDepth),
+            .ClipRegionId = command.ClipRegionId
         });
     }
 }
