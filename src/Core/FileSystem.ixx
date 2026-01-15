@@ -14,7 +14,8 @@ Engine {
         auto future = promise->get_future();
         SDL_DialogFileCallback callback = [](void *userData, const char *const *filePaths, int filterIndex) {
             (void) filterIndex;
-            auto *promise = static_cast<std::promise<std::vector<std::filesystem::path>> *>(userData);
+            auto promise = std::unique_ptr<std::promise<std::vector<std::filesystem::path>>>
+                    (static_cast<std::promise<std::vector<std::filesystem::path>> *>(userData));
             std::vector<std::filesystem::path> paths;
             if (filePaths) {
                 for (int i = 0; filePaths[i] != nullptr; ++i) {
@@ -22,15 +23,12 @@ Engine {
                 }
             }
             promise->set_value(std::move(paths));
-            delete promise;
         };
 
         SDL_ShowOpenFileDialog(callback, promise, parentWindow, filterPatterns.data(),
                                static_cast<int>(filterPatterns.size()), nullptr, true);
 
-        return Engine::AsynchronousOf([future = std::move(future)]() mutable {
-            return future.get();
-        })();
+        co_return co_await std::move(future);
     }
 
     const std::filesystem::path ExecutablePath = std::filesystem::current_path();

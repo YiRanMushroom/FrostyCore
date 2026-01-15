@@ -258,6 +258,14 @@ Engine {
         template<typename T>
         Awaitable<T> &&await_transform(Awaitable<T> &&awaitable);
 
+        template<typename T>
+        Awaitable<T> await_transform(std::future<T> future);
+
+        template<typename T>
+        Awaitable<T> await_transform(std::future<T> &) {
+            static_assert(false && "You must call std::move before co_awaiting a std::future");
+        }
+
         template<class Fn>
         std::suspend_never await_transform(AwaitToDoImmediate<Fn> &&awaiter);
     };
@@ -940,6 +948,17 @@ Engine {
         });
 
         return std::forward<Awaitable<T> &&>(awaitable);
+    }
+
+    template<typename T>
+    Awaitable<T> PromiseBase::await_transform(std::future<T> future) {
+        auto parendHandle = Self.lock();
+        assert(parendHandle);
+        auto awaitable = [](std::future<T> ft) mutable -> Awaitable<T> {
+            co_return ft.get();
+        }(std::move(future));
+
+        return await_transform(std::move(awaitable));
     }
 
     template<typename Fn>
