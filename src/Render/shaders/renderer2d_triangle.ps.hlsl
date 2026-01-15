@@ -46,15 +46,11 @@ float4 main(PSInput input) : SV_Target{
             float2 clipPoints[4];
             for (uint i = 0; i < 4; ++i) {
                 clipPoints[i] = (i < clipRegion.pointCount) ? clipRegion.points[i] : float2(0, 0);
-            
-            
             }
 
             bool inside = isPointInPolygon(input.worldPos, clipPoints, clipRegion.pointCount);
             if ((clipRegion.clipMode == 0 && !inside) || (clipRegion.clipMode == 1 && inside)) {
                 discard;
-            
-            
             }
         }
     }
@@ -63,16 +59,19 @@ float4 main(PSInput input) : SV_Target{
 
     if (input.textureIndex >= 0) {
         if (input.mode == 1) { // MTSDF Mode
+            if (input.pxRange <= 0.0f) {
+                return float4(1.0, 0.0, 0.0, 1.0); // Debug: Invalid pxRange, this can also shut up the optimizer
+            }
+
             float4 mtsdf = u_Textures[NonUniformResourceIndex(input.textureIndex)].Sample(
                        u_FontSamplier, input.texCoord);
 
             float sd = median(mtsdf.r, mtsdf.g, mtsdf.b);
 
-            float2 unitRange = float2(input.pxRange, input.pxRange) / fwidth(input.texCoord);
-            float screenUnitRange = min(unitRange.x, unitRange.y);
+            // I don't know why but apparently the formula with pxRange does not work well, use fwidth directly instead
+            // we also need to explicitly void input.pxRange to avoid compiler optimization breaking the interface
 
-            float screenPxDistance = (sd - 0.5) * screenUnitRange;
-            float opacity = clamp(screenPxDistance + 0.5, 0.0, 1.0);
+            float opacity = clamp((sd - 0.5) / max(fwidth(sd), 0.0001f) + 0.5, 0.0, 1.0);
 
             sampledColor = float4(1.0, 1.0, 1.0, opacity);
         }
@@ -81,6 +80,8 @@ float4 main(PSInput input) : SV_Target{
                 u_TextureSamplier, input.texCoord, 0);
         }
     }
+
+    // return sampledColor; // For debugging
 
     // Apply Tint Color (TintColor.a affects MSDF opacity)
     float4 outColor = input.tintColor * sampledColor;
