@@ -4,6 +4,7 @@ import Vendor.ApplicationAPI;
 import Core.Prelude;
 import Render.GeneratedShaders;
 import Render.VirtualTextureManager;
+export import Render.Transform;
 import glm;
 import Core.Utilities;
 
@@ -19,7 +20,8 @@ namespace
 Engine {
     export struct Renderer2DDescriptor {
         glm::u32vec2 OutputSize;
-        float VirtualSizeWidth;
+        // float VirtualSizeWidth;
+        mutable std::vector<Ref<ITransform>> Transforms;
     };
 
     export struct Renderer2DBeginRenderingInfo {
@@ -30,7 +32,7 @@ Engine {
     public:
         Renderer2D(const Renderer2DDescriptor &desc, nvrhi::DeviceHandle device);
 
-        const glm::vec2 &BeginRendering(const Renderer2DBeginRenderingInfo &info = {});
+        void BeginRendering(const Renderer2DBeginRenderingInfo &info = {});
 
         [[nodiscard]] const nvrhi::CommandListHandle &GetCommandList() const;
 
@@ -197,12 +199,14 @@ Engine {
 
         void Submit();
 
-        void RecalculateViewProjectionMatrix();
+        glm::mat4 GetViewProjectionMatrix();
+        void SetTransforms(std::vector<Ref<ITransform>> transforms);
 
         nvrhi::DeviceHandle mDevice;
         glm::u32vec2 mOutputSize;
-        glm::vec2 mVirtualSize;
-        glm::mat4 mViewProjectionMatrix;
+        // glm::vec2 mVirtualSize;
+        // glm::mat4 mViewProjectionMatrix;
+        std::vector<Ref<ITransform>> mTransforms;
 
         nvrhi::TextureHandle mTexture;
         nvrhi::FramebufferHandle mFramebuffer;
@@ -241,6 +245,31 @@ Engine {
         nvrhi::BufferHandle mEllipseConstantBuffer;
         size_t mEllipseBufferInstanceSizeMax;
         std::vector<EllipseBatchRenderingResources> mEllipseBatchRenderingResources;
+    };
+
+    export class VirtualSizeTransform : public ITransform {
+    public:
+        void SetVirtualWidth(float virtualWidth) {
+            mVirtualSize.x = virtualWidth;
+            mCachedTransform.reset();
+        }
+
+        void SetVirtualHeight(float virtualHeight) {
+            mVirtualSize.y = virtualHeight;
+            mCachedTransform.reset();
+        }
+
+        virtual void OnFramebufferResized(float newWidth, float newHeight) override {
+            mFramebufferSize = {newWidth, newHeight};
+            mCachedTransform.reset();
+        }
+
+        virtual void DoTransform(glm::mat4 &matrix) override;
+
+    public:
+        glm::vec2 mVirtualSize{1920.f, 1080.f};
+        glm::vec2 mFramebufferSize{};
+        std::optional<glm::mat4> mCachedTransform{};
     };
 }
 

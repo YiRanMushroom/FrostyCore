@@ -85,12 +85,21 @@ Engine {
         ~RefCounted() noexcept = default;
     };
 
+    template<typename T, typename U>
+    concept IsImplicitlyConvertibleTo = requires(T* t, U* u) {
+        u = t;
+    };
+
+    template<typename T, typename U>
+    concept IsExplicitlyConvertibleTo = requires(T* t) {
+        static_cast<U*>(t);
+    };
+
     template<typename T>
     class Ref {
     public:
         Ref() noexcept = default;
 
-    private:
         friend class RefCounted<T>;
         explicit Ref(isptr::refcnt_ptr<T> ptr) : mPtr(std::move(ptr)) {}
     public:
@@ -107,6 +116,21 @@ Engine {
         void Reset() noexcept { mPtr.reset(); }
 
         explicit operator bool() const noexcept { return static_cast<bool>(mPtr); }
+
+        template<typename U> requires IsImplicitlyConvertibleTo<T, U>
+        operator Ref<U>() const noexcept {
+            return Ref<U>(isptr::refcnt_ptr<U>::ref(static_cast<U*>(mPtr.get())));
+        }
+
+        template<typename U> requires IsExplicitlyConvertibleTo<T, U>
+        explicit operator Ref<U>() const noexcept {
+            return Ref<U>(isptr::refcnt_ptr<U>::ref(static_cast<U*>(mPtr.get())));
+        }
+
+        template<typename U> requires IsExplicitlyConvertibleTo<T, U>
+        Ref<U> As() const noexcept {
+            return Ref<U>(isptr::refcnt_ptr<U>::ref(static_cast<U*>(mPtr.get())));
+        }
 
     private:
         friend class Weak<T>;

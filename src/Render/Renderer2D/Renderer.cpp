@@ -13,14 +13,18 @@ Engine {
     Renderer2D::Renderer2D(const Renderer2DDescriptor &desc, nvrhi::DeviceHandle device)
         : mDevice(device), mOutputSize(desc.OutputSize),
           mVirtualTextureManager(mDevice), mClipRegionManager(mDevice.Get()) {
-        mVirtualSize.x = desc.VirtualSizeWidth;
-        mVirtualSize.y = desc.VirtualSizeWidth * (
-                             static_cast<float>(mOutputSize.y) / static_cast<float>(mOutputSize.x));
+        // mVirtualSize.x = desc.VirtualSizeWidth;
+        // mVirtualSize.y = desc.VirtualSizeWidth * (
+                             // static_cast<float>(mOutputSize.y) / static_cast<float>(mOutputSize.x));
         CreateResources();
         CreateConstantBuffers();
         CreatePipelines();
         CreatePipelineResources();
-        RecalculateViewProjectionMatrix();
+        SetTransforms(desc.Transforms);
+        for (auto &transform: mTransforms) {
+            transform->OnFramebufferResized(static_cast<float>(mOutputSize.x),
+                                            static_cast<float>(mOutputSize.y));
+        }
     }
 
     void Renderer2D::CreatePipelineResources() {
@@ -30,7 +34,7 @@ Engine {
         CreateEllipseBatchRenderingResources(4); // same for ellipses
     }
 
-    const glm::vec2 &Renderer2D::BeginRendering(const Renderer2DBeginRenderingInfo &info) {
+    void Renderer2D::BeginRendering(const Renderer2DBeginRenderingInfo &info) {
         Clear();
 
         mCommandList->open();
@@ -38,8 +42,6 @@ Engine {
         mCommandList->setResourceStatesForFramebuffer(mFramebuffer);
         mCommandList->clearTextureFloat(mTexture,
                                         nvrhi::AllSubresources, info.ClearColor);
-
-        return mVirtualSize;
     }
 
     const nvrhi::CommandListHandle &Renderer2D::GetCommandList() const {
@@ -68,15 +70,18 @@ Engine {
 
         CreateResources();
         // CreatePipelineResources();
-        RecalculateViewProjectionMatrix();
+        // RecalculateViewProjectionMatrix();
+        for (auto &transform: mTransforms) {
+            transform->OnFramebufferResized(static_cast<float>(width), static_cast<float>(height));
+        }
     }
 
-    const glm::vec2 &Renderer2D::SetVirtualWidth(float virtualWidth) {
-        mVirtualSize.x = virtualWidth;
-        mVirtualSize.y = virtualWidth * (static_cast<float>(mOutputSize.y) / static_cast<float>(mOutputSize.x));
-        RecalculateViewProjectionMatrix();
-        return mVirtualSize;
-    }
+    // const glm::vec2 &Renderer2D::SetVirtualWidth(float virtualWidth) {
+    //     mVirtualSize.x = virtualWidth;
+    //     mVirtualSize.y = virtualWidth * (static_cast<float>(mOutputSize.y) / static_cast<float>(mOutputSize.x));
+    //     RecalculateViewProjectionMatrix();
+    //     return mVirtualSize;
+    // }
 
     void Renderer2D::CreateResources() {
         nvrhi::TextureDesc texDesc;
@@ -447,13 +452,15 @@ Engine {
     }
 
     void Renderer2D::SubmitTriangleBatchRendering() {
+        auto viewProjectionMatrix = GetViewProjectionMatrix();
+
         auto submissions = mTriangleCommandList.RecordRendererSubmissionData(
             mTriangleBufferInstanceSizeMax);
 
         CreateTriangleBatchRenderingResources(submissions.size());
 
         // submit constant buffer
-        mCommandList->writeBuffer(mTriangleConstantBuffer, &mViewProjectionMatrix,
+        mCommandList->writeBuffer(mTriangleConstantBuffer, &viewProjectionMatrix,
                                   sizeof(glm::mat4), 0);
 
         for (size_t i = 0; i < submissions.size(); ++i) {
@@ -516,6 +523,8 @@ Engine {
     }
 
     void Renderer2D::SubmitLineBatchRendering() {
+        auto viewProjectionMatrix = GetViewProjectionMatrix();
+
         auto submissions = mLineCommandList.RecordRendererSubmissionData(
             mLineBufferVertexSizeMax);
 
@@ -526,7 +535,7 @@ Engine {
         CreateLineBatchRenderingResources(submissions.size());
 
         // submit constant buffer
-        mCommandList->writeBuffer(mLineConstantBuffer, &mViewProjectionMatrix,
+        mCommandList->writeBuffer(mLineConstantBuffer, &viewProjectionMatrix,
                                   sizeof(glm::mat4), 0);
 
         for (size_t i = 0; i < submissions.size(); ++i) {
@@ -570,6 +579,8 @@ Engine {
     }
 
     void Renderer2D::SubmitEllipseBatchRendering() {
+        auto viewProjectionMatrix = GetViewProjectionMatrix();
+
         auto submissions = mEllipseCommandList.RecordRendererSubmissionData(
             mEllipseBufferInstanceSizeMax);
 
@@ -579,7 +590,7 @@ Engine {
 
         CreateEllipseBatchRenderingResources(submissions.size());
 
-        mCommandList->writeBuffer(mEllipseConstantBuffer, &mViewProjectionMatrix,
+        mCommandList->writeBuffer(mEllipseConstantBuffer, &viewProjectionMatrix,
                                   sizeof(glm::mat4), 0);
 
         for (size_t i = 0; i < submissions.size(); ++i) {
@@ -626,30 +637,61 @@ Engine {
         SubmitEllipseBatchRendering();
     }
 
-    void Renderer2D::RecalculateViewProjectionMatrix() {
-        float scaleX = static_cast<float>(mOutputSize.x) / mVirtualSize.x;
-        float scaleY = static_cast<float>(mOutputSize.y) / mVirtualSize.y;
+    glm::mat4 Renderer2D::GetViewProjectionMatrix() {
+        glm::mat4 matrix(1.0f);
+        for (auto &transform: mTransforms) {
+            transform->DoTransform(matrix);
+        }
+        return matrix;
+    }
 
-        float uniformScale = std::min(scaleX, scaleY);
+    void Renderer2D::SetTransforms(std::vector<Ref<ITransform>> transforms) {
+        mTransforms = std::move(transforms);
+    }
 
-        float halfVisibleWidth = static_cast<float>(mOutputSize.x) / (2.0f * uniformScale);
-        float halfVisibleHeight = static_cast<float>(mOutputSize.y) / (2.0f * uniformScale);
+    // void Renderer2D::RecalculateViewProjectionMatrix() {
+    //     float scaleX = static_cast<float>(mOutputSize.x) / mVirtualSize.x;
+    //     float scaleY = static_cast<float>(mOutputSize.y) / mVirtualSize.y;
+    //
+    //     float uniformScale = std::min(scaleX, scaleY);
+    //
+    //     float halfVisibleWidth = static_cast<float>(mOutputSize.x) / (2.0f * uniformScale);
+    //     float halfVisibleHeight = static_cast<float>(mOutputSize.y) / (2.0f * uniformScale);
+    //
+    //     glm::mat4 projection = glm::ortho(-halfVisibleWidth, halfVisibleWidth,
+    //         -halfVisibleHeight, halfVisibleHeight, -1.f, 1.f);
+    //
+    //     // Now this projection is in Vulkan NDC space, we need to convert it to OpenGL NDC space
+    //     // to account for nvrhi using OpenGL/DirectX style NDC with Y up
+    //     // constexpr glm::mat4 adaptNDC = glm::mat4(
+    //     //     -1.0f,  0.0f, 0.0f, 0.0f,
+    //     //      0.0f, -1.0f, 0.0f, 0.0f,
+    //     //      0.0f,  0.0f, 1.0f, 0.0f,
+    //     //      0.0f,  0.0f, 0.0f, 1.0f
+    //     // );
+    //
+    //     // mViewProjectionMatrix = adaptNDC * projection;
+    //
+    //     mViewProjectionMatrix = projection;
+    // }
 
-        glm::mat4 projection = glm::ortho(-halfVisibleWidth, halfVisibleWidth,
-            -halfVisibleHeight, halfVisibleHeight, -1.f, 1.f);
+    void VirtualSizeTransform::DoTransform(glm::mat4 &matrix) {
+        if (!mCachedTransform.has_value()) {
+            float scaleX = mFramebufferSize.x / mVirtualSize.x;
+            float scaleY = mFramebufferSize.y / mVirtualSize.y;
 
-        // Now this projection is in Vulkan NDC space, we need to convert it to OpenGL NDC space
-        // to account for nvrhi using OpenGL/DirectX style NDC with Y up
-        // constexpr glm::mat4 adaptNDC = glm::mat4(
-        //     -1.0f,  0.0f, 0.0f, 0.0f,
-        //      0.0f, -1.0f, 0.0f, 0.0f,
-        //      0.0f,  0.0f, 1.0f, 0.0f,
-        //      0.0f,  0.0f, 0.0f, 1.0f
-        // );
+            float uniformScale = std::min(scaleX, scaleY);
 
-        // mViewProjectionMatrix = adaptNDC * projection;
+            float halfVisibleWidth = mFramebufferSize.x / (2.0f * uniformScale);
+            float halfVisibleHeight = mFramebufferSize.y / (2.0f * uniformScale);
 
-        mViewProjectionMatrix = projection;
+            glm::mat4 projection = glm::ortho(-halfVisibleWidth, halfVisibleWidth,
+                                              -halfVisibleHeight, halfVisibleHeight, -1.f, 1.f);
+
+            mCachedTransform = {projection};
+        }
+
+        matrix = (*mCachedTransform) * matrix;
     }
 
     nvrhi::ITexture *Renderer2D::GetTexture() const {

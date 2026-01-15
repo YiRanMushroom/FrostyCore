@@ -15,7 +15,7 @@ namespace Engine {
     // it is std::vector<std::vector<std::vector<std::vector<GlyphMetrics>>>>
     export struct FontAtlasData {
         std::vector<std::vector<std::vector<std::vector<std::optional<GlyphMetrics>>>>> Glyphs;
-        std::unique_ptr<uint32_t[]> AtlasBitmapData; // Always RGBA 8-bit
+        std::unique_ptr<uint8_t[]> AtlasBitmapData; // Always RGBA 8-bit
         uint32_t PixelCount = 0;
         uint32_t AtlasWidth = 0;
         uint32_t AtlasHeight = 0;
@@ -26,6 +26,10 @@ namespace Engine {
         [[nodiscard]] const GlyphMetrics &ReadMetrics(uint32_t unicodeCodepoint) const;
 
         [[nodiscard]] const GlyphMetrics *ReadMetricsSafe(uint32_t unicodeCodepoint) const;
+
+        [[nodiscard]] std::span<const uint8_t> GetAtlasBitmapDataSpan() const {
+            return std::span<const uint8_t>(AtlasBitmapData.get(), PixelCount * 4);
+        }
 
     private:
         void EnsureCapacityForCodepoint(uint32_t unicodeCodepoint);

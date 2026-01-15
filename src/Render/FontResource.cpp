@@ -105,9 +105,9 @@ namespace Engine {
 
         // 7. Convert RGB to RGBA for NVRHI compatibility
         size_t pixelCount = static_cast<size_t>(width) * height;
-        result->AtlasBitmapData = std::make_unique<uint32_t[]>(pixelCount);
+        result->AtlasBitmapData = std::make_unique<uint8_t[]>(pixelCount * 4);
         result->PixelCount = static_cast<uint32_t>(pixelCount);
-        uint32_t *rgbaBuffer = result->AtlasBitmapData.get();
+        uint8_t *rgbaBuffer = result->AtlasBitmapData.get();
 
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
@@ -117,10 +117,11 @@ namespace Engine {
                 unsigned char b = data[2];
                 unsigned char a = data[3]; // Alpha channel from MTSDF
 
-                size_t index = static_cast<size_t>(y) * width + x;
-                // On little-endian systems, uint32_t is stored as [LSB...MSB]
-                // For RGBA8_UNORM, we need bytes in memory as: R, G, B, A
-                rgbaBuffer[index] = r | (g << 8) | (b << 16) | (a << 24);
+                size_t baseIndex = (static_cast<size_t>(y) * width + x) * 4;
+                rgbaBuffer[baseIndex + 0] = r;
+                rgbaBuffer[baseIndex + 1] = g;
+                rgbaBuffer[baseIndex + 2] = b;
+                rgbaBuffer[baseIndex + 3] = a;
             }
         }
 

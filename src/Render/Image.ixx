@@ -9,7 +9,7 @@ Engine {
     export struct GPUImageDescriptor {
         uint32_t width{};
         uint32_t height{};
-        std::span<const uint32_t> imageData{};
+        std::span<const uint8_t> imageData{};
         std::optional<uint32_t> rowPitchInBytes = std::nullopt;
         std::string_view debugName = "SimpleGPUImage";
         nvrhi::Format format = nvrhi::Format::RGBA8_UNORM;
@@ -73,13 +73,13 @@ Engine {
     export struct CPUImage {
         uint32_t width{};
         uint32_t height{};
-        std::shared_ptr<uint32_t[]> data{};
+        std::shared_ptr<uint8_t[]> data{};
 
         GPUImageDescriptor GetGPUDescriptor(std::string_view debugName = "CPUImage") const {
             return GPUImageDescriptor{
                 .width = width,
                 .height = height,
-                .imageData = std::span<const uint32_t>(data.get(), width * height),
+                .imageData = std::span<const uint8_t>(data.get(), width * height),
                 .debugName = debugName
             };
         }
@@ -92,7 +92,7 @@ Engine {
             throw std::runtime_error("Failed to load image: " + filePath.string());
         }
 
-        auto data = std::shared_ptr<uint32_t[]>(reinterpret_cast<uint32_t *>(imgData), [](uint32_t *p) {
+        auto data = std::shared_ptr<uint8_t[]>(imgData, [](uint8_t *p) {
             stbi_image_free(reinterpret_cast<stbi_uc *>(p));
         });
 
