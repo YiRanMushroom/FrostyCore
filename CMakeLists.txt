@@ -98,7 +98,7 @@ if(TARGET freetype AND NOT TARGET Freetype::Freetype)
 endif()
 
 add_subdirectory(vendor/msdf-atlas-gen)
-add_subdirectory(vendor/intrusive_shared_ptr)
+#add_subdirectory(vendor/intrusive_shared_ptr)
 
 target_link_libraries(nvrhi_vk PUBLIC Vulkan::Vulkan)
 target_link_libraries(imgui PUBLIC SDL3::SDL3 Vulkan::Vulkan nvrhi nvrhi_vk)
@@ -127,7 +127,7 @@ target_link_libraries(
         glm
         msdf-atlas-gen::msdf-atlas-gen
         msdfgen::msdfgen
-        intrusive-shared-ptr
+#        intrusive-shared-ptr # use my own IRC
 )
 
 target_sources(

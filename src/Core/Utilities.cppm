@@ -80,6 +80,7 @@ Engine {
         void FinalDeallocate() const {
             if (this->InitialAllocationPointer) {
                 std::free(this->InitialAllocationPointer);
+                sTotalAllocations.fetch_sub(1, std::memory_order_relaxed);
             } else {
                 throw Engine::RuntimeException(
                     "Not using Make or Create to manage the life time of a RefCounted Object is prohibited,"
@@ -153,6 +154,13 @@ Engine {
         struct TransferOwnership {};
 
         struct ShareOwnership {};
+
+    public:
+        static inline std::atomic_size_t sTotalAllocations{0};
+
+        RefCounted() : mStrongCount(1), mWeakCount(1) {
+            sTotalAllocations.fetch_add(1, std::memory_order_relaxed);
+        }
     };
 
     template<typename T, typename U>
@@ -362,113 +370,6 @@ Engine {
     private:
         T *mPtr{nullptr};
     };
-
-    // export template<typename T>
-    // class RefCounted : private isptr::ref_counted<T, isptr::ref_counted_flags::provide_weak_references> {
-    //     template<class Derived, isptr::ref_counted_flags Flags, class CountType>
-    //     friend class isptr::ref_counted;
-    //
-    //     template<typename>
-    //     friend class isptr::weak_reference;
-    //
-    //     friend isptr::ref_counted_traits;
-    //     friend T;
-    //
-    //     template<typename>
-    //     friend class Ref;
-    //
-    //     template<typename>
-    //     friend class Weak;
-    //
-    // private:
-    //     RefCounted() = default;
-    //
-    // public:
-    //
-    //     Ref<T> RefFromThis() {
-    //         return Ref<T>(RefCntPtr<T>::ref(static_cast<T *>(this)));
-    //     }
-    //
-    //     Weak<T> WeakFromThis() {
-    //         return Weak<T>(this->get_weak_ptr());
-    //     }
-    //
-    // protected:
-    //     ~RefCounted() noexcept = default;
-    // };
-    //
-
-    //
-    // template<typename T>
-    // class Ref {
-    // public:
-    //     Ref() noexcept = default;
-    //
-    //     Ref(nullptr_t) noexcept : mPtr(nullptr) {}
-    //
-    //     friend class RefCounted<T>;
-    //     friend class Weak<T>;
-    //
-    //     explicit Ref(RefCntPtr<T> ptr) : mPtr(std::move(ptr)) {}
-    //
-    // public:
-    //     template<typename... Args>
-    //     static Ref Create(Args &&... args) {
-    //         return Ref(RefCntPtr<T>::noref(new T(std::forward<Args>(args)...)));
-    //     }
-    //
-    //     T *Get() const noexcept { return mPtr.get(); }
-    //     T &operator*() const noexcept { return *mPtr; }
-    //     T *operator->() const noexcept { return mPtr.get(); }
-    //
-    //     void Reset() noexcept { mPtr.reset(); }
-    //
-    //     explicit operator bool() const noexcept { return static_cast<bool>(mPtr); }
-    //
-    //     template<typename U> requires IsImplicitlyConvertibleTo<T, U>
-    //     operator Ref<U>() const noexcept {
-    //         return Ref<U>(RefCntPtr<U>::ref(static_cast<U *>(mPtr.get())));
-    //     }
-    //
-    //     template<typename U> requires IsExplicitlyConvertibleTo<T, U>
-    //     explicit operator Ref<U>() const noexcept {
-    //         return Ref<U>(RefCntPtr<U>::ref(static_cast<U *>(mPtr.get())));
-    //     }
-    //
-    //     template<typename U> requires IsExplicitlyConvertibleTo<T, U>
-    //     Ref<U> As() const noexcept {
-    //         return Ref<U>(RefCntPtr<U>::ref(static_cast<U *>(mPtr.get())));
-    //     }
-    //
-    //     auto operator<=>(const Ref &other) const noexcept = default;
-    //
-    //     auto operator<=>(nullptr_t) const noexcept {
-    //         if (mPtr) {
-    //             return std::strong_ordering::greater;
-    //         }
-    //         return std::strong_ordering::equal;
-    //     }
-    //
-    // private:
-    //     RefCntPtr<T> mPtr{};
-    // };
-
-    // template<typename T>
-    // class Weak {
-    // public:
-    //     Weak() noexcept = default;
-    //
-    //     Weak(const Ref<T> &ref) : mWeakPtr(ref->get_weak_ptr()) {}
-    //
-    //     Weak(WeakCntPtr<T> weakPtr) : mWeakPtr(std::move(weakPtr)) {}
-    //
-    //     Ref<T> Lock() const noexcept {
-    //         return Ref<T>(mWeakPtr->lock());
-    //     }
-    //
-    // private:
-    //     WeakCntPtr<T> mWeakPtr{};
-    // };
 
     export template<typename T>
     class RefInterface : public RefCounted, public T {};

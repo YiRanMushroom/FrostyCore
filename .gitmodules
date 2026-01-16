@@ -11,9 +11,6 @@
 [submodule "vendor/msdf-atlas-gen"]
 	path = vendor/msdf-atlas-gen
 	url = https://github.com/Chlumsky/msdf-atlas-gen
-[submodule "vendor/intrusive_shared_ptr"]
-	path = vendor/intrusive_shared_ptr
-	url = https://github.com/gershnik/intrusive_shared_ptr
 [submodule "vendor/freetype"]
 	path = vendor/freetype
 	url = https://github.com/freetype/freetype
