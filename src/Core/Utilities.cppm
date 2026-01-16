@@ -81,6 +81,9 @@ Engine {
         friend isptr::ref_counted_traits;
         friend T;
 
+        friend Ref<T>;
+        friend Weak<T>;
+
     private:
         RefCounted() = default;
 
@@ -166,7 +169,9 @@ Engine {
     public:
         Weak() noexcept = default;
 
-        Weak(const Ref<T> &ref) : mWeakPtr(ref.mPtr) {}
+        Weak(const Ref<T> &ref) : mWeakPtr(ref->get_weak_ptr()) {}
+
+        Weak(WeakCntPtr<T> weakPtr) : mWeakPtr(std::move(weakPtr)) {}
 
         Ref<T> Lock() const noexcept {
             return Ref<T>(mWeakPtr->lock());
