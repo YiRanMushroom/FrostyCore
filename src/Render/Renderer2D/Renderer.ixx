@@ -28,7 +28,7 @@ Engine {
         nvrhi::Color ClearColor = nvrhi::Color(0, 0, 0, 0);
     };
 
-    export class Renderer2D : public Engine::RefCounted<Renderer2D> {
+    export class Renderer2D : public Engine::RefCounted {
     public:
         Renderer2D(const Renderer2DDescriptor &desc, nvrhi::DeviceHandle device);
 

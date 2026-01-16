@@ -14,7 +14,7 @@ namespace
 Engine {
     export class Application;
 
-    export class Layer : public RefCounted<Layer> {
+    export class Layer : public RefCounted {
     public:
         virtual ~Layer() = default;
 
@@ -56,7 +56,7 @@ Engine {
     };
 
     // Application class with all inline implementations
-    class Application : public Engine::RefCounted<Application> {
+    class Application : public Engine::RefCounted {
     public:
         constexpr static size_t MaxFramesInFlight = 3;
 
