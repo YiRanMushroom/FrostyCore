@@ -18,5 +18,5 @@ Engine {
     // export class RefTransform : public ITransform, public Engine::RefCounted<RefTransform> {
     //
     // };
-    export using RefTransform = RefInterface<ITransform>;
+    // export using RefTransform = RefInterface<ITransform>;
 }

@@ -2,8 +2,6 @@ export module Core.Utilities;
 
 import Core.Prelude;
 import <cassert>;
-// import <intrusive_shared_ptr/ref_counted.h>;
-// import <intrusive_shared_ptr/refcnt_ptr.h>;
 
 namespace
 Engine {
@@ -128,17 +126,29 @@ Engine {
         }
 
     public:
-        template<typename T = void, typename U>
+        template<typename T = void, typename U> requires std::is_base_of_v<RefCounted, std::remove_cvref_t<U>>
         auto RefFromThis(this U &&self) -> Ref<std::conditional_t<std::is_same_v<void, T>, std::remove_cvref_t<U>, T>> {
             using TargetType = std::conditional_t<std::is_same_v<void, T>, std::remove_cvref_t<U>, T>;
-            return Ref<TargetType>((TargetType *) &self, ShareOwnership{});
+            Ref<TargetType> result;
+            result.mPtr = (TargetType *) &self;
+            result.mCounterAddress = static_cast<RefCounted *>(&self);
+            if (result.mCounterAddress) {
+                result.mCounterAddress->AddRefStrong();
+            }
+            return result;
         }
 
-        template<typename T = void, typename U>
+        template<typename T = void, typename U> requires std::is_base_of_v<RefCounted, std::remove_cvref_t<U>>
         auto WeakFromThis(
             this U &&self) -> Weak<std::conditional_t<std::is_same_v<void, T>, std::remove_cvref_t<U>, T>> {
             using TargetType = std::conditional_t<std::is_same_v<void, T>, std::remove_cvref_t<U>, T>;
-            return Weak<TargetType>((TargetType *) &self);
+            Weak<TargetType> result;
+            result.mPtr = (TargetType *) &self;
+            result.mCounterAddress = static_cast<RefCounted *>(&self);
+            if (result.mCounterAddress) {
+                result.mCounterAddress->AddRefWeak();
+            }
+            return result;
         }
 
     private:
@@ -180,9 +190,11 @@ Engine {
 
         Ref(nullptr_t) noexcept : mPtr(nullptr) {}
 
-        Ref(T *ptr, RefCounted::ShareOwnership) : mPtr(ptr) {
-            if (mPtr) {
-                mPtr->AddRefStrong();
+
+        Ref(T *ptr, RefCounted::ShareOwnership) requires std::is_base_of_v<RefCounted, T>
+            : mPtr(ptr), mCounterAddress(static_cast<RefCounted *>(ptr)) {
+            if (mCounterAddress) {
+                mCounterAddress->AddRefStrong();
             }
         }
 
@@ -192,28 +204,35 @@ Engine {
         template<typename U>
         friend class Weak;
 
+        friend RefCounted;
+
     private:
-        Ref(T *ptr, RefCounted::TransferOwnership) : mPtr(ptr) {}
+        Ref(T *ptr, RefCounted::TransferOwnership) requires std::is_base_of_v<RefCounted, T>
+            : mPtr(ptr), mCounterAddress(static_cast<RefCounted *>(ptr)) {
+
+        }
 
     public:
-        Ref(const Ref &other) : mPtr(other.mPtr) {
-            if (mPtr) {
-                mPtr->AddRefStrong();
+        Ref(const Ref &other) : mPtr(other.mPtr), mCounterAddress(other.mCounterAddress) {
+            if (mCounterAddress) {
+                mCounterAddress->AddRefStrong();
             }
         }
 
-        Ref(Ref &&other) noexcept : mPtr(other.mPtr) {
+        Ref(Ref &&other) noexcept : mPtr(other.mPtr), mCounterAddress(other.mCounterAddress) {
             other.mPtr = nullptr;
+            other.mCounterAddress = nullptr;
         }
 
         Ref &operator=(const Ref &other) {
             if (this != &other) {
-                if (mPtr) {
-                    mPtr->SubRefStrong();
+                if (mCounterAddress) {
+                    mCounterAddress->SubRefStrong();
                 }
                 mPtr = other.mPtr;
-                if (mPtr) {
-                    mPtr->AddRefStrong();
+                mCounterAddress = other.mCounterAddress;
+                if (mCounterAddress) {
+                    mCounterAddress->AddRefStrong();
                 }
             }
             return *this;
@@ -221,11 +240,14 @@ Engine {
 
         Ref &operator=(Ref &&other) noexcept {
             if (this != &other) {
-                if (mPtr) {
-                    mPtr->SubRefStrong();
+                if (mCounterAddress) {
+                    mCounterAddress->SubRefStrong();
                 }
                 mPtr = other.mPtr;
                 other.mPtr = nullptr;
+
+                mCounterAddress = other.mCounterAddress;
+                other.mCounterAddress = nullptr;
             }
             return *this;
         }
@@ -236,8 +258,10 @@ Engine {
         T *operator->() const noexcept { return mPtr; }
 
         void Reset() noexcept {
-            if (mPtr) {
-                mPtr->SubRefStrong();
+            if (mCounterAddress) {
+                mCounterAddress->SubRefStrong();
+
+                mCounterAddress = nullptr;
                 mPtr = nullptr;
             }
         }
@@ -247,33 +271,44 @@ Engine {
         // bool operator==(std::nullptr_t) const noexcept {
         //     return mPtr == nullptr;
         // }
+        //
+        // bool operator!=(std::nullptr_t) const noexcept {
+        //     return mPtr != nullptr;
+        // }
 
-        auto operator<=>(const Ref &) const = default;
+        auto operator<=>(const Ref &other) const = default;
 
     public:
         ~Ref() noexcept {
-            if (mPtr) {
-                mPtr->SubRefStrong();
+            if (mCounterAddress) {
+                mCounterAddress->SubRefStrong();
             }
         }
 
     public:
         template<typename U> requires IsExplicitlyConvertibleTo<T, U>
         Ref<U> As() const noexcept {
-            return Ref<U>(static_cast<U *>(mPtr), RefCounted::ShareOwnership{});
+            Ref<U> result;
+            result.mPtr = static_cast<U *>(mPtr);
+            result.mCounterAddress = mCounterAddress;
+            if (result.mCounterAddress) {
+                result.mCounterAddress->AddRefStrong();
+            }
+            return result;
         }
 
         template<typename U> requires IsImplicitlyConvertibleTo<T, U>
         operator Ref<U>() const noexcept {
-            return Ref<U>(static_cast<U *>(mPtr), RefCounted::ShareOwnership{});
+            return As<U>();
         }
 
         template<typename U> requires IsExplicitlyConvertibleTo<T, U>
         explicit operator Ref<U>() const noexcept {
-            return Ref<U>(static_cast<U *>(mPtr), RefCounted::ShareOwnership{});
+            return As<U>();
         }
 
-        template<typename... Args>
+        template<typename... Args> requires std::is_base_of_v<RefCounted, T>
+        // enable this only for RefCounted derived types
         static Ref<T> Create(Args &&... args) {
             auto *allocated = new T(std::forward<Args>(args)...);
             allocated->InitialAllocationPointer = allocated;
@@ -282,6 +317,7 @@ Engine {
 
     private:
         T *mPtr{nullptr};
+        RefCounted *mCounterAddress{nullptr};
     };
 
     template<typename T>
@@ -291,15 +327,17 @@ Engine {
 
         Weak(std::nullptr_t) noexcept : mPtr(nullptr) {}
 
-        Weak(const Ref<T> &ref) : mPtr(ref.mPtr) {
-            if (mPtr) {
-                mPtr->AddRefWeak();
+        Weak(const Ref<T> &ref) : mPtr(ref.mPtr), mCounterAddress(ref.mCounterAddress) {
+            if (mCounterAddress) {
+                mCounterAddress->AddRefWeak();
             }
         }
 
-        Weak(T *ptr) : mPtr(ptr) {
-            if (mPtr) {
-                mPtr->AddRefWeak();
+
+        Weak(T *ptr) requires std::is_base_of_v<RefCounted, T>
+        : mPtr(ptr), mCounterAddress(static_cast<RefCounted *>(ptr)) {
+            if (mCounterAddress) {
+                mCounterAddress->AddRefWeak();
             }
         }
 
@@ -309,24 +347,30 @@ Engine {
         template<typename U>
         friend class Weak;
 
-        Weak(const Weak &other) : mPtr(other.mPtr) {
-            if (mPtr) {
-                mPtr->AddRefWeak();
+        friend RefCounted;
+
+        Weak(const Weak &other) : mPtr(other.mPtr), mCounterAddress(other.mCounterAddress) {
+            if (mCounterAddress) {
+                mCounterAddress->AddRefWeak();
             }
         }
 
-        Weak(Weak &&other) noexcept : mPtr(other.mPtr) {
+        Weak(Weak &&other) noexcept : mPtr(other.mPtr), mCounterAddress(other.mCounterAddress) {
             other.mPtr = nullptr;
+            other.mCounterAddress = nullptr;
         }
 
         Weak &operator=(const Weak &other) {
             if (this != &other) {
-                if (mPtr) {
-                    mPtr->SubRefWeak();
+                if (mCounterAddress) {
+                    mCounterAddress->SubRefWeak();
                 }
+
                 mPtr = other.mPtr;
-                if (mPtr) {
-                    mPtr->AddRefWeak();
+                mCounterAddress = other.mCounterAddress;
+
+                if (mCounterAddress) {
+                    mCounterAddress->AddRefWeak();
                 }
             }
             return *this;
@@ -334,27 +378,33 @@ Engine {
 
         Weak &operator=(Weak &&other) noexcept {
             if (this != &other) {
-                if (mPtr) {
-                    mPtr->SubRefWeak();
+                if (mCounterAddress) {
+                    mCounterAddress->SubRefWeak();
                 }
                 mPtr = other.mPtr;
+                mCounterAddress = other.mCounterAddress;
+
                 other.mPtr = nullptr;
+                other.mCounterAddress = nullptr;
             }
             return *this;
         }
 
     public:
         Ref<T> Lock() const noexcept {
-            if (!mPtr) return nullptr;
+            if (!mCounterAddress) return nullptr;
 
-            size_t current = mPtr->mStrongCount.load(std::memory_order_relaxed);
+            size_t current = mCounterAddress->mStrongCount.load(std::memory_order_relaxed);
             while (current != 0) {
-                if (mPtr->mStrongCount.compare_exchange_weak(current, current + 1,
+                if (mCounterAddress->mStrongCount.compare_exchange_weak(current, current + 1,
                                                              std::memory_order_acquire,
                                                              std::memory_order_relaxed)) {
-                    mPtr->mWeakCount.fetch_add(1, std::memory_order_relaxed);
+                    mCounterAddress->mWeakCount.fetch_add(1, std::memory_order_relaxed);
 
-                    return Ref<T>(mPtr, RefCounted::TransferOwnership{});
+                    Ref<T> result;
+                    result.mPtr = mPtr;
+                    result.mCounterAddress = mCounterAddress;
+                    return result;
                 }
             }
             return nullptr;
@@ -362,13 +412,14 @@ Engine {
 
     public:
         ~Weak() noexcept {
-            if (mPtr) {
-                mPtr->SubRefWeak();
+            if (mCounterAddress) {
+                mCounterAddress->SubRefWeak();
             }
         }
 
     private:
         T *mPtr{nullptr};
+        RefCounted *mCounterAddress{nullptr};
     };
 
     export template<typename T>

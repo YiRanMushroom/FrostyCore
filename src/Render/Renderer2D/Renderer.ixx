@@ -21,7 +21,7 @@ Engine {
     export struct Renderer2DDescriptor {
         glm::u32vec2 OutputSize;
         // float VirtualSizeWidth;
-        mutable std::vector<Ref<RefTransform>> Transforms;
+        mutable std::vector<Ref<ITransform>> Transforms;
     };
 
     export struct Renderer2DBeginRenderingInfo {
@@ -200,13 +200,13 @@ Engine {
         void Submit();
 
         glm::mat4 GetViewProjectionMatrix();
-        void SetTransforms(std::vector<Ref<RefTransform>> transforms);
+        void SetTransforms(std::vector<Ref<ITransform>> transforms);
 
         nvrhi::DeviceHandle mDevice;
         glm::u32vec2 mOutputSize;
         // glm::vec2 mVirtualSize;
         // glm::mat4 mViewProjectionMatrix;
-        std::vector<Ref<RefTransform>> mTransforms;
+        std::vector<Ref<ITransform>> mTransforms;
 
         nvrhi::TextureHandle mTexture;
         nvrhi::FramebufferHandle mFramebuffer;
@@ -247,7 +247,7 @@ Engine {
         std::vector<EllipseBatchRenderingResources> mEllipseBatchRenderingResources;
     };
 
-    export class VirtualSizeTransform : public RefTransform {
+    export class VirtualSizeTransform : public RefCounted, public ITransform {
     public:
         void SetVirtualWidth(float virtualWidth) {
             mVirtualSize.x = virtualWidth;
