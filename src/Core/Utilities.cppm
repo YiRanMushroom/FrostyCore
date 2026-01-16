@@ -310,9 +310,20 @@ Engine {
         template<typename... Args> requires std::is_base_of_v<RefCounted, T>
         // enable this only for RefCounted derived types
         static Ref<T> Create(Args &&... args) {
-            auto *allocated = new T(std::forward<Args>(args)...);
-            allocated->InitialAllocationPointer = allocated;
-            return Ref<T>(allocated, RefCounted::TransferOwnership{});
+            void* rawMemory = std::malloc(sizeof(T));
+            if (!rawMemory) throw std::bad_alloc();
+
+            T* instance = nullptr;
+            try {
+                instance = new (rawMemory) T(std::forward<Args>(args)...);
+            } catch (...) {
+                std::free(rawMemory);
+                throw;
+            }
+
+            instance->InitialAllocationPointer = rawMemory;
+
+            return Ref<T>(instance, RefCounted::TransferOwnership{});
         }
 
     private:
