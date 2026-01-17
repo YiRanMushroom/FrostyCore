@@ -434,10 +434,19 @@ Engine {
     };
 
     export template<typename T>
-    class RefInterface : public RefCounted, public T {};
+    class RefInterface : public RefCounted, public T {
+    public:
+        template<typename... Args>
+        RefInterface(Args &&... args) : T(std::forward<Args>(args)...) {} // forward constructor args
+    };
 
-    export template<typename T, typename... Args>
+    export template<typename T, typename... Args> requires std::is_base_of_v<RefCounted, T>
     Ref<T> MakeRef(Args &&... args) {
         return Ref<T>::Create(std::forward<Args>(args)...);
+    }
+
+    export template<typename T, typename... Args> requires !std::is_base_of_v<RefCounted, T>
+    Ref<T> MakeRef(Args &&... args) {
+        return Ref<RefInterface<T>>::Create(std::forward<Args>(args)...).template As<T>();
     }
 }

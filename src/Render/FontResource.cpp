@@ -53,7 +53,7 @@ namespace Engine {
         return &*l3[i3];
     }
 
-    std::unique_ptr<FontAtlasData> GenerateFontAtlas(const GenerateFontAtlasInfo &info) {
+    FontAtlasData GenerateFontAtlas(const GenerateFontAtlasInfo &info) {
         using namespace msdf_atlas;
 
         // 1. Gather glyphs from all fonts and charsets
@@ -91,10 +91,10 @@ namespace Engine {
         generator.generate(allGlyphs.data(), static_cast<int>(allGlyphs.size()));
 
         // 5. Initialize result data
-        auto result = std::make_unique<FontAtlasData>();
-        result->AtlasWidth = static_cast<uint32_t>(width);
-        result->AtlasHeight = static_cast<uint32_t>(height);
-        result->MTSDFPixelRange = static_cast<float>(info.PixelRange);
+        FontAtlasData result;
+        result.AtlasWidth = static_cast<uint32_t>(width);
+        result.AtlasHeight = static_cast<uint32_t>(height);
+        result.MTSDFPixelRange = static_cast<float>(info.PixelRange);
 
         // 6. Access storage using your specified method
         // This triggers the conversion or copy based on your BitmapAtlasStorage implementation
@@ -105,9 +105,9 @@ namespace Engine {
 
         // 7. Convert RGB to RGBA for NVRHI compatibility
         size_t pixelCount = static_cast<size_t>(width) * height;
-        result->AtlasBitmapData = std::make_unique<uint8_t[]>(pixelCount * 4);
-        result->PixelCount = static_cast<uint32_t>(pixelCount);
-        uint8_t *rgbaBuffer = result->AtlasBitmapData.get();
+        result.AtlasBitmapData = std::make_unique<uint8_t[]>(pixelCount * 4);
+        result.PixelCount = static_cast<uint32_t>(pixelCount);
+        uint8_t *rgbaBuffer = result.AtlasBitmapData.get();
 
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
@@ -142,7 +142,7 @@ namespace Engine {
             metrics.Offset = glm::vec2(pl, pb);
             metrics.Advance = static_cast<float>(glyph.getAdvance());
 
-            result->SetMetrics(glyph.getCodepoint(), metrics);
+            result.SetMetrics(glyph.getCodepoint(), metrics);
         }
 
         return result;

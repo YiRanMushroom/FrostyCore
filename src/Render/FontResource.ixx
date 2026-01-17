@@ -44,5 +44,5 @@ namespace Engine {
         uint32_t ParallelThreadCount = 4; // optimal for 256 character set
     };
 
-    export std::unique_ptr<FontAtlasData> GenerateFontAtlas(const GenerateFontAtlasInfo &info);
+    export FontAtlasData GenerateFontAtlas(const GenerateFontAtlasInfo &info);
 }
