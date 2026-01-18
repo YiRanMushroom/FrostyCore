@@ -208,9 +208,7 @@ Engine {
 
     private:
         Ref(T *ptr, RefCounted::TransferOwnership) requires std::is_base_of_v<RefCounted, T>
-            : mPtr(ptr), mCounterAddress(static_cast<RefCounted *>(ptr)) {
-
-        }
+            : mPtr(ptr), mCounterAddress(static_cast<RefCounted *>(ptr)) {}
 
     public:
         Ref(const Ref &other) : mPtr(other.mPtr), mCounterAddress(other.mCounterAddress) {
@@ -310,12 +308,12 @@ Engine {
         template<typename... Args> requires std::is_base_of_v<RefCounted, T>
         // enable this only for RefCounted derived types
         static Ref<T> Create(Args &&... args) {
-            void* rawMemory = std::malloc(sizeof(T));
+            void *rawMemory = std::malloc(sizeof(T));
             if (!rawMemory) throw std::bad_alloc();
 
-            T* instance = nullptr;
+            T *instance = nullptr;
             try {
-                instance = new (rawMemory) T(std::forward<Args>(args)...);
+                instance = new(rawMemory) T(std::forward<Args>(args)...);
             } catch (...) {
                 std::free(rawMemory);
                 throw;
@@ -346,7 +344,7 @@ Engine {
 
 
         Weak(T *ptr) requires std::is_base_of_v<RefCounted, T>
-        : mPtr(ptr), mCounterAddress(static_cast<RefCounted *>(ptr)) {
+            : mPtr(ptr), mCounterAddress(static_cast<RefCounted *>(ptr)) {
             if (mCounterAddress) {
                 mCounterAddress->AddRefWeak();
             }
@@ -408,8 +406,8 @@ Engine {
             size_t current = mCounterAddress->mStrongCount.load(std::memory_order_relaxed);
             while (current != 0) {
                 if (mCounterAddress->mStrongCount.compare_exchange_weak(current, current + 1,
-                                                             std::memory_order_acquire,
-                                                             std::memory_order_relaxed)) {
+                                                                        std::memory_order_acquire,
+                                                                        std::memory_order_relaxed)) {
                     mCounterAddress->mWeakCount.fetch_add(1, std::memory_order_relaxed);
 
                     Ref<T> result;
@@ -448,5 +446,17 @@ Engine {
     export template<typename T, typename... Args> requires !std::is_base_of_v<RefCounted, T>
     Ref<T> MakeRef(Args &&... args) {
         return Ref<RefInterface<T>>::Create(std::forward<Args>(args)...).template As<T>();
+    }
+
+    namespace ResourceOwnership {
+        export inline namespace Tags {
+            struct Static {};
+
+            struct AutoManaged {};
+
+            struct Transferred {};
+
+            struct Shared {};
+        }
     }
 }
