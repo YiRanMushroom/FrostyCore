@@ -108,8 +108,10 @@ Engine {
             std::unique_ptr<UserDataPointerType> dataPtr =
                     std::unique_ptr<UserDataPointerType>(static_cast<UserDataPointerType *>(userData));
             std::vector<std::filesystem::path> paths;
-            for (const char *const *ptr = filePaths; *ptr != nullptr; ++ptr) {
-                paths.emplace_back(std::filesystem::path(reinterpret_cast<const char8_t * const>(*ptr)));
+            if (filePaths) {
+                for (const char *const *ptr = filePaths; *ptr != nullptr; ++ptr) {
+                    paths.emplace_back(std::filesystem::path(reinterpret_cast<const char8_t * const>(*ptr)));
+                }
             }
             dataPtr->promise->set_value(std::move(paths));
         };
@@ -138,8 +140,10 @@ Engine {
             auto promise = std::unique_ptr<std::promise<std::vector<std::filesystem::path>>>
                     (static_cast<std::promise<std::vector<std::filesystem::path>> *>(userData));
             std::vector<std::filesystem::path> paths;
-            for (const char *const*ptr = filePaths; *ptr != nullptr; ++ptr) {
-                paths.emplace_back(std::filesystem::path(reinterpret_cast<const char8_t * const>(*ptr)));
+            if (filePaths) {
+                for (const char *const*ptr = filePaths; *ptr != nullptr; ++ptr) {
+                    paths.emplace_back(std::filesystem::path(reinterpret_cast<const char8_t * const>(*ptr)));
+                }
             }
             promise->set_value(std::move(paths));
         };
@@ -150,9 +154,9 @@ Engine {
     }
 
     export Awaitable<std::optional<std::filesystem::path>> SaveFileDialogAsync(
-            SDL_Window* window,
-            Ref<IDialogFileFilterGroup> filterGroup
-        ) {
+        SDL_Window *window,
+        Ref<IDialogFileFilterGroup> filterGroup
+    ) {
         struct UserDataPointerType {
             std::unique_ptr<std::promise<std::optional<std::filesystem::path>>> promise;
             Ref<IDialogFileFilterGroup> filterGroup;
@@ -165,7 +169,7 @@ Engine {
         SDL_DialogFileCallback callback = [](void *userData, const char *const *filePaths, int filterIndex) {
             std::unique_ptr<UserDataPointerType> dataPtr =
                     std::unique_ptr<UserDataPointerType>(static_cast<UserDataPointerType *>(userData));
-            if (filePaths[0] != nullptr) {
+            if (filePaths && filePaths[0]) {
                 dataPtr->promise->set_value(std::filesystem::path(reinterpret_cast<const char8_t *>(filePaths[0])));
             } else {
                 dataPtr->promise->set_value(std::nullopt);
