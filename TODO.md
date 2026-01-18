@@ -4,3 +4,6 @@ Hopefully not have to hack NVRHI again.
 Implement off-screen Rendering logic, need to create frame buffers and renderer.
 Add maximum uploads per frame to the resource uploader to avoid stalling the GPU, this is very low priority.
 Fucking stop and figure out what the fuck I am doing with the framebuffer and pipeline creation.
+
+Fix:
+Somewhere I am using NVRHI main CommandBuffer, and it conflicts with the main buffer, find it/

@@ -79,7 +79,9 @@ Engine {
         [[nodiscard]] const vk::SharedQueue &GetVkQueue() const { return mVkQueue; }
 
         [[nodiscard]] const nvrhi::vulkan::DeviceHandle &GetNvrhiDevice() const { return mNvrhiDevice; }
+    private:
         [[nodiscard]] const nvrhi::CommandListHandle &GetCommandList() const { return mCommandList; }
+    public:
 
         [[nodiscard]] const PlatformSwapchain &GetSwapchain() const { return mSwapchain; }
 

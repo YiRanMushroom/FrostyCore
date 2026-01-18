@@ -150,6 +150,18 @@ Engine {
         AwaitToDoImmediate(Fn f) : func(std::move(f)) {}
     };
 
+    export template<typename Fn>
+    class AwaitLetSelf {
+    public:
+        Fn func;
+
+        AwaitLetSelf(const AwaitLetSelf &) = delete;
+
+        AwaitLetSelf &operator=(const AwaitLetSelf &) = delete;
+
+        AwaitLetSelf(Fn f) : func(std::move(f)) {}
+    };
+
     export class ExecutionContext;
 
     // export std::atomic_size_t g_AllocCount = 0;
@@ -230,7 +242,7 @@ Engine {
     template<typename... Tps>
     struct AnyOfType;
 
-    struct PromiseBase {
+    export struct PromiseBase {
         std::weak_ptr<void> Self{};
         std::atomic_bool IsCancelled = false;
         std::atomic_bool NotCancellable = false;
@@ -268,6 +280,9 @@ Engine {
 
         template<class Fn>
         std::suspend_never await_transform(AwaitToDoImmediate<Fn> &&awaiter);
+
+        template<class Fn>
+        std::suspend_never await_transform(AwaitLetSelf<Fn> &&awaiter);
     };
 
     void PromiseBase::Schedule() const {
@@ -964,6 +979,12 @@ Engine {
     template<typename Fn>
     std::suspend_never PromiseBase::await_transform(AwaitToDoImmediate<Fn> &&awaiter) {
         awaiter.func(std::coroutine_handle<PromiseBase>::from_promise(*this));
+        return {};
+    }
+
+    template<class Fn>
+    std::suspend_never PromiseBase::await_transform(AwaitLetSelf<Fn> &&awaiter) {
+        awaiter.func(*this);
         return {};
     }
 

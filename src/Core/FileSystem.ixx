@@ -130,7 +130,9 @@ Engine {
         std::unique_ptr<std::promise<std::vector<std::filesystem::path>>> promise = std::make_unique<std::promise<
             std::vector<
                 std::filesystem::path>>>();
+
         auto future = promise->get_future();
+
         SDL_DialogFileCallback callback = [](void *userData, const char *const *filePaths, int filterIndex) {
             (void) filterIndex;
             auto promise = std::unique_ptr<std::promise<std::vector<std::filesystem::path>>>
@@ -143,6 +145,41 @@ Engine {
         };
 
         SDL_ShowOpenFolderDialog(callback, promise.release(), parentWindow, nullptr, true);
+
+        co_return co_await std::move(future);
+    }
+
+    export Awaitable<std::optional<std::filesystem::path>> SaveFileDialogAsync(
+            SDL_Window* window,
+            Ref<IDialogFileFilterGroup> filterGroup
+        ) {
+        struct UserDataPointerType {
+            std::unique_ptr<std::promise<std::optional<std::filesystem::path>>> promise;
+            Ref<IDialogFileFilterGroup> filterGroup;
+        };
+
+        auto promise = std::make_unique<std::promise<
+            std::optional<std::filesystem::path>>>();
+
+        auto future = promise->get_future();
+        SDL_DialogFileCallback callback = [](void *userData, const char *const *filePaths, int filterIndex) {
+            std::unique_ptr<UserDataPointerType> dataPtr =
+                    std::unique_ptr<UserDataPointerType>(static_cast<UserDataPointerType *>(userData));
+            if (filePaths[0] != nullptr) {
+                dataPtr->promise->set_value(std::filesystem::path(reinterpret_cast<const char8_t *>(filePaths[0])));
+            } else {
+                dataPtr->promise->set_value(std::nullopt);
+            }
+        };
+
+        std::unique_ptr<UserDataPointerType> userDataPtr = std::make_unique<UserDataPointerType>();
+        userDataPtr->promise = std::move(promise);
+
+        auto span = filterGroup->GetSDLDialogFileFilters();
+        userDataPtr->filterGroup = std::move(filterGroup);
+
+        SDL_ShowSaveFileDialog(callback, userDataPtr.release(), window,
+                               span.data(), static_cast<int>(span.size()), nullptr);
 
         co_return co_await std::move(future);
     }
