@@ -178,6 +178,7 @@ Engine {
             shapeData.TextureIndex = instance.VirtualTextureID;
             shapeData.EdgeSoftness = instance.EdgeSoftness;
             shapeData.ClipRegionId = clipIndex;
+            shapeData.ModelMatrix = instance.ModelMatrix;
 
             currentSubmission.ShapeData.push_back(shapeData);
         }

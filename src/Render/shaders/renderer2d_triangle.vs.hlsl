@@ -14,7 +14,8 @@ struct SpriteData {
     int clipRegionId;
     uint mode;
     float pxRange;
-    float padding[3];
+    float padding[3]; // Align ModelMatrix to 16-byte boundary
+    float4x4 ModelMatrix;
 };
 
 struct PSInput {
@@ -42,11 +43,15 @@ PSInput main(VSInput vertexInput) {
         (packed & 0xFF) / 255.0
     );
 
-    pixelInput.position = mul(u_ViewProjectionMatrix, float4(vertexInput.position, 0.0, 1.0));
+    // Apply ModelMatrix transformation to get world position
+    float4 worldPos4 = mul(sprite.ModelMatrix, float4(vertexInput.position, 0.0, 1.0));
+    float2 worldPos = worldPos4.xy;
+
+    pixelInput.position = mul(u_ViewProjectionMatrix, worldPos4);
     pixelInput.texCoord = vertexInput.texCoord;
     pixelInput.tintColor = tintColor;
     pixelInput.textureIndex = sprite.textureIndex;
-    pixelInput.worldPos = vertexInput.position;
+    pixelInput.worldPos = worldPos;
     pixelInput.mode = sprite.mode;
     pixelInput.pxRange = sprite.pxRange;
     pixelInput.clipRegionId = sprite.clipRegionId;

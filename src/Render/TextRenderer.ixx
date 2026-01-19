@@ -18,6 +18,8 @@ Engine {
         FontAtlasData *Context;
         uint32_t VirtualFontTextureId;
 
+        glm::mat4x4 ModelMatrix = glm::mat4x4(1.0f);
+
         DrawSimpleTextAsciiCommand &SetText(std::string_view text) {
             Text = text;
             return *this;
@@ -63,6 +65,11 @@ Engine {
             VirtualFontTextureId = textureId;
             return *this;
         }
+
+        DrawSimpleTextAsciiCommand &SetTransform(const glm::mat4x4 &modelMatrix) {
+            ModelMatrix = modelMatrix;
+            return *this;
+        }
     };
 
     export template<>
@@ -73,7 +80,8 @@ Engine {
         Engine::QuadDrawCommand quadDrawCommand;
         quadDrawCommand.SetFontAtlas(cmd.VirtualFontTextureId, ctx.MTSDFPixelRange)
                 .SetTintColor(cmd.Color)
-                .SetClipRegionId(cmd.ClipRegionId);
+                .SetClipRegionId(cmd.ClipRegionId)
+                .SetTransform(cmd.ModelMatrix);
 
         float scale = cmd.FontSize;
         float cursorX = cmd.StartPosition.x;

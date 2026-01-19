@@ -79,6 +79,11 @@ Engine {
             return *this;
         }
 
+        TriangleDrawCommand &SetTransform(const glm::mat4x4 &modelMatrix) {
+            ModelMatrix = modelMatrix;
+            return *this;
+        }
+
         friend class Renderer2D;
 
     public:
@@ -88,6 +93,8 @@ Engine {
         glm::u8vec4 TintColor = glm::u8vec4(0u, 0u, 0u, 255u);
         std::optional<int> OverrideDepth = std::nullopt;
         int ClipRegionId = -1;
+
+        glm::mat4x4 ModelMatrix = glm::mat4x4(1.0f);
     };
 
     export class QuadDrawCommand : public DrawCommand {
@@ -156,6 +163,11 @@ Engine {
             return *this;
         }
 
+        QuadDrawCommand &SetTransform(const glm::mat4x4 &modelMatrix) {
+            ModelMatrix = modelMatrix;
+            return *this;
+        }
+
         friend class Renderer2D;
 
     public:
@@ -172,6 +184,8 @@ Engine {
 
         InstanceRenderingMode RenderingMode = InstanceRenderingMode::Texture;
         float MTSDFPixelRange;
+
+        glm::mat4x4 ModelMatrix = glm::mat4x4(1.0f);
     };
 
     // No need to provide draw command for line because it is simple enough
@@ -236,6 +250,11 @@ Engine {
             return *this;
         }
 
+        CircularDrawCommand &SetTransform(const glm::mat4x4 &modelMatrix) {
+            ModelMatrix = modelMatrix;
+            return *this;
+        }
+
         friend class Renderer2D;
 
     public:
@@ -250,5 +269,7 @@ Engine {
         float EdgeSoftness = 1.0f;
         std::optional<int> OverrideDepth = 0;
         int ClipRegionId = -1;
+
+        glm::mat4x4 ModelMatrix = glm::mat4x4(1.0f);
     };
 }

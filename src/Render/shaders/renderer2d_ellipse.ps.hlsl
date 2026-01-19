@@ -78,21 +78,21 @@ float checkAngleInSector(float angle, float startAngle, float endAngle, float so
 }
 
 float4 main(PSInput input) : SV_TARGET{
-    // Perform clipping test if enabled (in virtual/world space)
+    // Perform clipping test if enabled (early exit if no clipping needed)
     if (input.clipRegionId >= 0) {
         ClipRegion clipRegion = u_ClipBuffer[input.clipRegionId];
-        if (clipRegion.pointCount > 0) {
+
+        // Only process if there are actual clip points
+        if (clipRegion.pointCount > 0 && clipRegion.pointCount <= 4) {
             float2 clipPoints[4];
-            for (uint i = 0; i < 4; ++i) {
-                clipPoints[i] = (i < clipRegion.pointCount) ? clipRegion.points[i] : float2(0, 0);
+            for (uint i = 0; i < clipRegion.pointCount; ++i) {
+                clipPoints[i] = clipRegion.points[i];
             }
 
             bool inside = isPointInPolygon(input.worldPos, clipPoints, clipRegion.pointCount);
 
             // clipMode: 0 = show inside (discard outside), 1 = show outside (discard inside)
-            if (clipRegion.clipMode == 0 && !inside) {
-                discard;
-            } else if (clipRegion.clipMode == 1 && inside) {
+            if ((clipRegion.clipMode == 0 && !inside) || (clipRegion.clipMode == 1 && inside)) {
                 discard;
             }
         }

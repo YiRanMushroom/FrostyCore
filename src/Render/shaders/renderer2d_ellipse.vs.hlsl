@@ -13,6 +13,10 @@ struct EllipseShapeData {
     int textureIndex;
     float edgeSoftness;
     int clipRegionId; // -1 = no clipping
+
+    float padding[4]; // Align ModelMatrix to 16-byte boundary
+
+    float4x4 ModelMatrix;
 };
 
 struct PSInput {
@@ -55,11 +59,19 @@ PSInput main(uint vID: SV_VertexID) {
     float2x2 rotMatrix = float2x2(cosR, -sinR, sinR, cosR);
     float2 rotatedPos = mul(rotMatrix, localPos);
 
-    float2 worldPos = data.center + rotatedPos;
+    float2 localSpacePos = data.center + rotatedPos;
 
-    output.position = mul(u_ViewProjectionMatrix, float4(worldPos, 0.0, 1.0));
+    // Apply ModelMatrix to get actual world position for clipping
+    float4 worldPos4 = mul(data.ModelMatrix, float4(localSpacePos, 0.0, 1.0));
+    float2 worldPos = worldPos4.xy;
+
+    // Also transform the center for correct SDF calculation in pixel shader
+    float4 transformedCenter4 = mul(data.ModelMatrix, float4(data.center, 0.0, 1.0));
+    float2 transformedCenter = transformedCenter4.xy;
+
+    output.position = mul(u_ViewProjectionMatrix, worldPos4);
     output.worldPos = worldPos;
-    output.center = data.center;
+    output.center = transformedCenter;
     output.radii = data.radii;
     output.rotation = data.rotation;
     output.innerScale = data.innerScale;

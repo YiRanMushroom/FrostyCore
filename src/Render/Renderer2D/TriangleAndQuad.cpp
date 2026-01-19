@@ -189,7 +189,8 @@ Engine {
                 .TextureIndex = finalTextureIndex,
                 .ClipIndex = clipIndex,
                 .RenderingMode = instance.RenderingMode,
-                .MTSDFPixelRange = instance.MTSDFPixelRange
+                .MTSDFPixelRange = instance.MTSDFPixelRange,
+                .ModelMatrix = instance.ModelMatrix
             });
 
             uint32_t baseVtx = static_cast<uint32_t>(currentSubmission.VertexData.size());

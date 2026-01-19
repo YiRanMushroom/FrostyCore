@@ -15,7 +15,7 @@ Engine {
           mVirtualTextureManager(mDevice), mClipRegionManager(mDevice.Get()) {
         // mVirtualSize.x = desc.VirtualSizeWidth;
         // mVirtualSize.y = desc.VirtualSizeWidth * (
-                             // static_cast<float>(mOutputSize.y) / static_cast<float>(mOutputSize.x));
+        // static_cast<float>(mOutputSize.y) / static_cast<float>(mOutputSize.x));
         CreateResources();
         CreateConstantBuffers();
         CreatePipelines();
@@ -685,8 +685,10 @@ Engine {
             float halfVisibleWidth = mFramebufferSize.x / (2.0f * uniformScale);
             float halfVisibleHeight = mFramebufferSize.y / (2.0f * uniformScale);
 
+            // With GLM_FORCE_DEPTH_ZERO_TO_ONE, glm::ortho maps near->0.0 and far->1.0 in Vulkan
+            // We use a symmetric range around 0 to allow depth variations from transformations
             glm::mat4 projection = glm::ortho(-halfVisibleWidth, halfVisibleWidth,
-                                              -halfVisibleHeight, halfVisibleHeight, -1.f, 1.f);
+                                              -halfVisibleHeight, halfVisibleHeight, -10000.f, 10000.f);
 
             mCachedTransform = {projection};
         }
@@ -979,48 +981,111 @@ Engine {
 
     template<>
     void Renderer2D::Draw<TriangleDrawCommand>(const TriangleDrawCommand &command) {
-        mTriangleCommandList.AddTriangle(
-            command.Positions[0],
-            command.UVs[0],
-            command.Positions[1],
-            command.UVs[1],
-            command.Positions[2],
-            command.UVs[2],
-            command.VirtualTextureID,
-            command.TintColor,
-            command.OverrideDepth.value_or(mCurrentDepth),
-            command.ClipRegionId
+        // mTriangleCommandList.AddTriangle(
+        //     command.Positions[0],
+        //     command.UVs[0],
+        //     command.Positions[1],
+        //     command.UVs[1],
+        //     command.Positions[2],
+        //     command.UVs[2],
+        //     command.VirtualTextureID,
+        //     command.TintColor,
+        //     command.OverrideDepth.value_or(mCurrentDepth),
+        //     command.ClipRegionId
+        // );
+        mTriangleCommandList.Instances.push_back(
+            TriangleRenderingData{
+                .Positions = glm::mat4x2(command.Positions[0], command.Positions[1], command.Positions[2],
+                                         glm::vec2(0.0f, 0.0f)),
+                .TexCoords = glm::mat4x2(command.UVs[0], command.UVs[1], command.UVs[2], glm::vec2(0.0f, 0.0f)),
+                .IsQuad = false,
+                .VirtualTextureID = command.VirtualTextureID,
+                .TintColor = command.TintColor,
+                .Depth = command.OverrideDepth.value_or(mCurrentDepth),
+                .ClipRegionId = command.ClipRegionId,
+                .RenderingMode = InstanceRenderingMode::Texture,
+                .MTSDFPixelRange = 0.0f,
+                .ModelMatrix = command.ModelMatrix
+            }
         );
     }
 
     template<>
     void Renderer2D::Draw<>(const QuadDrawCommand &command) {
         if (command.RenderingMode == InstanceRenderingMode::Texture) {
-            mTriangleCommandList.AddQuad(
-                command.FirstPoint, command.FirstUV,
-                glm::vec2(command.SecondPoint.x, command.FirstPoint.y),
-                glm::vec2(command.SecondUV.x, command.FirstUV.y),
-                command.SecondPoint, command.SecondUV,
-                glm::vec2(command.FirstPoint.x, command.SecondPoint.y),
-                glm::vec2(command.FirstUV.x, command.SecondUV.y),
-                command.VirtualTextureID,
-                command.TintColor,
-                command.OverrideDepth.value_or(mCurrentDepth),
-                command.ClipRegionId
+            // mTriangleCommandList.AddQuad(
+            //     command.FirstPoint, command.FirstUV,
+            //     glm::vec2(command.SecondPoint.x, command.FirstPoint.y),
+            //     glm::vec2(command.SecondUV.x, command.FirstUV.y),
+            //     command.SecondPoint, command.SecondUV,
+            //     glm::vec2(command.FirstPoint.x, command.SecondPoint.y),
+            //     glm::vec2(command.FirstUV.x, command.SecondUV.y),
+            //     command.VirtualTextureID,
+            //     command.TintColor,
+            //     command.OverrideDepth.value_or(mCurrentDepth),
+            //     command.ClipRegionId
+            // );
+            mTriangleCommandList.Instances.push_back(
+                TriangleRenderingData{
+                    .Positions = glm::mat4x2(
+                        command.FirstPoint,
+                        glm::vec2(command.SecondPoint.x, command.FirstPoint.y),
+                        command.SecondPoint,
+                        glm::vec2(command.FirstPoint.x, command.SecondPoint.y)
+                    ),
+                    .TexCoords = glm::mat4x2(
+                        command.FirstUV,
+                        glm::vec2(command.SecondUV.x, command.FirstUV.y),
+                        command.SecondUV,
+                        glm::vec2(command.FirstUV.x, command.SecondUV.y)
+                    ),
+                    .IsQuad = true,
+                    .VirtualTextureID = command.VirtualTextureID,
+                    .TintColor = command.TintColor,
+                    .Depth = command.OverrideDepth.value_or(mCurrentDepth),
+                    .ClipRegionId = command.ClipRegionId,
+                    .RenderingMode = InstanceRenderingMode::Texture,
+                    .MTSDFPixelRange = 0.0f,
+                    .ModelMatrix = command.ModelMatrix
+                }
             );
         } else if (command.RenderingMode == InstanceRenderingMode::MTSDF) {
-            mTriangleCommandList.AddQuadFont(
-                command.FirstPoint, command.FirstUV,
-                glm::vec2(command.SecondPoint.x, command.FirstPoint.y),
-                glm::vec2(command.SecondUV.x, command.FirstUV.y),
-                command.SecondPoint, command.SecondUV,
-                glm::vec2(command.FirstPoint.x, command.SecondPoint.y),
-                glm::vec2(command.FirstUV.x, command.SecondUV.y),
-                command.VirtualTextureID,
-                command.TintColor,
-                command.MTSDFPixelRange,
-                command.OverrideDepth.value_or(mCurrentDepth),
-                command.ClipRegionId
+            // mTriangleCommandList.AddQuadFont(
+            //     command.FirstPoint, command.FirstUV,
+            //     glm::vec2(command.SecondPoint.x, command.FirstPoint.y),
+            //     glm::vec2(command.SecondUV.x, command.FirstUV.y),
+            //     command.SecondPoint, command.SecondUV,
+            //     glm::vec2(command.FirstPoint.x, command.SecondPoint.y),
+            //     glm::vec2(command.FirstUV.x, command.SecondUV.y),
+            //     command.VirtualTextureID,
+            //     command.TintColor,
+            //     command.MTSDFPixelRange,
+            //     command.OverrideDepth.value_or(mCurrentDepth),
+            //     command.ClipRegionId
+            // );
+            mTriangleCommandList.Instances.push_back(
+                TriangleRenderingData{
+                    .Positions = glm::mat4x2(
+                        command.FirstPoint,
+                        glm::vec2(command.SecondPoint.x, command.FirstPoint.y),
+                        command.SecondPoint,
+                        glm::vec2(command.FirstPoint.x, command.SecondPoint.y)
+                    ),
+                    .TexCoords = glm::mat4x2(
+                        command.FirstUV,
+                        glm::vec2(command.SecondUV.x, command.FirstUV.y),
+                        command.SecondUV,
+                        glm::vec2(command.FirstUV.x, command.SecondUV.y)
+                    ),
+                    .IsQuad = true,
+                    .VirtualTextureID = command.VirtualTextureID,
+                    .TintColor = command.TintColor,
+                    .Depth = command.OverrideDepth.value_or(mCurrentDepth),
+                    .ClipRegionId = command.ClipRegionId,
+                    .RenderingMode = InstanceRenderingMode::MTSDF,
+                    .MTSDFPixelRange = command.MTSDFPixelRange,
+                    .ModelMatrix = command.ModelMatrix
+                }
             );
         }
     }
@@ -1038,7 +1103,8 @@ Engine {
             .TintColor = command.TintColor,
             .EdgeSoftness = command.EdgeSoftness,
             .Depth = command.OverrideDepth.value_or(mCurrentDepth),
-            .ClipRegionId = command.ClipRegionId
+            .ClipRegionId = command.ClipRegionId,
+            .ModelMatrix = command.ModelMatrix
         });
     }
 }
