@@ -1,6 +1,7 @@
 export module Core.Input;
 
 import Vendor.ApplicationAPI;
+import "SDL3/SDL_mouse.h";
 
 namespace Engine {
     export bool IsKeyPressed(SDL_Scancode key) {
@@ -14,6 +15,6 @@ namespace Engine {
 
     export bool IsMouseButtonPressed(Uint8 button) {
         Uint32 buttons = SDL_GetMouseState(nullptr, nullptr);
-        return (buttons & SDL_MouseButtonFlags(button)) != 0;
+        return (buttons & SDL_BUTTON_MASK(SDL_MouseButtonFlags(button))) != 0;
     }
 }
