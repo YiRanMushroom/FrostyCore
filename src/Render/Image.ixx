@@ -3,6 +3,7 @@ import Vendor.GraphicsAPI;
 import "stb_image.h";
 import Core.Prelude;
 import Core.Coroutine;
+import "nvrhi/src/vulkan/vulkan-backend.h";
 
 namespace
 Engine {
@@ -21,8 +22,7 @@ Engine {
 
     export std::vector<nvrhi::TextureHandle> UploadImagesToGPU(
         std::span<const GPUImageDescriptor> descriptors,
-        const nvrhi::DeviceHandle &device,
-        const nvrhi::CommandListHandle &commandList) {
+        const nvrhi::DeviceHandle &device) {
         std::vector<nvrhi::TextureHandle> textures;
         textures.reserve(descriptors.size());
 
@@ -40,6 +40,8 @@ Engine {
             textures.emplace_back(device->createTexture(textureDesc));
         }
 
+        auto commandList = device->createCommandList();
+
         commandList->open();
         for (size_t i = 0; i < descriptors.size(); ++i) {
             uint32_t rowPitch = descriptors[i].rowPitchInBytes.has_value()
@@ -53,9 +55,9 @@ Engine {
 
         auto eventQuery = device->createEventQuery();
 
-        device->executeCommandList(commandList);
+        size_t queryId = device->executeCommandList(commandList);
 
-        device->setEventQuery(eventQuery, nvrhi::CommandQueue::Graphics);
+        static_cast<nvrhi::vulkan::EventQuery *>(eventQuery.Get())->commandListID = queryId;
 
         device->waitEventQuery(eventQuery);
 
@@ -64,9 +66,8 @@ Engine {
 
     export nvrhi::TextureHandle UploadImageToGPU(
         const GPUImageDescriptor &descriptor,
-        const nvrhi::DeviceHandle &device,
-        const nvrhi::CommandListHandle &commandList) {
-        auto results = UploadImagesToGPU(std::span{&descriptor, 1}, device, commandList);
+        const nvrhi::DeviceHandle &device) {
+        auto results = UploadImagesToGPU(std::span{&descriptor, 1}, device);
         return std::move(results.front());
     }
 
