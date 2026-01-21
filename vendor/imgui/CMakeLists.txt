@@ -28,4 +28,5 @@ target_include_directories(
 target_compile_definitions(
         imgui
         PUBLIC
+        "IMGUI_DEFINE_MATH_OPERATORS=1"
 )

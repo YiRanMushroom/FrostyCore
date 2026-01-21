@@ -94,7 +94,7 @@ Engine {
     public:
         std::array<glm::vec2, 3> Positions;
         std::array<glm::vec2, 3> UVs;
-        int VirtualTextureID;
+        int VirtualTextureID = -1;
         glm::u8vec4 TintColor = glm::u8vec4(0u, 0u, 0u, 255u);
         std::optional<int> OverrideDepth = std::nullopt;
         int ClipRegionId = -1;
@@ -188,7 +188,7 @@ Engine {
         glm::vec2 FirstUV = glm::vec2(0.0f, 0.0f);
         glm::vec2 SecondUV = glm::vec2(1.0f, 1.0f);
 
-        int VirtualTextureID;
+        int VirtualTextureID = -1;
         glm::u8vec4 TintColor = glm::u8vec4(0u, 0u, 0u, 255u);
         std::optional<int> OverrideDepth = std::nullopt;
         int ClipRegionId = -1;

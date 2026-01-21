@@ -17,7 +17,7 @@ Engine {
         glm::u8vec4 Color;
         float FontSize;
         FontAtlasData *Context;
-        uint32_t VirtualFontTextureId;
+        uint32_t VirtualFontTextureId = 0;
 
         glm::mat4x4 ModelMatrix = glm::mat4x4(1.0f);
 
