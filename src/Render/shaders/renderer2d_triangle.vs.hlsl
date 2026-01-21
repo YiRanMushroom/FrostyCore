@@ -14,7 +14,8 @@ struct SpriteData {
     int clipRegionId;
     uint mode;
     float pxRange;
-    float padding[3]; // Align ModelMatrix to 16-byte boundary
+    uint EntityId;
+    float padding[2]; // Align ModelMatrix to 16-byte boundary
     float4x4 ModelMatrix;
 };
 
@@ -24,6 +25,7 @@ struct PSInput {
     float4 tintColor: COLOR0;
     nointerpolation int textureIndex: TEXCOORD1;
     float2 worldPos: TEXCOORD2;
+    nointerpolation uint EntityID: ENTITYID0;
     nointerpolation int clipRegionId: CLIP_REGION_ID;
     nointerpolation float pxRange: PX_RANGE;
     nointerpolation uint mode: RENDER_MODE;
@@ -55,6 +57,7 @@ PSInput main(VSInput vertexInput) {
     pixelInput.mode = sprite.mode;
     pixelInput.pxRange = sprite.pxRange;
     pixelInput.clipRegionId = sprite.clipRegionId;
+    pixelInput.EntityID = sprite.EntityId;
 
     return pixelInput;
 }

@@ -179,6 +179,7 @@ Engine {
             shapeData.EdgeSoftness = instance.EdgeSoftness;
             shapeData.ClipRegionId = clipIndex;
             shapeData.ModelMatrix = instance.ModelMatrix;
+            shapeData.EntityID = instance.EntityID;
 
             currentSubmission.ShapeData.push_back(shapeData);
         }

@@ -190,6 +190,7 @@ Engine {
                 .ClipIndex = clipIndex,
                 .RenderingMode = instance.RenderingMode,
                 .MTSDFPixelRange = instance.MTSDFPixelRange,
+                .EntityID = instance.EntityID,
                 .ModelMatrix = instance.ModelMatrix
             });
 

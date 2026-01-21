@@ -41,6 +41,7 @@ struct PSInput {
     nointerpolation float endAngle: ANGLE_END;
     nointerpolation int textureIndex: TEXCOORD1;
     nointerpolation float edgeSoftness: EDGE_SOFTNESS;
+	nointerpolation uint EntityID: ENTITYID0;
     nointerpolation int clipRegionId: CLIP_REGION_ID;
 };
 
@@ -77,7 +78,14 @@ float checkAngleInSector(float angle, float startAngle, float endAngle, float so
     return inSector;
 }
 
-float4 main(PSInput input) : SV_TARGET{
+struct PSOutput {
+    float4 color: SV_TARGET0;
+	uint entityID: SV_TARGET1;
+};
+
+PSOutput main(PSInput input) {
+	PSOutput output;
+
     // Perform clipping test if enabled (early exit if no clipping needed)
     if (input.clipRegionId >= 0) {
         ClipRegion clipRegion = u_ClipBuffer[input.clipRegionId];
@@ -178,5 +186,8 @@ float4 main(PSInput input) : SV_TARGET{
         discard;
     }
 
-    return outColor;
+	output.color = outColor;
+	output.entityID = input.EntityID;
+
+    return output;
 }

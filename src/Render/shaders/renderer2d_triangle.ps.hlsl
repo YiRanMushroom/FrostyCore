@@ -16,6 +16,7 @@ struct PSInput {
     float4 tintColor: COLOR0;
     nointerpolation int textureIndex: TEXCOORD1;
     float2 worldPos: TEXCOORD2;
+	nointerpolation uint EntityID: ENTITYID0;
     nointerpolation int clipRegionId: CLIP_REGION_ID;
     nointerpolation float pxRange: PX_RANGE;
     nointerpolation uint mode: RENDER_MODE;
@@ -38,7 +39,13 @@ bool isPointInPolygon(float2 p, float2 points[4], uint count) {
     return inside;
 }
 
-float4 main(PSInput input) : SV_Target{
+struct PSOutput {
+    float4 color: SV_TARGET0;
+	uint entityID: SV_TARGET1;
+};
+
+PSOutput main(PSInput input) {
+	PSOutput output;
     // 1. Clipping Logic - Early exit if no clipping is needed
     if (input.clipRegionId >= 0) {
         ClipRegion clipRegion = u_ClipBuffer[input.clipRegionId];
@@ -64,7 +71,9 @@ float4 main(PSInput input) : SV_Target{
     if (input.textureIndex >= 0) {
         if (input.mode == 1) { // MTSDF Mode
             if (input.pxRange <= 0.0f) {
-                return float4(1.0, 0.0, 0.0, 1.0); // Debug: Invalid pxRange, this can also shut up the optimizer
+				output.color = float4(0.0, 0.0, 0.0, 1.0);
+				output.entityID = 0;
+                return output; // Invalid pxRange, return transparent
             }
 
             float4 mtsdf = u_Textures[NonUniformResourceIndex(input.textureIndex)].Sample(
@@ -95,5 +104,8 @@ float4 main(PSInput input) : SV_Target{
         discard;
     }
 
-    return outColor;
+	output.color = outColor;
+	output.entityID = input.EntityID;
+
+    return output;
 }

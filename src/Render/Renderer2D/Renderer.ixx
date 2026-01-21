@@ -7,6 +7,7 @@ import Render.VirtualTextureManager;
 export import Render.Transform;
 import glm;
 import Core.Utilities;
+import Core.Coroutine;
 
 import :ForwardDecleration;
 import :Misc;
@@ -167,6 +168,8 @@ Engine {
 
         template<std::derived_from<DrawCommand> CommandType>
         void Draw(const CommandType &);
+
+        Engine::Awaitable<uint32_t> GetEntityIDAtPixelPositionAsync(const glm::uvec2 &pixelPosition);
 
         // No default implementation, types derived from DrawCommand will provide their own specializations.
 

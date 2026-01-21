@@ -18,8 +18,9 @@ Engine {
         int32_t TextureIndex;
         float EdgeSoftness;
         int32_t ClipRegionId; // -1 means no clipping
+        uint32_t EntityID;
 
-        uint32_t Padding[4]; // Align ModelMatrix to 16-byte boundary (HLSL requirement)
+        uint32_t Padding[3]; // Align ModelMatrix to 16-byte boundary (HLSL requirement)
 
         glm::mat4x4 ModelMatrix = glm::mat4x4(1.0f); // just transform vertices in vs should be fine
     };
@@ -36,6 +37,7 @@ Engine {
         float EdgeSoftness = 1.0f;
         int Depth = 0;
         int ClipRegionId = -1;
+        uint32_t EntityID = 0;
         glm::mat4x4 ModelMatrix = glm::mat4x4(1.0f);
 
         static EllipseRenderingData Circle(const glm::vec2 &center, float radius,

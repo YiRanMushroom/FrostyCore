@@ -84,6 +84,11 @@ Engine {
             return *this;
         }
 
+        TriangleDrawCommand &SetEntityID(uint32_t entityID) {
+            EntityID = entityID;
+            return *this;
+        }
+
         friend class Renderer2D;
 
     public:
@@ -93,6 +98,7 @@ Engine {
         glm::u8vec4 TintColor = glm::u8vec4(0u, 0u, 0u, 255u);
         std::optional<int> OverrideDepth = std::nullopt;
         int ClipRegionId = -1;
+        uint32_t EntityID = 0;
 
         glm::mat4x4 ModelMatrix = glm::mat4x4(1.0f);
     };
@@ -168,6 +174,11 @@ Engine {
             return *this;
         }
 
+        QuadDrawCommand &SetEntityID(uint32_t entityID) {
+            EntityID = entityID;
+            return *this;
+        }
+
         friend class Renderer2D;
 
     public:
@@ -181,6 +192,7 @@ Engine {
         glm::u8vec4 TintColor = glm::u8vec4(0u, 0u, 0u, 255u);
         std::optional<int> OverrideDepth = std::nullopt;
         int ClipRegionId = -1;
+        uint32_t EntityID = 0;
 
         InstanceRenderingMode RenderingMode = InstanceRenderingMode::Texture;
         float MTSDFPixelRange;
@@ -255,6 +267,11 @@ Engine {
             return *this;
         }
 
+        CircularDrawCommand &SetEntityID(uint32_t entityID) {
+            EntityID = entityID;
+            return *this;
+        }
+
         friend class Renderer2D;
 
     public:
@@ -269,6 +286,7 @@ Engine {
         float EdgeSoftness = 1.0f;
         std::optional<int> OverrideDepth = 0;
         int ClipRegionId = -1;
+        uint32_t EntityID = 0;
 
         glm::mat4x4 ModelMatrix = glm::mat4x4(1.0f);
     };

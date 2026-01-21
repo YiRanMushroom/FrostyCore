@@ -14,7 +14,8 @@ struct EllipseShapeData {
     float edgeSoftness;
     int clipRegionId; // -1 = no clipping
 
-    float padding[4]; // Align ModelMatrix to 16-byte boundary
+    uint EntityID;
+    float padding[3]; // Align ModelMatrix to 16-byte boundary
 
     float4x4 ModelMatrix;
 };
@@ -31,6 +32,7 @@ struct PSInput {
     nointerpolation float endAngle: ANGLE_END;
     nointerpolation int textureIndex: TEXCOORD1;
     nointerpolation float edgeSoftness: EDGE_SOFTNESS;
+    nointerpolation uint EntityID: ENTITYID0;
     nointerpolation int clipRegionId: CLIP_REGION_ID;
 };
 
@@ -88,6 +90,7 @@ PSInput main(uint vID: SV_VertexID) {
     );
 
     output.clipRegionId = data.clipRegionId;
+    output.EntityID = data.EntityID;
 
     return output;
 }

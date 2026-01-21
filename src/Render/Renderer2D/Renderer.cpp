@@ -4,9 +4,8 @@ import Vendor.ApplicationAPI;
 import Core.Prelude;
 import Render.GeneratedShaders;
 import Render.VirtualTextureManager;
-import glm;
+import Core.Coroutine;
 import <cstddef>;
-import "glm/gtx/transform.hpp";
 
 namespace
 Engine {
@@ -81,12 +80,62 @@ Engine {
         }
     }
 
-    // const glm::vec2 &Renderer2D::SetVirtualWidth(float virtualWidth) {
-    //     mVirtualSize.x = virtualWidth;
-    //     mVirtualSize.y = virtualWidth * (static_cast<float>(mOutputSize.y) / static_cast<float>(mOutputSize.x));
-    //     RecalculateViewProjectionMatrix();
-    //     return mVirtualSize;
-    // }
+    Awaitable<uint32_t> Renderer2D::GetEntityIDAtPixelPositionAsync(const glm::uvec2 &pixelPosition) {
+        if (pixelPosition.x >= mOutputSize.x || pixelPosition.y >= mOutputSize.y) {
+            co_return 0u;
+        }
+
+        nvrhi::TextureDesc stagingDesc;
+        stagingDesc.width = 1;
+        stagingDesc.height = 1;
+        stagingDesc.format = nvrhi::Format::R32_UINT;
+        stagingDesc.debugName = "PickingStagingTexture";
+
+        nvrhi::StagingTextureHandle stagingTex = mDevice->createStagingTexture(stagingDesc, nvrhi::CpuAccessMode::Read);
+
+        mCommandList->open();
+
+        nvrhi::TextureSlice srcSlice;
+        srcSlice.x = pixelPosition.x;
+        srcSlice.y = pixelPosition.y;
+        srcSlice.width = 1;
+        srcSlice.height = 1;
+
+        nvrhi::TextureSlice dstSlice;
+        dstSlice.width = 1;
+        dstSlice.height = 1;
+
+        mCommandList->copyTexture(stagingTex, dstSlice, mTargetIDTexture, srcSlice);
+
+        mCommandList->close();
+
+        size_t submissionID = mDevice->executeCommandList(mCommandList);
+
+        nvrhi::EventQueryHandle eventQuery = mDevice->createEventQuery();
+        static_cast<nvrhi::vulkan::IDevice *>(mDevice.Get())->setEventQuery(
+            eventQuery.Get(), nvrhi::CommandQueue::Graphics, submissionID);
+
+        mDevice->waitEventQuery(eventQuery.Get());
+
+        size_t outRowPitch = 0;
+
+        void *mappedPtr = mDevice->mapStagingTexture(
+            stagingTex,
+            nvrhi::TextureSlice(0, 0, 0, 1, 1, 1),
+            nvrhi::CpuAccessMode::Read,
+            &outRowPitch
+        );
+
+        if (mappedPtr) {
+            uint32_t entityID = 0;
+            entityID = *static_cast<uint32_t *>(mappedPtr);
+
+            mDevice->unmapStagingTexture(stagingTex);
+            co_return entityID;
+        }
+
+        co_return 0u;
+    }
 
     void Renderer2D::CreateResources() {
         nvrhi::TextureDesc texDesc;
@@ -444,7 +493,7 @@ Engine {
         pipeDesc.renderState.blendState.targets[0].colorWriteMask = nvrhi::ColorMask::All;
         pipeDesc.renderState.rasterState.cullMode = nvrhi::RasterCullMode::None;
         pipeDesc.renderState.depthStencilState.depthTestEnable = false;
-        \
+
         pipeDesc.renderState.blendState.targets[1].blendEnable = false;
         pipeDesc.renderState.rasterState.cullMode = nvrhi::RasterCullMode::None;
         pipeDesc.renderState.depthStencilState.depthTestEnable = false;
@@ -541,7 +590,6 @@ Engine {
                 mCommandList->writeBuffer(resources.InstanceBuffer, submission.InstanceData.data(),
                                           sizeof(TriangleInstanceData) * submission.InstanceData.size(), 0);
             }
-
 
             mCommandList->setResourceStatesForBindingSet(resources.mBindingSetSpace0);
             auto bindingSetSpace1 = mVirtualTextureManager.GetBindingSet(mTriangleBindingLayoutSpace1);
@@ -1062,6 +1110,7 @@ Engine {
                 .TintColor = command.TintColor,
                 .Depth = command.OverrideDepth.value_or(mCurrentDepth),
                 .ClipRegionId = command.ClipRegionId,
+                .EntityID = command.EntityID,
                 .RenderingMode = InstanceRenderingMode::Texture,
                 .MTSDFPixelRange = 0.0f,
                 .ModelMatrix = command.ModelMatrix
@@ -1103,6 +1152,7 @@ Engine {
                     .TintColor = command.TintColor,
                     .Depth = command.OverrideDepth.value_or(mCurrentDepth),
                     .ClipRegionId = command.ClipRegionId,
+                    .EntityID = command.EntityID,
                     .RenderingMode = InstanceRenderingMode::Texture,
                     .MTSDFPixelRange = 0.0f,
                     .ModelMatrix = command.ModelMatrix
@@ -1141,6 +1191,7 @@ Engine {
                     .TintColor = command.TintColor,
                     .Depth = command.OverrideDepth.value_or(mCurrentDepth),
                     .ClipRegionId = command.ClipRegionId,
+                    .EntityID = command.EntityID,
                     .RenderingMode = InstanceRenderingMode::MTSDF,
                     .MTSDFPixelRange = command.MTSDFPixelRange,
                     .ModelMatrix = command.ModelMatrix
@@ -1163,6 +1214,7 @@ Engine {
             .EdgeSoftness = command.EdgeSoftness,
             .Depth = command.OverrideDepth.value_or(mCurrentDepth),
             .ClipRegionId = command.ClipRegionId,
+            .EntityID = command.EntityID,
             .ModelMatrix = command.ModelMatrix
         });
     }

@@ -22,7 +22,8 @@ Engine {
         InstanceRenderingMode RenderingMode = InstanceRenderingMode::Texture;
         float MTSDFPixelRange = 4.0f;
 
-        uint32_t Padding[3]; // Align ModelMatrix to 16-byte boundary (HLSL requirement)
+        uint32_t EntityID = 0;
+        uint32_t Padding[2]; // Align ModelMatrix to 16-byte boundary (HLSL requirement)
 
         glm::mat4x4 ModelMatrix = glm::mat4x4(1.0f);
     };
@@ -37,11 +38,13 @@ Engine {
         glm::u8vec4 TintColor;
         int Depth;
         int ClipRegionId;
+        uint32_t EntityID = 0;
 
         InstanceRenderingMode RenderingMode = InstanceRenderingMode::Texture;
         float MTSDFPixelRange = 4.0f;
 
         glm::mat4x4 ModelMatrix = glm::mat4x4(1.0f);
+
 
         static TriangleRenderingData Triangle(const glm::vec2 &p0, const glm::vec2 &uv0,
                                               const glm::vec2 &p1, const glm::vec2 &uv1,

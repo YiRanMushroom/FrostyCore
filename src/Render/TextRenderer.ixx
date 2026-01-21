@@ -13,6 +13,7 @@ Engine {
         // glm::vec2 ClipTopLeft;
         // glm::vec2 ClipBottomRight;
         int ClipRegionId = -1;
+        uint32_t EntityID = 0;
         glm::u8vec4 Color;
         float FontSize;
         FontAtlasData *Context;
@@ -43,6 +44,11 @@ Engine {
 
         DrawSimpleTextAsciiCommand &SetClipRegionID(int clipRegionId) {
             ClipRegionId = clipRegionId;
+            return *this;
+        }
+
+        DrawSimpleTextAsciiCommand &SetEntityID(uint32_t entityID) {
+            EntityID = entityID;
             return *this;
         }
 
@@ -81,6 +87,7 @@ Engine {
         quadDrawCommand.SetFontAtlas(cmd.VirtualFontTextureId, ctx.MTSDFPixelRange)
                 .SetTintColor(cmd.Color)
                 .SetClipRegionId(cmd.ClipRegionId)
+                .SetEntityID(cmd.EntityID)
                 .SetTransform(cmd.ModelMatrix);
 
         float scale = cmd.FontSize;
