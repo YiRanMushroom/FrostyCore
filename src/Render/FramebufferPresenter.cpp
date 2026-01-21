@@ -22,6 +22,9 @@ Engine {
         };
         auto bindingSet = mDevice->createBindingSet(setDesc, mBindingLayout);
 
+        commandList->beginTrackingTextureState(sourceTexture, nvrhi::AllSubresources,
+                                                 nvrhi::ResourceStates::RenderTarget);
+
         commandList->setResourceStatesForFramebuffer(targetFramebuffer);
         commandList->setResourceStatesForBindingSet(bindingSet);
 

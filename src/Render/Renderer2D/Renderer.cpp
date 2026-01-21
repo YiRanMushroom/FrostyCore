@@ -42,6 +42,11 @@ Engine {
         mCommandList->setResourceStatesForFramebuffer(mFramebuffer);
         mCommandList->clearTextureFloat(mTexture,
                                         nvrhi::AllSubresources, info.ClearColor);
+        mCommandList->clearTextureUInt(
+            mTargetIDTexture,
+            nvrhi::AllSubresources,
+            0u
+        );
     }
 
     const nvrhi::CommandListHandle &Renderer2D::GetCommandList() const {
@@ -90,14 +95,50 @@ Engine {
         texDesc.format = nvrhi::Format::RGBA8_UNORM;
         texDesc.isRenderTarget = true;
         texDesc.isShaderResource = true;
+        // Needs to be sampled in another shader, so renderTarget and shaderResource
         texDesc.initialState = nvrhi::ResourceStates::ShaderResource;
         texDesc.keepInitialState = true;
         texDesc.clearValue = nvrhi::Color(0.f, 0.f, 0.f, 0.f);
 
         auto tex = mDevice->createTexture(texDesc);
         mTexture = tex;
+
+        // Create Target ID texture, used for picking an object using a coordinate
+
+        nvrhi::TextureDesc targetIDTexDesc;
+        targetIDTexDesc.width = mOutputSize.x;
+        targetIDTexDesc.height = mOutputSize.y;
+        targetIDTexDesc.format = nvrhi::Format::R32_UINT;
+        targetIDTexDesc.isRenderTarget = true;
+        // should not be sampled in a shader, so not shader source
+        targetIDTexDesc.isShaderResource = false;
+
+        // we will render to it and read back on CPU, so it is renderTarget and copySource
+        targetIDTexDesc.initialState = nvrhi::ResourceStates::CopySource;
+        targetIDTexDesc.keepInitialState = true;
+        // Clear to 0 (no object)
+        targetIDTexDesc.clearValue = nvrhi::Color(0u, 0u, 0u, 0u);
+        targetIDTexDesc.useClearValue = true;
+        // We initialize it to 0 immediately
+
+        auto targetIDTex = mDevice->createTexture(targetIDTexDesc);
+        mTargetIDTexture = targetIDTex;
+
+        // auto tempCommandList = mDevice->createCommandList();
+
+        // tempCommandList->open();
+        // tempCommandList->clearTextureUInt(
+        //     mTargetIDTexture,
+        //     nvrhi::AllSubresources,
+        //     0u
+        // );
+        // tempCommandList->close();
+        // mDevice->executeCommandList(tempCommandList);
+
+        // two color attachments: 0 - color, 1 - target ID
         mFramebuffer = mDevice->createFramebuffer(
-            nvrhi::FramebufferDesc().addColorAttachment(tex));
+            nvrhi::FramebufferDesc().addColorAttachment(tex).addColorAttachment(targetIDTex)
+        );
 
         if (!mCommandList) {
             mCommandList = mDevice->createCommandList();
@@ -334,6 +375,16 @@ Engine {
         pipeDesc.renderState.rasterState.cullMode = nvrhi::RasterCullMode::None;
         pipeDesc.renderState.depthStencilState.depthTestEnable = false;
 
+        pipeDesc.renderState.blendState.targets[1].blendEnable = false;
+        pipeDesc.renderState.rasterState.cullMode = nvrhi::RasterCullMode::None;
+        pipeDesc.renderState.depthStencilState.depthTestEnable = false;
+
+        // nvrhi::RenderLayoutDesc layoutDesc;
+        // layoutDesc.addColorAttachment(nvrhi::Format::RGBA8_UNORM);
+        // layoutDesc.addColorAttachment(nvrhi::Format::R32_UINT);
+
+        auto info = mFramebuffer->getFramebufferInfo();
+
         mTrianglePipeline = mDevice->createGraphicsPipeline(pipeDesc, mFramebuffer->getFramebufferInfo());
     }
 
@@ -393,6 +444,10 @@ Engine {
         pipeDesc.renderState.blendState.targets[0].colorWriteMask = nvrhi::ColorMask::All;
         pipeDesc.renderState.rasterState.cullMode = nvrhi::RasterCullMode::None;
         pipeDesc.renderState.depthStencilState.depthTestEnable = false;
+        \
+        pipeDesc.renderState.blendState.targets[1].blendEnable = false;
+        pipeDesc.renderState.rasterState.cullMode = nvrhi::RasterCullMode::None;
+        pipeDesc.renderState.depthStencilState.depthTestEnable = false;
 
         mLinePipeline = mDevice->createGraphicsPipeline(pipeDesc, mFramebuffer->getFramebufferInfo());
     }
@@ -445,6 +500,10 @@ Engine {
         pipeDesc.renderState.blendState.targets[0].srcBlendAlpha = nvrhi::BlendFactor::One;
         pipeDesc.renderState.blendState.targets[0].destBlendAlpha = nvrhi::BlendFactor::InvSrcAlpha;
         pipeDesc.renderState.blendState.targets[0].colorWriteMask = nvrhi::ColorMask::All;
+        pipeDesc.renderState.rasterState.cullMode = nvrhi::RasterCullMode::None;
+        pipeDesc.renderState.depthStencilState.depthTestEnable = false;
+
+        pipeDesc.renderState.blendState.targets[1].blendEnable = false;
         pipeDesc.renderState.rasterState.cullMode = nvrhi::RasterCullMode::None;
         pipeDesc.renderState.depthStencilState.depthTestEnable = false;
 

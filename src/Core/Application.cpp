@@ -269,6 +269,9 @@ Engine {
             vk::KHRSwapchainMaintenance1ExtensionName
         };
 
+        vk::PhysicalDeviceFeatures enabledFeatures{};
+        enabledFeatures.independentBlend = vk::True; // Example feature
+
         // Enable dynamic rendering feature
         vk::PhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeature;
         dynamicRenderingFeature.dynamicRendering = vk::True;
@@ -284,6 +287,7 @@ Engine {
 
         vk::DeviceCreateInfo devInfo;
         devInfo.pNext = &features12;
+        devInfo.pEnabledFeatures = &enabledFeatures;
         devInfo.queueCreateInfoCount = 1;
         devInfo.pQueueCreateInfos = &queueInfo;
         devInfo.enabledExtensionCount = 2; // Now we have 2 extensions

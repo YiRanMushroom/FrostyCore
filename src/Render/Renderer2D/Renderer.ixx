@@ -209,6 +209,9 @@ Engine {
         std::vector<Ref<ITransform>> mTransforms;
 
         nvrhi::TextureHandle mTexture;
+
+        nvrhi::TextureHandle mTargetIDTexture;
+
         nvrhi::FramebufferHandle mFramebuffer;
 
         VirtualTextureManager mVirtualTextureManager;
