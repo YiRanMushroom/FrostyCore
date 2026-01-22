@@ -6,6 +6,9 @@ export import "backends/imgui_impl_sdl3.h";
 export import "backends/imgui_impl_vulkan.h";
 import Vendor.GraphicsAPI;
 
+import Core.Prelude;
+import Core.Utilities;
+
 namespace ImGui {
     export inline void StyleColorHazel() {
         auto &colors = ImGui::GetStyle().Colors;
@@ -67,10 +70,10 @@ namespace ImGui {
 
     export class ImGuiImage;
 
-    export class IImGuiImageHolder : public nvrhi::IResource {
+    export class ImGuiImageHolder : public Engine::RefCounted {
     public:
-        virtual ~IImGuiImageHolder() override {
-            IImGuiImageHolder::Destroy();
+        virtual ~ImGuiImageHolder() override {
+            ImGuiImageHolder::Destroy();
         }
 
         friend class ImGuiImage;
@@ -102,24 +105,19 @@ namespace ImGui {
             return mImGuiTextureID;
         }
 
+        ImGuiImageHolder(nvrhi::ITexture *texture, nvrhi::ISampler *sampler) {
+            ImGuiImageHolder::Init(texture, sampler);
+        }
+
     private:
         ImTextureID mImGuiTextureID{};
-    };
-
-    export class ImGuiImageHolder : public nvrhi::RefCounter<IImGuiImageHolder> {
-    public:
-        ImGuiImageHolder(nvrhi::ITexture *texture, nvrhi::ISampler *sampler)
-            : nvrhi::RefCounter<IImGuiImageHolder>() {
-            IImGuiImageHolder::Init(texture, sampler);
-        }
     };
 
     class ImGuiImage {
     public:
         ImGuiImage(nvrhi::TextureHandle texture, nvrhi::SamplerHandle sampler)
             : mTexture(texture), mSampler(sampler) {
-            mHolder = new ImGuiImageHolder(mTexture.Get(), mSampler.Get());
-            mHolder->Release();
+            mHolder = Engine::MakeRef<ImGuiImageHolder>(texture.Get(), sampler.Get());
         }
 
         [[nodiscard]] nvrhi::TextureDesc GetTextureDesc() const {
@@ -149,7 +147,7 @@ namespace ImGui {
     private:
         nvrhi::SamplerHandle mSampler;
         nvrhi::TextureHandle mTexture;
-        nvrhi::RefCountPtr<IImGuiImageHolder> mHolder;
+        Engine::Ref<ImGuiImageHolder> mHolder;
 
     public:
         static ImGuiImage Create(nvrhi::TextureHandle texture, nvrhi::SamplerHandle sampler) {
