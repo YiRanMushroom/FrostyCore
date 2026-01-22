@@ -88,7 +88,7 @@ Engine {
         nvrhi::TextureDesc stagingDesc;
         stagingDesc.width = 1;
         stagingDesc.height = 1;
-        stagingDesc.format = nvrhi::Format::RGBA8_UNORM; // Changed from R32_UINT
+        stagingDesc.format = nvrhi::Format::RGBA16_UNORM; // Use 16-bit per channel
         stagingDesc.debugName = "PickingStagingTexture";
 
         nvrhi::StagingTextureHandle stagingTex = mDevice->createStagingTexture(stagingDesc, nvrhi::CpuAccessMode::Read);
@@ -129,24 +129,24 @@ Engine {
         if (mappedPtr) {
             uint32_t entityID = 0;
 
-            // Read as RGBA8_UNORM (4 bytes: R, G, B, A)
-            uint8_t* rgba = static_cast<uint8_t*>(mappedPtr);
-            uint8_t r = rgba[0];
-            uint8_t g = rgba[1];
-            uint8_t b = rgba[2];
-            uint8_t a = rgba[3];
+            // Read as RGBA16_UNORM (8 bytes: 2 bytes per channel in little-endian)
+            // Each channel is 16-bit, stored as little-endian uint16
+            uint16_t* rgba16 = static_cast<uint16_t*>(mappedPtr);
+            uint16_t r = rgba16[0];
+            uint16_t g = rgba16[1];
+            uint16_t b = rgba16[2];
+            uint16_t a = rgba16[3];
 
             // Check alpha channel - if less than threshold, this pixel has no entity (EntityID=0)
-            if (a < 128) {
+            // For 16-bit: threshold is 0x8000 (half of 0xFFFF)
+            if (a < 0x8000) {
                 mDevice->unmapStagingTexture(stagingTex);
                 co_return 0u;
             }
 
-            // Decode EntityID from RGB channels (right-shift by 8 to restore original value)
-            uint32_t encodedID = (static_cast<uint32_t>(r) << 16) |
-                                 (static_cast<uint32_t>(g) << 8) |
-                                 static_cast<uint32_t>(b);
-            entityID = encodedID >> 8; // Right-shift by 8 to decode
+            // Decode EntityID from RG channels (32-bit = 16-bit R + 16-bit G)
+            // R contains upper 16 bits, G contains lower 16 bits
+            entityID = (static_cast<uint32_t>(r) << 16) | static_cast<uint32_t>(g);
 
             mDevice->unmapStagingTexture(stagingTex);
             co_return entityID;
@@ -175,7 +175,7 @@ Engine {
         nvrhi::TextureDesc targetIDTexDesc;
         targetIDTexDesc.width = mOutputSize.x;
         targetIDTexDesc.height = mOutputSize.y;
-        targetIDTexDesc.format = nvrhi::Format::RGBA8_UNORM; // Changed from R32_UINT to support blending
+        targetIDTexDesc.format = nvrhi::Format::RGBA16_UNORM; // Use 16-bit per channel to encode full 32-bit entity ID
         targetIDTexDesc.isRenderTarget = true;
         // should not be sampled in a shader, so not shader source
         targetIDTexDesc.isShaderResource = false;

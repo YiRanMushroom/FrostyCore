@@ -80,7 +80,7 @@ float checkAngleInSector(float angle, float startAngle, float endAngle, float so
 
 struct PSOutput {
     float4 color: SV_TARGET0;
-	float4 entityID: SV_TARGET1; // Output as float4 for R8G8B8A8_UNORM (normalized 0.0-1.0)
+	float4 entityID: SV_TARGET1; // Output as float4 for R16G16B16A16_UNORM (normalized 0.0-1.0)
 };
 
 PSOutput main(PSInput input) {
@@ -188,20 +188,24 @@ PSOutput main(PSInput input) {
 
 	output.color = outColor;
 
-	// Encode EntityID into R8G8B8A8_UNORM format (float4 normalized to 0.0-1.0)
-	// EntityID is left-shifted by 8 bits to pack into RGB channels
+	// Encode EntityID into R16G16B16A16_UNORM format (float4 normalized to 0.0-1.0)
+	// EntityID (32-bit) is split across R and G channels (16-bit each)
+	// R channel: upper 16 bits, G channel: lower 16 bits
+	// B channel: unused (set to 0.0)
 	// Alpha channel: 0.0 = preserve old value (via blending), 1.0 = write new value
-	// Note: EntityID must not exceed 2^24 - 1 (16,777,215)
 	if (input.EntityID == 0) {
 		// EntityID is 0: set alpha to 0.0 to preserve the previous value via blending
 		output.entityID = float4(0.0, 0.0, 0.0, 0.0);
 	} else {
-		// Encode EntityID: shift left by 8 bits and pack into RGB
-		uint encodedID = input.EntityID << 8;
-		float r = float((encodedID >> 16) & 0xFF) / 255.0;
-		float g = float((encodedID >> 8) & 0xFF) / 255.0;
-		float b = float(encodedID & 0xFF) / 255.0;
-		output.entityID = float4(r, g, b, 1.0); // alpha = 1.0 to write the value
+		// Split 32-bit entity ID into two 16-bit values
+		uint upperBits = (input.EntityID >> 16) & 0xFFFF; // Upper 16 bits
+		uint lowerBits = input.EntityID & 0xFFFF;          // Lower 16 bits
+
+		// Normalize to 0.0-1.0 range for UNORM format
+		float r = float(upperBits) / 65535.0; // Upper 16 bits in R channel
+		float g = float(lowerBits) / 65535.0; // Lower 16 bits in G channel
+
+		output.entityID = float4(r, g, 0.0, 1.0); // B=0.0 (unused), A=1.0 to write
 	}
 
     return output;
