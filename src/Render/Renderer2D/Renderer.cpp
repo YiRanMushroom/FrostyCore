@@ -447,8 +447,8 @@ Engine {
         pipeDesc.renderState.blendState.targets[1].blendEnable = true;
         pipeDesc.renderState.blendState.targets[1].srcBlend = nvrhi::BlendFactor::SrcAlpha;
         pipeDesc.renderState.blendState.targets[1].destBlend = nvrhi::BlendFactor::InvSrcAlpha;
-        pipeDesc.renderState.blendState.targets[1].srcBlendAlpha = nvrhi::BlendFactor::One;
-        pipeDesc.renderState.blendState.targets[1].destBlendAlpha = nvrhi::BlendFactor::Zero;
+        pipeDesc.renderState.blendState.targets[1].srcBlendAlpha = nvrhi::BlendFactor::SrcAlpha;
+        pipeDesc.renderState.blendState.targets[1].destBlendAlpha = nvrhi::BlendFactor::InvSrcAlpha;
         pipeDesc.renderState.blendState.targets[1].colorWriteMask = nvrhi::ColorMask::All;
 
         // nvrhi::RenderLayoutDesc layoutDesc;
@@ -580,8 +580,8 @@ Engine {
         pipeDesc.renderState.blendState.targets[1].blendEnable = true;
         pipeDesc.renderState.blendState.targets[1].srcBlend = nvrhi::BlendFactor::SrcAlpha;
         pipeDesc.renderState.blendState.targets[1].destBlend = nvrhi::BlendFactor::InvSrcAlpha;
-        pipeDesc.renderState.blendState.targets[1].srcBlendAlpha = nvrhi::BlendFactor::One;
-        pipeDesc.renderState.blendState.targets[1].destBlendAlpha = nvrhi::BlendFactor::Zero;
+        pipeDesc.renderState.blendState.targets[1].srcBlendAlpha = nvrhi::BlendFactor::SrcAlpha;
+        pipeDesc.renderState.blendState.targets[1].destBlendAlpha = nvrhi::BlendFactor::InvSrcAlpha;
         pipeDesc.renderState.blendState.targets[1].colorWriteMask = nvrhi::ColorMask::All;
 
         mEllipsePipeline = mDevice->createGraphicsPipeline(pipeDesc, mFramebuffer->getFramebufferInfo());
