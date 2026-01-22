@@ -7,7 +7,6 @@ import "SDL3/SDL.h";
 import Render.Color;
 import Core.Events;
 import Render.Utilities;
-import "vendor/nvrhi/src/vulkan/vulkan-backend.h";
 import Vendor.GraphicsAPI;
 import Vendor.ImGuizmo;
 

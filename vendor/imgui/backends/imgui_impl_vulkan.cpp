@@ -110,8 +110,11 @@
 #include <stdio.h>
 #include <unordered_map>
 
-// Include nvrhi internal header to access queue mutex
+#include "nvrhi/nvrhi.h"
 #include "nvrhi/src/vulkan/vulkan-backend.h"
+
+// Include nvrhi internal header to access queue mutex
+// #include "nvrhi/src/vulkan/vulkan-backend.h"
 #ifndef IM_MAX
 #define IM_MAX(A, B)    (((A) >= (B)) ? (A) : (B))
 #endif
@@ -393,15 +396,9 @@ static std::mutex* ImGui_ImplVulkan_GetQueueMutex(void* nvrhiDeviceHandle) {
     if (nvrhiDeviceHandle == nullptr)
         return nullptr;
 
-    nvrhi::vulkan::IDevice* nvrhiDevice = static_cast<nvrhi::vulkan::IDevice*>(nvrhiDeviceHandle);
+    nvrhi::IDevice* nvrhiDevice = static_cast<nvrhi::IDevice*>(nvrhiDeviceHandle);
 
-    // Use getQueue() to get the Queue object, not getNativeQueue() which returns VkQueue handle
-    nvrhi::vulkan::Queue* queue = static_cast<nvrhi::vulkan::Device*>(nvrhiDevice)->getQueue(nvrhi::CommandQueue::Graphics);
-
-    if (queue == nullptr)
-        return nullptr;
-
-    return &queue->GetVulkanQueueMutexInternal();
+    return nvrhiDevice->getBackendSpecificImplementationObject<std::mutex*>("VKGraphicsQueueSubmissionMutexPtr").value();
 }
 
 // Reusable buffers used for rendering 1 current in-flight frame, for ImGui_ImplVulkan_RenderDrawData()
