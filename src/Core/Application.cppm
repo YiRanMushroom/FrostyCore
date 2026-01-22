@@ -10,6 +10,8 @@ import Core.Utilities;
 import "SDL3/SDL.h";
 import "SDL3/SDL_video.h";
 
+import Render.CommandListSubmissionContext;
+
 namespace
 Engine {
     export class Application;
@@ -129,6 +131,10 @@ Engine {
             return future;
         }
 
+        const Ref<CommandListSubmissionContext> &GetCommandListSubmissionContext() const {
+            return mCommandListSubmissionContext;
+        }
+
     protected:
         [[nodiscard]] virtual nvrhi::Color GetClearColor() const {
             return Color::MyBlue;
@@ -194,7 +200,7 @@ Engine {
 
         // Frame-in-flight synchronization (separate from swapchain)
         std::vector<vk::SharedSemaphore> mAcquireSemaphores; // Per-frame (for acquire)
-        std::array<vk::SharedFence, MaxFrameInFlight> mRenderCompleteFences;
+        std::array<nvrhi::EventQueryHandle, MaxFrameInFlight> mRenderCompleteEvents;
         uint32_t mCurrentFrameIndex = 0;
 
         // probably you should never use this
@@ -214,6 +220,8 @@ Engine {
 
         // tasks to execute
         std::vector<std::function<void()>> mDeferredTasks;
+
+        Ref<CommandListSubmissionContext> mCommandListSubmissionContext;
 
     public:
         void PushLayer(const Ref<Layer> &layer) {
@@ -257,6 +265,14 @@ Engine {
             }
 
             mLayers.clear();
+        }
+
+        void SubmitToCommandListThread(std::move_only_function<void()> task) {
+            if (mCommandListSubmissionContext) {
+                mCommandListSubmissionContext->SubmitTaskImmediate(std::move(task));
+            } else {
+                throw Engine::RuntimeException("CommandListSubmissionThread is not initialized");
+            }
         }
     };
 

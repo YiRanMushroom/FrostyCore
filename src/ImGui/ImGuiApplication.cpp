@@ -82,7 +82,7 @@ Engine {
         }, &vkDevice);
 
         // Pass nvrhi device handle so ImGui can dynamically get the queue mutex
-        init_info.NvrhiDeviceHandle = mNvrhiDevice.Get();
+        init_info.CommandQueueSubmitter = mCommandListSubmissionContext->CreateSubmitter();
 
         init_info.HasPreferredSwapchainPresentMode = true;
         init_info.PreferredSwapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;

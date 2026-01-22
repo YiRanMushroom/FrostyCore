@@ -28,7 +28,9 @@
 
 #pragma once
 #ifndef IMGUI_DISABLE
-#include <mutex>
+// #include <mutex>
+
+#include <functional>
 
 #include "imgui.h"      // IMGUI_IMPL_API
 
@@ -139,8 +141,8 @@ struct ImGui_ImplVulkan_InitInfo
     VkShaderModuleCreateInfo        CustomShaderVertCreateInfo;
     VkShaderModuleCreateInfo        CustomShaderFragCreateInfo;
 
-    void*                           NvrhiDeviceHandle;           // nvrhi::vulkan::IDevice* - used to dynamically get the graphics queue mutex
-
+    // void*                           NvrhiDeviceHandle;           // nvrhi::vulkan::IDevice* - used to dynamically get the graphics queue mutex
+    std::function<void(std::move_only_function<void()>)> CommandQueueSubmitter; // Function that takes a callable and executes it while holding the graphics queue mutex. Used to synchronize with nvrhi command submissions.
 
     bool                            HasPreferredSwapchainPresentMode;
     VkPresentModeKHR                PreferredSwapchainPresentMode;

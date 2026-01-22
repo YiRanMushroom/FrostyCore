@@ -9,8 +9,8 @@ import <cstddef>;
 
 namespace
 Engine {
-    Renderer2D::Renderer2D(const Renderer2DDescriptor &desc, nvrhi::DeviceHandle device)
-        : mDevice(device), mOutputSize(desc.OutputSize),
+    Renderer2D::Renderer2D(const Renderer2DDescriptor &desc, Ref<CommandListSubmissionContext> context)
+        : mDevice(context->GetDevice()), mSubmissionContext(std::move(context)), mOutputSize(desc.OutputSize),
           mVirtualTextureManager(mDevice), mClipRegionManager(mDevice.Get()) {
         // mVirtualSize.x = desc.VirtualSizeWidth;
         // mVirtualSize.y = desc.VirtualSizeWidth * (
@@ -55,7 +55,11 @@ Engine {
     void Renderer2D::EndRendering() {
         Submit();
         mCommandList->close();
-        mDevice->executeCommandList(mCommandList);
+        // mDevice->executeCommandList(mCommandList);
+        mSubmissionContext->SubmitTaskImmediate([this](CommandListSubmissionContext &ctx) {
+            auto device = ctx.GetDevice();
+            device->executeCommandList(mCommandList);
+        });
 
         if (mVirtualTextureManager.IsSubOptimal()) {
             mVirtualTextureManager.Optimize();
@@ -109,11 +113,18 @@ Engine {
 
         mCommandList->close();
 
-        size_t submissionID = mDevice->executeCommandList(mCommandList);
+        // size_t submissionID = mDevice->executeCommandList(mCommandList);
+        // size_t submissionID = 0;
 
         nvrhi::EventQueryHandle eventQuery = mDevice->createEventQuery();
-        static_cast<nvrhi::vulkan::IDevice *>(mDevice.Get())->setEventQuery(
-            eventQuery.Get(), nvrhi::CommandQueue::Graphics, submissionID);
+        // static_cast<nvrhi::vulkan::IDevice *>(mDevice.Get())->setEventQuery(
+        //     eventQuery.Get(), nvrhi::CommandQueue::Graphics, submissionID);
+
+        mSubmissionContext->SubmitTaskImmediate([&](CommandListSubmissionContext &ctx) {
+            auto device = ctx.GetDevice();
+            size_t submissionID = device->executeCommandList(mCommandList);
+            device->setEventQuery(eventQuery, nvrhi::CommandQueue::Graphics, submissionID);
+        });
 
         mDevice->waitEventQuery(eventQuery.Get());
 

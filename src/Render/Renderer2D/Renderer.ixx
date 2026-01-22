@@ -9,6 +9,8 @@ import glm;
 import Core.Utilities;
 import Core.Coroutine;
 
+import Render.CommandListSubmissionContext;
+
 import :ForwardDecleration;
 import :Misc;
 import :TriangleAndQuad;
@@ -31,7 +33,8 @@ Engine {
 
     export class Renderer2D : public Engine::RefCounted {
     public:
-        Renderer2D(const Renderer2DDescriptor &desc, nvrhi::DeviceHandle device);
+        Renderer2D(const Renderer2DDescriptor &desc,
+                   Ref<CommandListSubmissionContext> submissionContext);
 
         void BeginRendering(const Renderer2DBeginRenderingInfo &info = {});
 
@@ -207,8 +210,9 @@ Engine {
 
         nvrhi::DeviceHandle mDevice;
         glm::u32vec2 mOutputSize;
-        // glm::vec2 mVirtualSize;
-        // glm::mat4 mViewProjectionMatrix;
+
+        Ref<CommandListSubmissionContext> mSubmissionContext;
+
         std::vector<Ref<ITransform>> mTransforms;
 
         nvrhi::TextureHandle mTexture;

@@ -3,7 +3,10 @@ import Vendor.GraphicsAPI;
 import "stb_image.h";
 import Core.Prelude;
 import Core.Coroutine;
-import "nvrhi/src/vulkan/vulkan-backend.h";
+
+import Core.Utilities;
+
+import Render.CommandListSubmissionContext;
 
 namespace
 Engine {
@@ -22,7 +25,7 @@ Engine {
 
     export std::vector<nvrhi::TextureHandle> UploadImagesToGPU(
         std::span<const GPUImageDescriptor> descriptors,
-        const nvrhi::DeviceHandle &device) {
+        const Ref<CommandListSubmissionContext> &submissionContext) {
         std::vector<nvrhi::TextureHandle> textures;
         textures.reserve(descriptors.size());
 
@@ -37,10 +40,10 @@ Engine {
             textureDesc.initialState = desc.initialState;
             textureDesc.keepInitialState = desc.keepInitialState;
 
-            textures.emplace_back(device->createTexture(textureDesc));
+            textures.emplace_back(submissionContext->GetDevice()->createTexture(textureDesc));
         }
 
-        auto commandList = device->createCommandList();
+        auto commandList = submissionContext->GetDevice()->createCommandList();
 
         commandList->open();
         for (size_t i = 0; i < descriptors.size(); ++i) {
@@ -53,21 +56,25 @@ Engine {
         }
         commandList->close();
 
-        auto eventQuery = device->createEventQuery();
+        submissionContext->SubmitTaskImmediate([&](CommandListSubmissionContext &ctx) {
+            auto device = ctx.GetDevice();
+            auto eventQuery = device->createEventQuery();
 
-        size_t queryId = device->executeCommandList(commandList);
+            size_t queryId = device->executeCommandList(commandList);
 
-        static_cast<nvrhi::vulkan::EventQuery *>(eventQuery.Get())->commandListID = queryId;
+            device->setEventQuery(eventQuery, nvrhi::CommandQueue::Graphics, queryId);
 
-        device->waitEventQuery(eventQuery);
+            device->waitEventQuery(eventQuery);
+        });
+
 
         return textures;
     }
 
     export nvrhi::TextureHandle UploadImageToGPU(
         const GPUImageDescriptor &descriptor,
-        const nvrhi::DeviceHandle &device) {
-        auto results = UploadImagesToGPU(std::span{&descriptor, 1}, device);
+        const Ref<CommandListSubmissionContext> &submissionContext) {
+        auto results = UploadImagesToGPU(std::span{&descriptor, 1}, submissionContext);
         return std::move(results.front());
     }
 

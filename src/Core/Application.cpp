@@ -7,9 +7,6 @@ import Render.Swapchain;
 import "SDL3/SDL.h";
 import "SDL3/SDL_video.h";
 
-// Include nvrhi internal header to access queue mutex
-import "nvrhi/src/vulkan/vulkan-backend.h";
-
 #undef CreateWindow
 
 namespace
@@ -99,6 +96,9 @@ Engine {
         // 1. Clear NVRHI resources - PlatformSwapchain handles its own cleanup
         mSwapchain = PlatformSwapchain{};
 
+        mCommandListSubmissionContext->Stop();
+        mCommandListSubmissionContext.Reset();
+
         mCommandList = nullptr;
 
         // 2. Destroy NVRHI device (needs Vulkan device to clean up)
@@ -106,7 +106,7 @@ Engine {
 
         // 3. Clear Vulkan synchronization objects
         for (uint32_t i = 0; i < MaxFramesInFlight; ++i) {
-            mRenderCompleteFences[i].reset();
+            mRenderCompleteEvents[i].Reset();
         }
         mAcquireSemaphores.clear();
 
@@ -324,6 +324,8 @@ Engine {
         nvrhiDesc.numDeviceExtensions = 2;
 
         mNvrhiDevice = nvrhi::vulkan::createDevice(nvrhiDesc);
+
+        mCommandListSubmissionContext = MakeRef<CommandListSubmissionContext>(mNvrhiDevice);
     }
 
     void Application::CreateSwapchain() {
@@ -351,26 +353,14 @@ Engine {
         fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled; // Start signaled so first frame doesn't wait
 
         for (uint32_t i = 0; i < MaxFramesInFlight; ++i) {
-            vk::Fence fence = mVkDevice.get().createFence(fenceInfo);
-            mRenderCompleteFences[i] = vk::SharedFence(fence, mVkDevice);
+            mRenderCompleteEvents[i] = mNvrhiDevice->createEventQuery();
         }
     }
 
     void Application::RecreateSwapchain() {
-        // Wait for all in-flight frames to complete
-        std::vector<vk::Fence> fencesToWait;
-        for (uint32_t i = 0; i < MaxFramesInFlight; ++i) {
-            fencesToWait.push_back(mRenderCompleteFences[i].get());
-        }
-
-        vk::Result waitResult = mVkDevice.get().waitForFences(
-            fencesToWait,
-            vk::True,
-            UINT64_MAX
-        );
-
-        if (waitResult != vk::Result::eSuccess) {
-            throw Engine::RuntimeException("Failed to wait for fences during swapchain recreation");
+        for (auto &event: mRenderCompleteEvents) {
+            if (event)
+                mNvrhiDevice->waitEventQuery(event);
         }
 
         // Use PlatformSwapchain's Recreate method (handles old swapchain internally)
@@ -467,18 +457,20 @@ Engine {
     }
 
     void Application::RenderFrame() {
-        vk::SharedFence &currentRenderCompleteFence = mRenderCompleteFences[mCurrentFrameIndex];
+        nvrhi::EventQueryHandle &currentRenderCompleteEvent = mRenderCompleteEvents[mCurrentFrameIndex];
 
         // Wait for this frame's previous work to complete
-        vk::Result waitResult = mVkDevice.get().waitForFences(
-            currentRenderCompleteFence.get(),
-            vk::True,
-            UINT64_MAX
-        );
+        // vk::Result waitResult = mVkDevice.get().waitForFences(
+        //     currentRenderCompleteFence.get(),
+        //     vk::True,
+        //     UINT64_MAX
+        // );
+        //
+        // if (waitResult != vk::Result::eSuccess) {
+        //     throw Engine::RuntimeException("Failed to wait for render complete fence");
+        // }
 
-        if (waitResult != vk::Result::eSuccess) {
-            throw Engine::RuntimeException("Failed to wait for render complete fence");
-        }
+        mNvrhiDevice->waitEventQuery(currentRenderCompleteEvent);
 
         // Use per-frame acquire semaphore
         vk::SharedSemaphore &frameAcquireSemaphore = mAcquireSemaphores[mCurrentFrameIndex];
@@ -500,7 +492,8 @@ Engine {
         mCurrentImageIndex = imageIndex;
 
         // Reset fence before submitting new work
-        mVkDevice.get().resetFences(currentRenderCompleteFence.get());
+        // mVkDevice.get().resetFences(currentRenderCompleteEvent.get());
+        mNvrhiDevice->resetEventQuery(currentRenderCompleteEvent);
 
         // Use per-image render complete semaphore from swapchain
         const vk::SharedSemaphore &imageRenderCompleteSemaphore = mSwapchain.GetRenderCompleteSemaphore(imageIndex);
@@ -524,19 +517,20 @@ Engine {
 
         mCommandList->close();
 
-        mNvrhiDevice->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, frameAcquireSemaphore.get(), 0);
-        mNvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, imageRenderCompleteSemaphore.get(), 0);
+        mCommandListSubmissionContext->SubmitTaskImmediate([&] {
+            mNvrhiDevice->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, frameAcquireSemaphore.get(), 0);
+            mNvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, imageRenderCompleteSemaphore.get(), 0);
 
-        mNvrhiDevice->executeCommandListSignalFence(mCommandList, currentRenderCompleteFence.get());
+            size_t eventID = mNvrhiDevice->executeCommandList(mCommandList);
+            mNvrhiDevice->setEventQuery(currentRenderCompleteEvent, nvrhi::CommandQueue::Graphics, eventID);
+        });
 
         // Present using new swapchain API (with queue lock protection)
-        vk::Result presentResult; {
-            // Lock the queue mutex to prevent ImGui viewport rendering from using queue simultaneously
-            nvrhi::vulkan::Queue *nvrhiQueue = static_cast<nvrhi::vulkan::Device *>(mNvrhiDevice.Get())
-                    ->getQueue(nvrhi::CommandQueue::Graphics);
-            std::lock_guard queueLock(nvrhiQueue->GetVulkanQueueMutexInternal());
+        vk::Result presentResult;
+        mCommandListSubmissionContext->SubmitTaskImmediate([&] {
             presentResult = mSwapchain.Present(mVkQueue, imageIndex);
-        }
+        });
+
         if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR) {
             mNeedsResize = true;
         }

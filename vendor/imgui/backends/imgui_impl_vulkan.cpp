@@ -398,7 +398,7 @@ static std::mutex* ImGui_ImplVulkan_GetQueueMutex(void* nvrhiDeviceHandle) {
 
     nvrhi::IDevice* nvrhiDevice = static_cast<nvrhi::IDevice*>(nvrhiDeviceHandle);
 
-    return nvrhiDevice->getBackendSpecificImplementationObject<std::mutex*>("VKGraphicsQueueSubmissionMutexPtr").value();
+    return nvrhiDevice->getBackendSpecificImplementationObjectGeneric<std::mutex*>("VKGraphicsQueueSubmissionMutexPtr").value();
 }
 
 // Reusable buffers used for rendering 1 current in-flight frame, for ImGui_ImplVulkan_RenderDrawData()
@@ -1077,25 +1077,32 @@ void ImGui_ImplVulkan_UpdateTexture(ImTextureData *tex) {
             check_vk_result(err);
             // lock
             {
-                std::mutex* queueMutex = ImGui_ImplVulkan_GetQueueMutex(v->NvrhiDeviceHandle);
-                if (queueMutex) {
-                    std::lock_guard<std::mutex> guard(*queueMutex);
-                    err = vkQueueSubmit(v->Queue, 1, &end_info, VK_NULL_HANDLE);
-                } else {
-                    err = vkQueueSubmit(v->Queue, 1, &end_info, VK_NULL_HANDLE);
-                }
+                // std::mutex* queueMutex = ImGui_ImplVulkan_GetQueueMutex(v->NvrhiDeviceHandle);
+                // if (queueMutex) {
+                //     std::lock_guard<std::mutex> guard(*queueMutex);
+                //     err = vkQueueSubmit(v->Queue, 1, &end_info, VK_NULL_HANDLE);
+                // } else {
+                //     err = vkQueueSubmit(v->Queue, 1, &end_info, VK_NULL_HANDLE);
+                // }
+                v->CommandQueueSubmitter([&] {
+                   err = vkQueueSubmit(v->Queue, 1, &end_info, VK_NULL_HANDLE);
+                });
             }
             check_vk_result(err);
         }
         // lock
         {
-            std::mutex* queueMutex = ImGui_ImplVulkan_GetQueueMutex(v->NvrhiDeviceHandle);
-            if (queueMutex) {
-                std::lock_guard<std::mutex> guard(*queueMutex);
-                err = vkQueueWaitIdle(v->Queue); // FIXME-OPT: Suboptimal!
-            } else {
-                err = vkQueueWaitIdle(v->Queue); // FIXME-OPT: Suboptimal!
-            }
+            // std::mutex* queueMutex = ImGui_ImplVulkan_GetQueueMutex(v->NvrhiDeviceHandle);
+            // if (queueMutex) {
+            //     std::lock_guard<std::mutex> guard(*queueMutex);
+            //     err = vkQueueWaitIdle(v->Queue); // FIXME-OPT: Suboptimal!
+            // } else {
+            //     err = vkQueueWaitIdle(v->Queue); // FIXME-OPT: Suboptimal!
+            // }
+
+            v->CommandQueueSubmitter([&] {
+               err = vkQueueWaitIdle(v->Queue); // FIXME-OPT: Suboptimal!
+            });
         }
         check_vk_result(err);
         vkDestroyBuffer(v->Device, upload_buffer, v->Allocator);
@@ -1910,14 +1917,17 @@ void ImGui_ImplVulkanH_CreateWindowSwapChain(VkPhysicalDevice physical_device, V
 
     // lock queue mutex before waiting idle
     {
-        std::mutex* queueMutex = ImGui_ImplVulkan_GetQueueMutex(
-            ImGui_ImplVulkan_GetBackendData()->VulkanInitInfo.NvrhiDeviceHandle);
-        if (queueMutex) {
-            std::lock_guard<std::mutex> lock(*queueMutex);
+        // std::mutex* queueMutex = ImGui_ImplVulkan_GetQueueMutex(
+        //     ImGui_ImplVulkan_GetBackendData()->VulkanInitInfo.NvrhiDeviceHandle);
+        // if (queueMutex) {
+        //     std::lock_guard<std::mutex> lock(*queueMutex);
+        //     err = vkDeviceWaitIdle(device);
+        // } else {
+        //     err = vkDeviceWaitIdle(device);
+        // }
+        ImGui_ImplVulkan_GetBackendData()->VulkanInitInfo.CommandQueueSubmitter([&] {
             err = vkDeviceWaitIdle(device);
-        } else {
-            err = vkDeviceWaitIdle(device);
-        }
+        });
     }
     check_vk_result(err);
 
@@ -2470,13 +2480,16 @@ static void ImGui_ImplVulkan_RenderWindow(ImGuiViewport *viewport, void *) {
             check_vk_result(err);
             // lock
             {
-                std::mutex* queueMutex = ImGui_ImplVulkan_GetQueueMutex(v->NvrhiDeviceHandle);
-                if (queueMutex) {
-                    std::lock_guard<std::mutex> guard(*queueMutex);
+                // std::mutex* queueMutex = ImGui_ImplVulkan_GetQueueMutex(v->NvrhiDeviceHandle);
+                // if (queueMutex) {
+                //     std::lock_guard<std::mutex> guard(*queueMutex);
+                //     err = vkQueueSubmit(v->Queue, 1, &info, fd->Fence);
+                // } else {
+                //     err = vkQueueSubmit(v->Queue, 1, &info, fd->Fence);
+                // }
+                ImGui_ImplVulkan_GetBackendData()->VulkanInitInfo.CommandQueueSubmitter([&] {
                     err = vkQueueSubmit(v->Queue, 1, &info, fd->Fence);
-                } else {
-                    err = vkQueueSubmit(v->Queue, 1, &info, fd->Fence);
-                }
+                });
             }
             check_vk_result(err);
         }
@@ -2507,13 +2520,16 @@ static void ImGui_ImplVulkan_SwapBuffers(ImGuiViewport *viewport, void *) {
     info.pImageIndices = &present_index;
     // lock
     {
-        std::mutex* queueMutex = ImGui_ImplVulkan_GetQueueMutex(v->NvrhiDeviceHandle);
-        if (queueMutex) {
-            std::lock_guard<std::mutex> guard(*queueMutex);
+        // std::mutex* queueMutex = ImGui_ImplVulkan_GetQueueMutex(v->NvrhiDeviceHandle);
+        // if (queueMutex) {
+        //     std::lock_guard<std::mutex> guard(*queueMutex);
+        //     err = vkQueuePresentKHR(v->Queue, &info);
+        // } else {
+        //     err = vkQueuePresentKHR(v->Queue, &info);
+        // }
+        ImGui_ImplVulkan_GetBackendData()->VulkanInitInfo.CommandQueueSubmitter([&] {
             err = vkQueuePresentKHR(v->Queue, &info);
-        } else {
-            err = vkQueuePresentKHR(v->Queue, &info);
-        }
+        });
     }
     if (err == VK_ERROR_OUT_OF_DATE_KHR) {
         vd->SwapChainNeedRebuild = true;
