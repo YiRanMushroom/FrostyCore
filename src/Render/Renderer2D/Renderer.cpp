@@ -41,10 +41,10 @@ Engine {
         mCommandList->setResourceStatesForFramebuffer(mFramebuffer);
         mCommandList->clearTextureFloat(mTexture,
                                         nvrhi::AllSubresources, info.ClearColor);
-        mCommandList->clearTextureUInt(
+        mCommandList->clearTextureFloat(
             mTargetIDTexture,
             nvrhi::AllSubresources,
-            0u
+            nvrhi::Color(0.f, 0.f, 0.f, 0.f) // Clear to transparent (alpha=0)
         );
     }
 
@@ -88,7 +88,7 @@ Engine {
         nvrhi::TextureDesc stagingDesc;
         stagingDesc.width = 1;
         stagingDesc.height = 1;
-        stagingDesc.format = nvrhi::Format::R32_UINT;
+        stagingDesc.format = nvrhi::Format::RGBA8_UNORM; // Changed from R32_UINT
         stagingDesc.debugName = "PickingStagingTexture";
 
         nvrhi::StagingTextureHandle stagingTex = mDevice->createStagingTexture(stagingDesc, nvrhi::CpuAccessMode::Read);
@@ -128,7 +128,25 @@ Engine {
 
         if (mappedPtr) {
             uint32_t entityID = 0;
-            entityID = *static_cast<uint32_t *>(mappedPtr);
+
+            // Read as RGBA8_UNORM (4 bytes: R, G, B, A)
+            uint8_t* rgba = static_cast<uint8_t*>(mappedPtr);
+            uint8_t r = rgba[0];
+            uint8_t g = rgba[1];
+            uint8_t b = rgba[2];
+            uint8_t a = rgba[3];
+
+            // Check alpha channel - if less than threshold, this pixel has no entity (EntityID=0)
+            if (a < 128) {
+                mDevice->unmapStagingTexture(stagingTex);
+                co_return 0u;
+            }
+
+            // Decode EntityID from RGB channels (right-shift by 8 to restore original value)
+            uint32_t encodedID = (static_cast<uint32_t>(r) << 16) |
+                                 (static_cast<uint32_t>(g) << 8) |
+                                 static_cast<uint32_t>(b);
+            entityID = encodedID >> 8; // Right-shift by 8 to decode
 
             mDevice->unmapStagingTexture(stagingTex);
             co_return entityID;
@@ -157,7 +175,7 @@ Engine {
         nvrhi::TextureDesc targetIDTexDesc;
         targetIDTexDesc.width = mOutputSize.x;
         targetIDTexDesc.height = mOutputSize.y;
-        targetIDTexDesc.format = nvrhi::Format::R32_UINT;
+        targetIDTexDesc.format = nvrhi::Format::RGBA8_UNORM; // Changed from R32_UINT to support blending
         targetIDTexDesc.isRenderTarget = true;
         // should not be sampled in a shader, so not shader source
         targetIDTexDesc.isShaderResource = false;
@@ -165,8 +183,8 @@ Engine {
         // we will render to it and read back on CPU, so it is renderTarget and copySource
         targetIDTexDesc.initialState = nvrhi::ResourceStates::CopySource;
         targetIDTexDesc.keepInitialState = true;
-        // Clear to 0 (no object)
-        targetIDTexDesc.clearValue = nvrhi::Color(0u, 0u, 0u, 0u);
+        // Clear to transparent (alpha=0) - preserves all values via blending
+        targetIDTexDesc.clearValue = nvrhi::Color(0.f, 0.f, 0.f, 0.f);
         targetIDTexDesc.useClearValue = true;
         // We initialize it to 0 immediately
 
@@ -424,13 +442,18 @@ Engine {
         pipeDesc.renderState.rasterState.cullMode = nvrhi::RasterCullMode::None;
         pipeDesc.renderState.depthStencilState.depthTestEnable = false;
 
-        pipeDesc.renderState.blendState.targets[1].blendEnable = false;
-        pipeDesc.renderState.rasterState.cullMode = nvrhi::RasterCullMode::None;
-        pipeDesc.renderState.depthStencilState.depthTestEnable = false;
+        // Enable blending for second render target (EntityID)
+        // When alpha = 0, preserve old value; when alpha = 255, write new value
+        pipeDesc.renderState.blendState.targets[1].blendEnable = true;
+        pipeDesc.renderState.blendState.targets[1].srcBlend = nvrhi::BlendFactor::SrcAlpha;
+        pipeDesc.renderState.blendState.targets[1].destBlend = nvrhi::BlendFactor::InvSrcAlpha;
+        pipeDesc.renderState.blendState.targets[1].srcBlendAlpha = nvrhi::BlendFactor::One;
+        pipeDesc.renderState.blendState.targets[1].destBlendAlpha = nvrhi::BlendFactor::Zero;
+        pipeDesc.renderState.blendState.targets[1].colorWriteMask = nvrhi::ColorMask::All;
 
         // nvrhi::RenderLayoutDesc layoutDesc;
         // layoutDesc.addColorAttachment(nvrhi::Format::RGBA8_UNORM);
-        // layoutDesc.addColorAttachment(nvrhi::Format::R32_UINT);
+        // layoutDesc.addColorAttachment(nvrhi::Format::RGBA8_UNORM);
 
         auto info = mFramebuffer->getFramebufferInfo();
 
@@ -552,9 +575,14 @@ Engine {
         pipeDesc.renderState.rasterState.cullMode = nvrhi::RasterCullMode::None;
         pipeDesc.renderState.depthStencilState.depthTestEnable = false;
 
-        pipeDesc.renderState.blendState.targets[1].blendEnable = false;
-        pipeDesc.renderState.rasterState.cullMode = nvrhi::RasterCullMode::None;
-        pipeDesc.renderState.depthStencilState.depthTestEnable = false;
+        // Enable blending for second render target (EntityID)
+        // When alpha = 0, preserve old value; when alpha = 255, write new value
+        pipeDesc.renderState.blendState.targets[1].blendEnable = true;
+        pipeDesc.renderState.blendState.targets[1].srcBlend = nvrhi::BlendFactor::SrcAlpha;
+        pipeDesc.renderState.blendState.targets[1].destBlend = nvrhi::BlendFactor::InvSrcAlpha;
+        pipeDesc.renderState.blendState.targets[1].srcBlendAlpha = nvrhi::BlendFactor::One;
+        pipeDesc.renderState.blendState.targets[1].destBlendAlpha = nvrhi::BlendFactor::Zero;
+        pipeDesc.renderState.blendState.targets[1].colorWriteMask = nvrhi::ColorMask::All;
 
         mEllipsePipeline = mDevice->createGraphicsPipeline(pipeDesc, mFramebuffer->getFramebufferInfo());
     }
