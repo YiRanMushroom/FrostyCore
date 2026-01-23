@@ -545,6 +545,24 @@ Engine {
         }
     }
 
+    void Application::PushLayer(const Ref<Layer> &layer) {
+        mLayers.push_back(layer);
+        layer->OnAttach(this->RefFromThis());
+    }
+
+    void Application::TransitionToLayer(Ref<Layer> oldLayer, Ref<Layer> newLayer) {
+        for (auto &layer: mLayers) {
+            if (layer == oldLayer) {
+                std::swap(layer, newLayer);
+                oldLayer->OnDetach();
+                newLayer->OnAttach(this->RefFromThis());
+                return;
+            }
+        }
+
+        throw Engine::RuntimeException("Old layer not found in layer stack");
+    }
+
     void Layer::OnAttach(const Ref<Application> &app) {
         mApp = app;
     }

@@ -224,10 +224,7 @@ Engine {
         Ref<CommandListSubmissionContext> mCommandListSubmissionContext;
 
     public:
-        void PushLayer(const Ref<Layer> &layer) {
-            mLayers.push_back(layer);
-            layer->OnAttach(this->RefFromThis());
-        }
+        void PushLayer(const Ref<Layer> &layer);
 
         Ref<Layer> PopLayer(Weak<Layer> layer) {
             if (auto locked = layer.Lock()) {
@@ -246,18 +243,7 @@ Engine {
             return layer;
         }
 
-        void TransitionToLayer(Ref<Layer> oldLayer, Ref<Layer> newLayer) {
-            for (auto &layer: mLayers) {
-                if (layer == oldLayer) {
-                    std::swap(layer, newLayer);
-                    oldLayer->OnDetach();
-                    newLayer->OnAttach(this->RefFromThis());
-                    return;
-                }
-            }
-
-            throw Engine::RuntimeException("Old layer not found in layer stack");
-        }
+        void TransitionToLayer(Ref<Layer> oldLayer, Ref<Layer> newLayer);
 
         virtual void DetachAllLayers() {
             for (auto &layer: mLayers) {
