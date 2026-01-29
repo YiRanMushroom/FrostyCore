@@ -6,4 +6,7 @@ Add maximum uploads per frame to the resource uploader to avoid stalling the GPU
 Fucking stop and figure out what the fuck I am doing with the framebuffer and pipeline creation.
 
 Fix:
-Somewhere I am using NVRHI main CommandBuffer, and it conflicts with the main buffer, find it/
+Somewhere I am using NVRHI main CommandBuffer, and it conflicts with the main buffer, find it(Probably already fixed)
+
+Add:
+Add Entt and prepare for ECS.
