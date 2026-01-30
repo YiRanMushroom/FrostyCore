@@ -10,3 +10,5 @@ Somewhere I am using NVRHI main CommandBuffer, and it conflicts with the main bu
 
 Add:
 Add Entt and prepare for ECS.
+
+consider using vuk rhi
