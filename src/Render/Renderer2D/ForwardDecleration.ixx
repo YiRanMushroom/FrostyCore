@@ -4,7 +4,7 @@ import Core.Prelude;
 
 namespace
 Engine {
-    export class Renderer2D;
+    export class NVRenderer2D;
     export struct Renderer2DDescriptor;
     export enum class ClipMode : uint32_t;
     export struct ClipRegion;

@@ -15,7 +15,6 @@ namespace Engine {
         RenderingData.clear();
     }
 
-
     void LineRenderingCommandList::AddLine(const glm::vec2 &p0,
                                            const glm::vec2 &p1, glm::u8vec4 color) {
         RenderingData.push_back({

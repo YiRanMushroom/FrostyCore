@@ -44,28 +44,6 @@ Engine {
         float MTSDFPixelRange = 4.0f;
 
         glm::mat4x4 ModelMatrix = glm::mat4x4(1.0f);
-
-
-        static TriangleRenderingData Triangle(const glm::vec2 &p0, const glm::vec2 &uv0,
-                                              const glm::vec2 &p1, const glm::vec2 &uv1,
-                                              const glm::vec2 &p2, const glm::vec2 &uv2,
-                                              int textureIndex, glm::u8vec4 tintColor, int depth = 0,
-                                              int clipRegionId = -1);
-
-        static TriangleRenderingData Quad(const glm::vec2 &p0, const glm::vec2 &uv0,
-                                          const glm::vec2 &p1, const glm::vec2 &uv1,
-                                          const glm::vec2 &p2, const glm::vec2 &uv2,
-                                          const glm::vec2 &p3, const glm::vec2 &uv3,
-                                          int virtualTextureID, glm::u8vec4 tintColor, int depth = 0,
-                                          int clipRegionId = -1);
-
-        static TriangleRenderingData QuadFont(const glm::vec2 &p0, const glm::vec2 &uv0,
-                                              const glm::vec2 &p1, const glm::vec2 &uv1,
-                                              const glm::vec2 &p2, const glm::vec2 &uv2,
-                                              const glm::vec2 &p3, const glm::vec2 &uv3,
-                                              int virtualTextureID, glm::u8vec4 tintColor,
-                                              float MTSDFPixelRange, int depth = 0,
-                                              int clipRegionId = -1);
     };
 
     struct TriangleRenderingSubmissionData {
@@ -86,27 +64,6 @@ Engine {
         std::vector<TriangleRenderingData> Instances;
 
         void Clear();
-
-        void AddTriangle(const glm::vec2 &p0, const glm::vec2 &uv0,
-                         const glm::vec2 &p1, const glm::vec2 &uv1,
-                         const glm::vec2 &p2, const glm::vec2 &uv2,
-                         int virtualTextureID, glm::u8vec4 tintColor, int depth,
-                         int clipRegionId = -1);
-
-        void AddQuad(const glm::vec2 &p0, const glm::vec2 &uv0,
-                     const glm::vec2 &p1, const glm::vec2 &uv1,
-                     const glm::vec2 &p2, const glm::vec2 &uv2,
-                     const glm::vec2 &p3, const glm::vec2 &uv3,
-                     int virtualTextureID, glm::u8vec4 tintColor, int depth,
-                     int clipRegionId = -1);
-
-        void AddQuadFont(const glm::vec2 &p0, const glm::vec2 &uv0,
-                         const glm::vec2 &p1, const glm::vec2 &uv1,
-                         const glm::vec2 &p2, const glm::vec2 &uv2,
-                         const glm::vec2 &p3, const glm::vec2 &uv3,
-                         int virtualTextureID, glm::u8vec4 tintColor,
-                         float MTSDFPixelRange, int depth,
-                         int clipRegionId = -1);
 
         std::vector<TriangleRenderingSubmissionData> RecordRendererSubmissionData(size_t triangleBufferInstanceSizeMax);
 

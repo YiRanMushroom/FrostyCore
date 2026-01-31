@@ -2520,13 +2520,6 @@ static void ImGui_ImplVulkan_SwapBuffers(ImGuiViewport *viewport, void *) {
     info.pImageIndices = &present_index;
     // lock
     {
-        // std::mutex* queueMutex = ImGui_ImplVulkan_GetQueueMutex(v->NvrhiDeviceHandle);
-        // if (queueMutex) {
-        //     std::lock_guard<std::mutex> guard(*queueMutex);
-        //     err = vkQueuePresentKHR(v->Queue, &info);
-        // } else {
-        //     err = vkQueuePresentKHR(v->Queue, &info);
-        // }
         ImGui_ImplVulkan_GetBackendData()->VulkanInitInfo.CommandQueueSubmitter([&] {
             err = vkQueuePresentKHR(v->Queue, &info);
         });

@@ -81,10 +81,11 @@ Engine {
         [[nodiscard]] const vk::SharedQueue &GetVkQueue() const { return mVkQueue; }
 
         [[nodiscard]] const nvrhi::vulkan::DeviceHandle &GetNvrhiDevice() const { return mNvrhiDevice; }
+
     private:
         [[nodiscard]] const nvrhi::CommandListHandle &GetCommandList() const { return mCommandList; }
-    public:
 
+    public:
         [[nodiscard]] const PlatformSwapchain &GetSwapchain() const { return mSwapchain; }
 
         // Legacy compatibility - maps to new Swapchain API
@@ -137,7 +138,12 @@ Engine {
 
     protected:
         [[nodiscard]] virtual nvrhi::Color GetClearColor() const {
-            return Color::MyBlue;
+            return {
+                Color::MyBlue.r / 255.0f,
+                Color::MyBlue.g / 255.0f,
+                Color::MyBlue.b / 255.0f,
+                Color::MyBlue.a / 255.0f
+            };
         }
 
         virtual void CreateWindow(WindowCreationInfo info);

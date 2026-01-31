@@ -39,39 +39,6 @@ Engine {
         int ClipRegionId = -1;
         uint32_t EntityID = 0;
         glm::mat4x4 ModelMatrix = glm::mat4x4(1.0f);
-
-        static EllipseRenderingData Circle(const glm::vec2 &center, float radius,
-                                           const glm::u8vec4 &color, int depth = 0,
-                                           int clipRegionId = -1);
-
-        static EllipseRenderingData Ellipse(const glm::vec2 &center, const glm::vec2 &radii,
-                                            float rotation, const glm::u8vec4 &color, int depth = 0,
-                                            int clipRegionId = -1);
-
-        static EllipseRenderingData Ring(const glm::vec2 &center, float outerRadius, float innerRadius,
-                                         const glm::u8vec4 &color, int depth = 0,
-                                         int clipRegionId = -1);
-
-        static EllipseRenderingData Sector(const glm::vec2 &center, float radius,
-                                           float startAngle, float endAngle,
-                                           const glm::u8vec4 &color, int textureIndex = -1, int depth = 0,
-                                           int clipRegionId = -1);
-
-        static EllipseRenderingData Arc(const glm::vec2 &center, float radius, float thickness,
-                                        float startAngle, float endAngle,
-                                        const glm::u8vec4 &color, int depth = 0,
-                                        int clipRegionId = -1);
-
-        static EllipseRenderingData EllipseSector(const glm::vec2 &center, const glm::vec2 &radii,
-                                                  float rotation, float startAngle, float endAngle,
-                                                  const glm::u8vec4 &color, int textureIndex = -1, int depth = 0,
-                                                  int clipRegionId = -1);
-
-        static EllipseRenderingData EllipseArc(const glm::vec2 &center, const glm::vec2 &radii,
-                                               float rotation, float thickness,
-                                               float startAngle, float endAngle,
-                                               const glm::u8vec4 &color, int depth = 0,
-                                               int clipRegionId = -1);
     };
 
     struct EllipseRenderingSubmissionData {
@@ -90,8 +57,6 @@ Engine {
         std::vector<EllipseRenderingData> Instances;
 
         void Clear();
-
-        void AddEllipse(const EllipseRenderingData &data);
 
         std::vector<EllipseRenderingSubmissionData> RecordRendererSubmissionData(size_t ellipseBufferInstanceSizeMax);
 

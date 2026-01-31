@@ -7,287 +7,121 @@ import :Line;
 import :Eclipse;
 import Core.Prelude;
 
+import Core.Utilities;
+
+import "CommandGenHelper.hpp";
+
 namespace
 Engine {
-    export struct DrawCommand {};
+    export class IRenderer2D;
 
-    export class TriangleDrawCommand : public DrawCommand {
+    export class ICommandEncoder {
     public:
-        TriangleDrawCommand() = default;
+        virtual ~ICommandEncoder() = default;
 
-        TriangleDrawCommand &SetPositions(const glm::vec2 &p0,
-                                          const glm::vec2 &p1,
-                                          const glm::vec2 &p2) {
-            Positions = {p0, p1, p2};
-            return *this;
-        }
-
-        TriangleDrawCommand &SetFirstPoint(const glm::vec2 &p0) {
-            Positions[0] = p0;
-            return *this;
-        }
-
-        TriangleDrawCommand &SetSecondPoint(const glm::vec2 &p1) {
-            Positions[1] = p1;
-            return *this;
-        }
-
-        TriangleDrawCommand &SetThirdPoint(const glm::vec2 &p2) {
-            Positions[2] = p2;
-            return *this;
-        }
-
-        TriangleDrawCommand &SetUVs(const glm::vec2 &uv0,
-                                    const glm::vec2 &uv1,
-                                    const glm::vec2 &uv2) {
-            UVs = {uv0, uv1, uv2};
-            return *this;
-        }
-
-        TriangleDrawCommand &SetFirstUV(const glm::vec2 &uv0) {
-            UVs[0] = uv0;
-            return *this;
-        }
-
-        TriangleDrawCommand &SetSecondUV(const glm::vec2 &uv1) {
-            UVs[1] = uv1;
-            return *this;
-        }
-
-        TriangleDrawCommand &SetThirdUV(const glm::vec2 &uv2) {
-            UVs[2] = uv2;
-            return *this;
-        }
-
-        TriangleDrawCommand &SetTexture(int virtualTextureID) {
-            VirtualTextureID = virtualTextureID;
-            return *this;
-        }
-
-        TriangleDrawCommand &SetTintColor(const glm::u8vec4 &tintColor) {
-            TintColor = tintColor;
-            return *this;
-        }
-
-        TriangleDrawCommand &SetDepth(int overrideDepth) {
-            OverrideDepth = overrideDepth;
-            return *this;
-        }
-
-        TriangleDrawCommand &SetClipRegionId(int clipRegionId) {
-            ClipRegionId = clipRegionId;
-            return *this;
-        }
-
-        TriangleDrawCommand &SetTransform(const glm::mat4x4 &modelMatrix) {
-            ModelMatrix = modelMatrix;
-            return *this;
-        }
-
-        TriangleDrawCommand &SetEntityID(uint32_t entityID) {
-            EntityID = entityID;
-            return *this;
-        }
-
-        friend class Renderer2D;
-
-    public:
-        std::array<glm::vec2, 3> Positions;
-        std::array<glm::vec2, 3> UVs;
-        int VirtualTextureID = -1;
-        glm::u8vec4 TintColor = glm::u8vec4(0u, 0u, 0u, 255u);
-        std::optional<int> OverrideDepth = std::nullopt;
-        int ClipRegionId = -1;
-        uint32_t EntityID = 0;
-
-        glm::mat4x4 ModelMatrix = glm::mat4x4(1.0f);
+        virtual void EncodeToRenderer(IRenderer2D &) = 0;
     };
 
-    export class QuadDrawCommand : public DrawCommand {
-    public:
-        QuadDrawCommand() = default;
 
-        QuadDrawCommand &SetPositions(const glm::vec2 &p0,
-                                      const glm::vec2 &p2) {
-            FirstPoint = p0;
-            SecondPoint = p2;
-            return *this;
-        }
-
-        QuadDrawCommand &SetFirstPoint(const glm::vec2 &p0) {
-            FirstPoint = p0;
-            return *this;
-        }
-
-        QuadDrawCommand &SetSecondPoint(const glm::vec2 &p2) {
-            SecondPoint = p2;
-            return *this;
-        }
-
-        QuadDrawCommand &SetUVs(const glm::vec2 &uv0,
-                                const glm::vec2 &uv1) {
-            FirstUV = uv0;
-            SecondUV = uv1;
-            return *this;
-        }
-
-        QuadDrawCommand &SetFirstUV(const glm::vec2 &uv0) {
-            FirstUV = uv0;
-            return *this;
-        }
-
-        QuadDrawCommand &SetSecondUV(const glm::vec2 &uv1) {
-            SecondUV = uv1;
-            return *this;
-        }
-
-        QuadDrawCommand &SetTexture(int virtualTextureID) {
-            VirtualTextureID = virtualTextureID;
-            RenderingMode = InstanceRenderingMode::Texture;
-            return *this;
-        }
-
-        QuadDrawCommand &SetFontAtlas(int virtualTextureID, float MTSDFPixelRange) {
-            VirtualTextureID = virtualTextureID;
-            RenderingMode = InstanceRenderingMode::MTSDF;
-            this->MTSDFPixelRange = MTSDFPixelRange;
-            return *this;
-        }
-
-        QuadDrawCommand &SetTintColor(const glm::u8vec4 &tintColor) {
-            TintColor = tintColor;
-            return *this;
-        }
-
-        QuadDrawCommand &SetDepth(int overrideDepth) {
-            OverrideDepth = overrideDepth;
-            return *this;
-        }
-
-        QuadDrawCommand &SetClipRegionId(int clipRegionId) {
-            ClipRegionId = clipRegionId;
-            return *this;
-        }
-
-        QuadDrawCommand &SetTransform(const glm::mat4x4 &modelMatrix) {
-            ModelMatrix = modelMatrix;
-            return *this;
-        }
-
-        QuadDrawCommand &SetEntityID(uint32_t entityID) {
-            EntityID = entityID;
-            return *this;
-        }
-
-        friend class Renderer2D;
-
-    public:
-        glm::vec2 FirstPoint;
-        glm::vec2 SecondPoint;
-
-        glm::vec2 FirstUV = glm::vec2(0.0f, 0.0f);
-        glm::vec2 SecondUV = glm::vec2(1.0f, 1.0f);
-
-        int VirtualTextureID = -1;
-        glm::u8vec4 TintColor = glm::u8vec4(0u, 0u, 0u, 255u);
-        std::optional<int> OverrideDepth = std::nullopt;
-        int ClipRegionId = -1;
-        uint32_t EntityID = 0;
-
-        InstanceRenderingMode RenderingMode = InstanceRenderingMode::Texture;
-        float MTSDFPixelRange;
-
-        glm::mat4x4 ModelMatrix = glm::mat4x4(1.0f);
+    export template<StringLiteral CommandName>
+    class CommandEncoder : public ICommandEncoder {
+        // must be specialized
     };
 
-    // No need to provide draw command for line because it is simple enough
+    namespace RenderDrawCommandNames {
+        export constexpr StringLiteral Triangle = "Triangle"_sl;
+        export constexpr StringLiteral QuadTexture = "QuadTexture"_sl;
+        export constexpr StringLiteral QuadMTSDF = "QuadMTSDF"_sl;
+        export constexpr StringLiteral Circular = "Circular"_sl;
+        export constexpr StringLiteral ThinLine = "ThinLine"_sl;
+    }
 
-    // Now we add circular draw command.
-    export class CircularDrawCommand : public DrawCommand {
-    public:
-        CircularDrawCommand() = default;
+    export template<>
+    class CommandEncoder<RenderDrawCommandNames::Triangle> : public ICommandEncoder {
+        GenCommandEncoderBase(RenderDrawCommandNames::Triangle)
 
-        CircularDrawCommand &SetCenter(const glm::vec2 &center) {
-            Center = center;
-            return *this;
-        }
-
-        CircularDrawCommand &SetRadii(const glm::vec2 &radii) {
-            Radii = radii;
-            return *this;
-        }
-
-        CircularDrawCommand &SetRadius(float radius) {
-            Radii = glm::vec2(radius, radius);
-            return *this;
-        }
-
-        CircularDrawCommand &SetRotation(float rotation) {
-            Rotation = rotation;
-            return *this;
-        }
-
-        CircularDrawCommand &SetStartAngle(float startAngle) {
-            StartAngle = startAngle;
-            return *this;
-        }
-
-        CircularDrawCommand &SetEndAngle(float endAngle) {
-            EndAngle = endAngle;
-            return *this;
-        }
-
-        CircularDrawCommand &SetTexture(int virtualTextureID) {
-            VirtualTextureID = virtualTextureID;
-            return *this;
-        }
-
-        CircularDrawCommand &SetTintColor(const glm::u8vec4 &tintColor) {
-            TintColor = tintColor;
-            return *this;
-        }
-
-        CircularDrawCommand &SetEdgeSoftness(float edgeSoftness) {
-            EdgeSoftness = edgeSoftness;
-            return *this;
-        }
-
-        CircularDrawCommand &SetDepth(int overrideDepth) {
-            OverrideDepth = overrideDepth;
-            return *this;
-        }
-
-        CircularDrawCommand &SetClipRegionId(int clipRegionId) {
-            ClipRegionId = clipRegionId;
-            return *this;
-        }
-
-        CircularDrawCommand &SetTransform(const glm::mat4x4 &modelMatrix) {
-            ModelMatrix = modelMatrix;
-            return *this;
-        }
-
-        CircularDrawCommand &SetEntityID(uint32_t entityID) {
-            EntityID = entityID;
-            return *this;
-        }
-
-        friend class Renderer2D;
+        EncoderProperty(Positions, glm::mat3x2);
+        EncoderProperty(TextureUVs, glm::mat3x2);
+        EncoderPropertyOptional(TextureID, uint32_t);
+        EncoderPropertyOptional(TintColor, glm::u8vec4);
+        EncoderPropertyOptional(Depth, int);
+        EncoderPropertyOptional(ClipRegionId, uint32_t);
+        EncoderPropertyOptional(EntityID, uint32_t);
+        EncoderPropertyOptional(ModelMatrix, glm::mat4);
 
     public:
-        glm::vec2 Center;
-        glm::vec2 Radii;
-        float Rotation = 0.0f;
-        float InnerScale = 0.0f;
-        float StartAngle = 0.0f;
-        float EndAngle = std::numbers::pi_v<float> * 2.0f;
-        int VirtualTextureID = -1;
-        glm::u8vec4 TintColor = glm::u8vec4(0u, 0u, 0u, 255u);
-        float EdgeSoftness = 1.0f;
-        std::optional<int> OverrideDepth = 0;
-        int ClipRegionId = -1;
-        uint32_t EntityID = 0;
-
-        glm::mat4x4 ModelMatrix = glm::mat4x4(1.0f);
+        void EncodeToRenderer(IRenderer2D &) override;
     };
+
+    export template<>
+    class CommandEncoder<RenderDrawCommandNames::QuadTexture> : public ICommandEncoder {
+        GenCommandEncoderBase(RenderDrawCommandNames::QuadTexture)
+
+        EncoderProperty(Positions, glm::mat2x2);
+        EncoderProperty(TextureUVs, glm::mat2x2);
+        EncoderPropertyOptional(TextureID, uint32_t);
+        EncoderPropertyOptional(TintColor, glm::u8vec4);
+        EncoderPropertyOptional(Depth, int);
+        EncoderPropertyOptional(ClipRegionId, uint32_t);
+        EncoderPropertyOptional(EntityID, uint32_t);
+        EncoderPropertyOptional(ModelMatrix, glm::mat4);
+    public:
+        void EncodeToRenderer(IRenderer2D &) override;
+    };
+
+    export template<>
+    class CommandEncoder<RenderDrawCommandNames::QuadMTSDF> : public ICommandEncoder {
+        GenCommandEncoderBase(RenderDrawCommandNames::QuadMTSDF)
+
+        EncoderProperty(Positions, glm::mat2x2);
+        EncoderProperty(TextureUVs, glm::mat2x2);
+        EncoderPropertyOptional(TextureID, uint32_t);
+        EncoderPropertyOptional(MTSDFPixelRange, float);
+        EncoderPropertyOptional(TintColor, glm::u8vec4);
+        EncoderPropertyOptional(Depth, int);
+        EncoderPropertyOptional(ClipRegionId, uint32_t);
+        EncoderPropertyOptional(EntityID, uint32_t);
+        EncoderPropertyOptional(ModelMatrix, glm::mat4);
+    public:
+        void EncodeToRenderer(IRenderer2D &) override;
+    };
+
+    export template<>
+    class CommandEncoder<RenderDrawCommandNames::Circular> : public ICommandEncoder {
+        GenCommandEncoderBase(RenderDrawCommandNames::Circular)
+
+        EncoderProperty(Center, glm::vec2);
+        EncoderProperty(Radii, glm::vec2);
+        EncoderProperty(Rotation, float);
+        EncoderProperty(StartAngle, float);
+        EncoderProperty(EndAngle, float);
+        EncoderPropertyOptional(TextureID, uint32_t);
+        EncoderPropertyOptional(TintColor, glm::u8vec4);
+        EncoderPropertyOptional(EdgeSoftness, float);
+        EncoderPropertyOptional(Depth, int);
+        EncoderPropertyOptional(ClipRegionId, uint32_t);
+        EncoderPropertyOptional(EntityID, uint32_t);
+        EncoderPropertyOptional(ModelMatrix, glm::mat4);
+    public:
+        void EncodeToRenderer(IRenderer2D &) override;
+    };
+
+    export template<>
+    class CommandEncoder<RenderDrawCommandNames::ThinLine> : public ICommandEncoder {
+        GenCommandEncoderBase(RenderDrawCommandNames::ThinLine)
+
+        EncoderProperty(Positions, glm::mat2x2);
+        EncoderPropertyOptional(Color, glm::u8vec4);
+
+    public:
+        void EncodeToRenderer(IRenderer2D &) override;
+    };
+
+
+    namespace CommandEncoders {
+        export using Triangle = CommandEncoder<RenderDrawCommandNames::Triangle>;
+        export using QuadTexture = CommandEncoder<RenderDrawCommandNames::QuadTexture>;
+        export using QuadMTSDF = CommandEncoder<RenderDrawCommandNames::QuadMTSDF>;
+        export using Circular = CommandEncoder<RenderDrawCommandNames::Circular>;
+    }
 }

@@ -1,19 +1,20 @@
 export module Render.Color;
 import Vendor.ApplicationAPI;
+import Core.Prelude;
 
 namespace Engine::Color {
     export constexpr uint32_t MyBlueHex = 0x37AEFC;
     export constexpr uint32_t MyPinkHex = 0xFFD2DC;
     export constexpr uint32_t MyWhiteHex = 0xFFFFFF;
 
-    export nvrhi::Color ComputeFromHex(uint32_t hexValue) {
-        float r = static_cast<float>((hexValue >> 16) & 0xFF) / 255.0f;
-        float g = static_cast<float>((hexValue >> 8) & 0xFF) / 255.0f;
-        float b = static_cast<float>(hexValue & 0xFF) / 255.0f;
-        return nvrhi::Color(r, g, b, 1.0f);
+    export constexpr glm::u8vec4 ComputeFromHex(uint32_t hexValue) {
+        uint8_t r = (hexValue >> 16) & 0xFF;
+        uint8_t g = (hexValue >> 8) & 0xFF;
+        uint8_t b = hexValue & 0xFF;
+        return glm::u8vec4(r, g, b, 255u);
     }
 
-    export const nvrhi::Color MyBlue = ComputeFromHex(MyBlueHex);
-    export const nvrhi::Color MyPink = ComputeFromHex(MyPinkHex);
-    export const nvrhi::Color MyWhite = ComputeFromHex(MyWhiteHex);
+    export constexpr glm::u8vec4 MyBlue = ComputeFromHex(MyBlueHex);
+    export constexpr glm::u8vec4 MyPink = ComputeFromHex(MyPinkHex);
+    export constexpr glm::u8vec4 MyWhite = ComputeFromHex(MyWhiteHex);
 }

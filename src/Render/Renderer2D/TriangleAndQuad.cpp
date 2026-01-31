@@ -32,98 +32,10 @@ Engine {
         };
     }
 
-    TriangleRenderingData TriangleRenderingData::Triangle(const glm::vec2 &p0, const glm::vec2 &uv0,
-                                                          const glm::vec2 &p1, const glm::vec2 &uv1,
-                                                          const glm::vec2 &p2, const glm::vec2 &uv2,
-                                                          int textureIndex,
-                                                          glm::u8vec4 tintColor, int depth,
-                                                          int clipRegionId) {
-        return {
-            .Positions = {p0, p1, p2, {}},
-            .TexCoords = {uv0, uv1, uv2, {}},
-            .IsQuad = false,
-            .VirtualTextureID = textureIndex,
-            .TintColor = tintColor,
-            .Depth = depth,
-            .ClipRegionId = clipRegionId
-        };
-    }
-
-    TriangleRenderingData TriangleRenderingData::Quad(const glm::vec2 &p0, const glm::vec2 &uv0,
-                                                      const glm::vec2 &p1, const glm::vec2 &uv1,
-                                                      const glm::vec2 &p2, const glm::vec2 &uv2,
-                                                      const glm::vec2 &p3, const glm::vec2 &uv3,
-                                                      int virtualTextureID,
-                                                      glm::u8vec4 tintColor, int depth,
-                                                      int clipRegionId) {
-        return {
-            .Positions = {p0, p1, p2, p3},
-            .TexCoords = {uv0, uv1, uv2, uv3},
-            .IsQuad = true,
-            .VirtualTextureID = virtualTextureID,
-            .TintColor = tintColor,
-            .Depth = depth,
-            .ClipRegionId = clipRegionId
-        };
-    }
-
-    TriangleRenderingData TriangleRenderingData::QuadFont(const glm::vec2 &p0, const glm::vec2 &uv0,
-                                                          const glm::vec2 &p1,
-                                                          const glm::vec2 &uv1, const glm::vec2 &p2,
-                                                          const glm::vec2 &uv2, const glm::vec2 &p3,
-                                                          const glm::vec2 &uv3,
-                                                          int virtualTextureID, glm::u8vec4 tintColor,
-                                                          float MTSDFPixelRange, int depth, int clipRegionId) {
-        return {
-            .Positions = {p0, p1, p2, p3},
-            .TexCoords = {uv0, uv1, uv2, uv3},
-            .IsQuad = true,
-            .VirtualTextureID = virtualTextureID,
-            .TintColor = tintColor,
-            .Depth = depth,
-            .ClipRegionId = clipRegionId,
-            .RenderingMode = InstanceRenderingMode::MTSDF,
-            .MTSDFPixelRange = MTSDFPixelRange
-        };
-    }
-
     void TriangleRenderingSubmissionData::Clear() {
         VertexData.clear();
         IndexData.clear();
         InstanceData.clear();
-    }
-
-    void TriangleRenderingCommandList::AddTriangle(const glm::vec2 &p0, const glm::vec2 &uv0,
-                                                   const glm::vec2 &p1, const glm::vec2 &uv1,
-                                                   const glm::vec2 &p2, const glm::vec2 &uv2,
-                                                   int virtualTextureID,
-                                                   glm::u8vec4 tintColor,
-                                                   int depth, int clipRegionId) {
-        Instances.emplace_back(
-            TriangleRenderingData::Triangle(
-                p0, uv0, p1, uv1, p2, uv2, virtualTextureID, tintColor, depth, clipRegionId));
-    }
-
-    void TriangleRenderingCommandList::AddQuad(const glm::vec2 &p0, const glm::vec2 &uv0,
-                                               const glm::vec2 &p1, const glm::vec2 &uv1,
-                                               const glm::vec2 &p2, const glm::vec2 &uv2,
-                                               const glm::vec2 &p3, const glm::vec2 &uv3,
-                                               int virtualTextureID,
-                                               glm::u8vec4 tintColor,
-                                               int depth, int clipRegionId) {
-        Instances.emplace_back(
-            TriangleRenderingData::Quad(
-                p0, uv0, p1, uv1, p2, uv2, p3, uv3, virtualTextureID, tintColor, depth, clipRegionId));
-    }
-
-    void TriangleRenderingCommandList::AddQuadFont(const glm::vec2 &p0, const glm::vec2 &uv0, const glm::vec2 &p1,
-                                                   const glm::vec2 &uv1, const glm::vec2 &p2, const glm::vec2 &uv2,
-                                                   const glm::vec2 &p3, const glm::vec2 &uv3,
-                                                   int virtualTextureID, glm::u8vec4 tintColor, float MTSDFPixelRange,
-                                                   int depth, int clipRegionId) {
-        Instances.emplace_back(
-            TriangleRenderingData::QuadFont(
-                p0, uv0, p1, uv1, p2, uv2, p3, uv3, virtualTextureID, tintColor, MTSDFPixelRange, depth, clipRegionId));
     }
 
     void TriangleRenderingCommandList::Clear() {

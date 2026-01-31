@@ -10,6 +10,7 @@ import Core.Utilities;
 import Core.Coroutine;
 
 import Render.CommandListSubmissionContext;
+import Render.RenderAPI;
 
 import :ForwardDecleration;
 import :Misc;
@@ -28,153 +29,68 @@ Engine {
     };
 
     export struct Renderer2DBeginRenderingInfo {
-        nvrhi::Color ClearColor = nvrhi::Color(0, 0, 0, 0);
+        // nvrhi::Color ClearColor = nvrhi::Color(0, 0, 0, 0);
+        glm::u8vec4 ClearColor = glm::u8vec4(0, 0, 0, 0);
     };
 
-    export class Renderer2D : public Engine::RefCounted {
+    export class IRenderer2D : public RefCounted {
     public:
-        Renderer2D(const Renderer2DDescriptor &desc,
-                   Ref<CommandListSubmissionContext> submissionContext);
+        virtual void BeginRendering(const Renderer2DBeginRenderingInfo &info = {}) = 0;
 
-        void BeginRendering(const Renderer2DBeginRenderingInfo &info = {});
+        [[nodiscard]] virtual const nvrhi::CommandListHandle &GetCommandList() const = 0;
 
-        [[nodiscard]] const nvrhi::CommandListHandle &GetCommandList() const;
+        virtual void EndRendering() = 0;
 
-        void EndRendering();
+        virtual void OnResize(uint32_t width, uint32_t height) = 0;
 
-        void OnResize(uint32_t width, uint32_t height);
+        [[nodiscard]] virtual nvrhi::ITexture *GetTexture() const = 0;
 
-        const glm::vec2 &SetVirtualWidth(float virtualWidth);
+        virtual void Clear() = 0;
 
-        [[nodiscard]] nvrhi::ITexture *GetTexture() const;
+        [[nodiscard]] virtual int GetCurrentDepth() const = 0;
 
-        void Clear();
+        virtual void SetCurrentDepth(int depth) = 0;
 
-        [[nodiscard]] int GetCurrentDepth() const;
+        virtual uint32_t RegisterVirtualTextureForThisFrame(const nvrhi::TextureHandle &texture) = 0;
 
-        void SetCurrentDepth(int depth);
+        virtual ClipRegionManager &GetClipRegionManager() = 0;
 
-        uint32_t RegisterVirtualTextureForThisFrame(const nvrhi::TextureHandle &texture);
+        virtual Awaitable<uint32_t> GetEntityIDAtPixelPositionAsync(const glm::uvec2 &pixelPosition) = 0;
 
-        ClipRegionManager &GetClipRegionManager();
+        virtual RHIAPI GetRHIAPI() = 0;
+    };
 
-        void DrawTriangleColored(const glm::mat3x2 &positions, const glm::u8vec4 &color,
-                                 std::optional<int> overrideDepth = std::nullopt,
-                                 int clipRegionId = -1);
+    export class NVRenderer2D : public IRenderer2D {
+        template<StringLiteral CommandName>
+        friend class CommandEncoder;
 
-        void DrawTriangleTextureVirtual(const glm::mat3x2 &positions, const glm::mat3x2 &uvs,
-                                        uint32_t virtualTextureID, std::optional<int> overrideDepth = std::nullopt,
-                                        glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255),
-                                        int clipRegionId = -1);
+    public:
+        NVRenderer2D(const Renderer2DDescriptor &desc,
+                     Ref<CommandListSubmissionContext> submissionContext);
 
-        uint32_t DrawTriangleTextureManaged(const glm::mat3x2 &positions, const glm::mat3x2 &uvs,
-                                            const nvrhi::TextureHandle &texture,
-                                            std::optional<int> overrideDepth = std::nullopt,
-                                            glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255),
-                                            int clipRegionId = -1);
+        void BeginRendering(const Renderer2DBeginRenderingInfo &info = {}) override;
 
-        void DrawQuadColored(const glm::mat4x2 &positions, const glm::u8vec4 &color,
-                             std::optional<int> overrideDepth = std::nullopt,
-                             int clipRegionId = -1);
+        [[nodiscard]] const nvrhi::CommandListHandle &GetCommandList() const override;
 
-        void DrawQuadTextureVirtual(const glm::mat4x2 &positions, const glm::mat4x2 &uvs,
-                                    uint32_t virtualTextureID, std::optional<int> overrideDepth = std::nullopt,
-                                    glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255),
-                                    int clipRegionId = -1);
+        void EndRendering() override;
 
-        uint32_t DrawQuadTextureManaged(const glm::mat4x2 &positions, const glm::mat4x2 &uvs,
-                                        const nvrhi::TextureHandle &texture,
-                                        std::optional<int> overrideDepth = std::nullopt,
-                                        glm::u8vec4 tintColor = glm::u8vec4(255, 255, 255, 255),
-                                        int clipRegionId = -1);
+        void OnResize(uint32_t width, uint32_t height) override;
 
-        void DrawQuadFontColoredVirtual(const glm::mat4x2 &positions, const glm::mat4x2 &uvs,
-                                        uint32_t virtualTextureID,
-                                        glm::u8vec4 tintColor,
-                                        float MTSDFPixelRange,
-                                        std::optional<int> overrideDepth = std::nullopt,
-                                        int clipRegionId = -1);
+        [[nodiscard]] nvrhi::ITexture *GetTexture() const override;
 
-        void DrawLine(const glm::vec2 &p0, const glm::vec2 &p1, const glm::u8vec4 &color);
+        void Clear() override;
 
-        void DrawCircle(const glm::vec2 &center, float radius, const glm::u8vec4 &color,
-                        std::optional<int> overrideDepth = std::nullopt,
-                        int clipRegionId = -1);
+        [[nodiscard]] int GetCurrentDepth() const override;
 
-        void DrawEllipse(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
-                         const glm::u8vec4 &color, std::optional<int> overrideDepth = std::nullopt,
-                         int clipRegionId = -1);
+        void SetCurrentDepth(int depth) override;
 
-        void DrawRing(const glm::vec2 &center, float outerRadius, float innerRadius,
-                      const glm::u8vec4 &color, std::optional<int> overrideDepth = std::nullopt,
-                      int clipRegionId = -1);
+        uint32_t RegisterVirtualTextureForThisFrame(const nvrhi::TextureHandle &texture) override;
 
-        void DrawSector(const glm::vec2 &center, float radius, float startAngle, float endAngle,
-                        const glm::u8vec4 &color, std::optional<int> overrideDepth = std::nullopt,
-                        int clipRegionId = -1);
+        ClipRegionManager &GetClipRegionManager() override;
 
-        void DrawSectorTextureVirtual(const glm::vec2 &center, float radius, float startAngle, float endAngle,
-                                      uint32_t virtualTextureID,
-                                      const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
-                                      std::optional<int> overrideDepth = std::nullopt,
-                                      int clipRegionId = -1);
+        Awaitable<uint32_t> GetEntityIDAtPixelPositionAsync(const glm::uvec2 &pixelPosition) override;
 
-        uint32_t DrawSectorTextureManaged(const glm::vec2 &center, float radius, float startAngle, float endAngle,
-                                          const nvrhi::TextureHandle &texture,
-                                          const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
-                                          std::optional<int> overrideDepth = std::nullopt,
-                                          int clipRegionId = -1);
-
-        void DrawArc(const glm::vec2 &center, float radius, float thickness,
-                     float startAngle, float endAngle, const glm::u8vec4 &color,
-                     std::optional<int> overrideDepth = std::nullopt,
-                     int clipRegionId = -1);
-
-        void DrawEllipseSector(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
-                               float startAngle, float endAngle, const glm::u8vec4 &color,
-                               std::optional<int> overrideDepth = std::nullopt,
-                               int clipRegionId = -1);
-
-        void DrawEllipseSectorTextureVirtual(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
-                                             float startAngle, float endAngle, uint32_t virtualTextureID,
-                                             const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
-                                             std::optional<int> overrideDepth = std::nullopt,
-                                             int clipRegionId = -1);
-
-        void DrawEllipseArc(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
-                            float thickness, float startAngle, float endAngle,
-                            const glm::u8vec4 &color, std::optional<int> overrideDepth = std::nullopt,
-                            int clipRegionId = -1);
-
-        void DrawCircleTextureVirtual(const glm::vec2 &center, float radius, uint32_t virtualTextureID,
-                                      const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
-                                      std::optional<int> overrideDepth = std::nullopt,
-                                      int clipRegionId = -1);
-
-        uint32_t DrawCircleTextureManaged(const glm::vec2 &center, float radius,
-                                          const nvrhi::TextureHandle &texture,
-                                          const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
-                                          std::optional<int> overrideDepth = std::nullopt,
-                                          int clipRegionId = -1);
-
-        void DrawEllipseTextureVirtual(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
-                                       uint32_t virtualTextureID,
-                                       const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
-                                       std::optional<int> overrideDepth = std::nullopt,
-                                       int clipRegionId = -1);
-
-        uint32_t DrawEllipseTextureManaged(const glm::vec2 &center, const glm::vec2 &radii, float rotation,
-                                           const nvrhi::TextureHandle &texture,
-                                           const glm::u8vec4 &tintColor = glm::u8vec4(255, 255, 255, 255),
-                                           std::optional<int> overrideDepth = std::nullopt,
-                                           int clipRegionId = -1);
-
-        template<std::derived_from<DrawCommand> CommandType>
-        void Draw(const CommandType &);
-
-        Engine::Awaitable<uint32_t> GetEntityIDAtPixelPositionAsync(const glm::uvec2 &pixelPosition);
-
-        // No default implementation, types derived from DrawCommand will provide their own specializations.
+        RHIAPI GetRHIAPI() override { return RHIAPI::NVRHI; }
 
     private:
         void CreateResources();
@@ -206,6 +122,7 @@ Engine {
         void Submit();
 
         glm::mat4 GetViewProjectionMatrix();
+
         void SetTransforms(std::vector<Ref<ITransform>> transforms);
 
         nvrhi::DeviceHandle mDevice;
@@ -282,5 +199,3 @@ Engine {
         std::optional<glm::mat4> mCachedTransform{};
     };
 }
-
-
