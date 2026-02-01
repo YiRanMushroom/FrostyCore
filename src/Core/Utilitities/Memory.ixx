@@ -121,7 +121,7 @@ Engine {
     };
 
     export template<typename T>
-    using Borrowed = MultiInterface<T, RefCounted>;
+    class Borrowed;
 
     template<typename T>
     class Ref {
@@ -370,6 +370,14 @@ Engine {
     }
 
     template<typename T>
+    Borrowed<T> Ref<T>::Borrow() const noexcept {
+        return MultiInterface<T, RefCounted>::CreateFromRawPointersUnsafe(
+            mPtr,
+            mCounterAddress
+        );
+    }
+
+    template<typename T>
     Ref<T> Weak<T>::Lock() const noexcept {
         if (!mCounterAddress) return nullptr;
 
@@ -414,72 +422,70 @@ Engine {
         return Ref<RefInterface<T>>::Create(std::forward<Args>(args)...).template As<T>();
     }
 
-    template<typename T>
-    struct MultiInterfaceExtensions<T, RefCounted> {
+    export template<typename T>
+    class Borrowed {
+    public:
+        friend MultiInterface<T, RefCounted>;
+
+        template<typename>
+        friend class Borrowed;
+
     private:
-        template<typename U> requires (IsImplicitlyConvertibleTo<T, U> || IsImplicitlyConvertibleTo<RefCounted, U>)
-        U *GetInterface(this const MultiInterface<T, RefCounted> &self) {
-            return self.mStoredInterfaces.template GetInterface<U>();
-        }
+        MultiInterface<T, RefCounted> mBase;
 
     public:
-        template<typename U> requires (IsImplicitlyConvertibleTo<T, U> || IsImplicitlyConvertibleTo<RefCounted, U>)
-        operator U *(this const MultiInterface<T, RefCounted> &self) {
-            return self.mStoredInterfaces.template GetInterface<U>();
+        operator const MultiInterface<T, RefCounted> &() const {
+            return mBase;
         }
 
+        operator MultiInterface<T, RefCounted> &() {
+            return mBase;
+        }
+
+        Borrowed(const MultiInterface<T, RefCounted> &base) : mBase(base) {}
+
+        Borrowed() = default;
+
+        template<typename U> requires (IsImplicitlyConvertibleTo<U, T>)
+        Borrowed(const Borrowed<U> &other)
+            : mBase(other.mBase.template Into<MultiInterface<T, RefCounted>>()) {}
+
     public:
-        Ref<T> Ref(this const MultiInterface<T, RefCounted> &self) {
-            return Engine::Ref<T>(self.template GetInterface<T>(), self.template GetInterface<RefCounted>(),
+        bool HasValue() const {
+            return mBase.HasValue();
+        }
+
+        operator bool() const {
+            return mBase;
+        }
+
+        template<typename U> requires (IsImplicitlyConvertibleTo<T, U> || IsImplicitlyConvertibleTo<RefCounted, U>)
+        U *GetInterface() const {
+            return mBase.template GetInterface<U>();
+        }
+
+        Ref<T> Ref() const {
+            return Engine::Ref<T>(this->GetInterface<T>(), this->GetInterface<RefCounted>(),
                                   RefCounted::ShareOwnership{});
         }
 
-        Weak<T> Weak(this const MultiInterface<T, RefCounted> &self) {
-            return Engine::Weak<T>(self.template GetInterface<T>(), self.template GetInterface<RefCounted>(),
+        Weak<T> Weak() const {
+            return Engine::Weak<T>(this->GetInterface<T>(), this->GetInterface<RefCounted>(),
                                    RefCounted::ShareOwnership{});
         }
 
-    private:
-        template<typename Tp>
-        struct IntoImpl {
-            static Borrowed<Tp> Invoke(const MultiInterface<T, RefCounted> &self) {
-                return MultiInterface<Tp, RefCounted>::CreateFromRawPointersUnsafe(
-                    static_cast<Tp *>(self.template GetInterface<T>()),
-                    self.template GetInterface<RefCounted>()
-                );
-            }
-        };
-
-        // template<typename Tp>
-        // struct IntoImpl<Borrowed<Tp>> {
-        //     static Borrowed<Tp> Invoke(
-        //         const MultiInterface<T, RefCounted> &self) {
-        //         return MultiInterface<Tp, RefCounted>::CreateFromRawPointersUnsafe(
-        //             self.template GetInterface<Tp>(),
-        //             self.template GetInterface<RefCounted>()
-        //         );
-        //     }
-        // };
-
-    public:
-        template<typename U>
-        auto Into(this const Borrowed<T> &self) {
-            return IntoImpl<U>::Invoke(self);
+        template<typename U> requires (IsImplicitlyConvertibleTo<T, U> || IsImplicitlyConvertibleTo<RefCounted, U>)
+        Borrowed<U> Into() const {
+            U *ptr = static_cast<U *>(this->GetInterface<T>());
+            RefCounted *counter = this->GetInterface<RefCounted>();
+            return MultiInterface<U, RefCounted>::CreateFromRawPointersUnsafe(ptr, counter);
         }
 
-        template<typename U> requires (IsExplicitlyConvertibleTo<T, U>)
-        Borrowed<U> As(this const Borrowed<T> &self) noexcept {
-            U *ptr = static_cast<U *>(self.template GetInterface<T>());
-            RefCounted *counter = self.template GetInterface<RefCounted>();
+        template<typename U> requires (IsExplicitlyConvertibleTo<T, U> || IsExplicitlyConvertibleTo<RefCounted, U>)
+        Borrowed<U> As() const noexcept {
+            U *ptr = static_cast<U *>(this->GetInterface<T>());
+            RefCounted *counter = this->GetInterface<RefCounted>();
             return MultiInterface<U, RefCounted>::CreateFromRawPointersUnsafe(ptr, counter);
         }
     };
-
-    template<typename T>
-    Borrowed<T> Ref<T>::Borrow() const noexcept {
-        return MultiInterface<T, RefCounted>::CreateFromRawPointersUnsafe(
-            mPtr,
-            mCounterAddress
-        );
-    }
 }

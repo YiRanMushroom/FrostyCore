@@ -17,7 +17,7 @@ Engine {
         CreateConstantBuffers();
         CreatePipelines();
         CreatePipelineResources();
-        SetTransforms(desc.Transforms | std::views::transform([](const auto &t) { return t.Ref(); })
+        SetTransforms(desc.Transforms | std::views::transform(&Borrowed<ITransform>::Ref)
                       | std::ranges::to<std::vector>());
         for (auto &transform: mTransforms) {
             transform->OnFramebufferResized(static_cast<float>(mOutputSize.x),

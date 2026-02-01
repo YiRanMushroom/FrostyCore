@@ -83,53 +83,8 @@ Engine {
     struct MultiInterfaceExtensions {
         // default implementation does nothing, specialize it for specific interfaces,
         // use deducing this to access the MultiInterfaceBase
-
-        template<typename T> requires (ImplicitlyConvertibleFromAny<T, InterfaceTypes...>)
-        T *GetInterface(this const MultiInterface<InterfaceTypes...> &self);
-
-        template<typename T>
-        operator T *() requires (ImplicitlyConvertibleFromAny<T, InterfaceTypes...>) {
-            return GetInterface<T>();
-        }
-
-        const MultiInterfaceBase<InterfaceTypes...> &GetBase(this const MultiInterface<InterfaceTypes...> &self);
-
-    private:
-        template<typename T>
-        struct IntoImpl {
-            static_assert(false, "IntoImpl not specialized for this type");
-        };
-
-        template<typename... Tps>
-        struct IntoImpl<MultiInterface<Tps...>> {
-            static MultiInterface<Tps...> Invoke(
-                const MultiInterface<Tps...> &self) {
-                return MultiInterface<Tps...>{
-                    MultiInterfaceBase<Tps...>::FromOtherInterfaceBase(
-                        self.GetBase()
-                    )
-                };
-            }
-        };
-
-    public:
-        template<typename AnotherInterface>
-        AnotherInterface Into(this const MultiInterface<InterfaceTypes...> &self) {
-            return IntoImpl<AnotherInterface>::Invoke(self);
-        }
     };
 
-    template<typename... InterfaceTypes>
-    template<typename T> requires (ImplicitlyConvertibleFromAny<T, InterfaceTypes...>)
-    T *MultiInterfaceExtensions<InterfaceTypes...>::GetInterface(this const MultiInterface<InterfaceTypes...> &self) {
-        return self.mStoredInterfaces.template GetInterface<T>();
-    }
-
-    template<typename... InterfaceTypes>
-    const MultiInterfaceBase<InterfaceTypes...> &MultiInterfaceExtensions<InterfaceTypes...>::GetBase(
-        this const MultiInterface<InterfaceTypes...> &self) {
-        return self.mStoredInterfaces;
-    }
 
     export template<typename... InterfaceTypes>
     class MultiInterface : public MultiInterfaceExtensions<InterfaceTypes...> {
@@ -163,6 +118,45 @@ Engine {
             MultiInterface result;
             result.mStoredInterfaces.Interfaces = std::make_tuple(pointers...);
             return result;
+        }
+
+        template<typename T> requires (ImplicitlyConvertibleFromAny<T, InterfaceTypes...>)
+        T *GetInterface() const {
+            return mStoredInterfaces.template GetInterface<T>();
+        }
+
+        template<typename T>
+        operator T *() requires (ImplicitlyConvertibleFromAny<T, InterfaceTypes...>) {
+            return GetInterface<T>();
+        }
+
+        const MultiInterfaceBase<InterfaceTypes...> &GetBase() const {
+            return mStoredInterfaces;
+        }
+
+    private:
+        template<typename T>
+        struct IntoImpl {
+            static_assert(false, "IntoImpl not specialized for this type");
+        };
+
+        template<typename... Tps>
+        struct IntoImpl<MultiInterface<Tps...>> {
+            template<typename... CurrentTypes>
+            static MultiInterface<Tps...> Invoke(
+                const MultiInterface<CurrentTypes...> &self) {
+                return MultiInterface<Tps...>{
+                    MultiInterfaceBase<Tps...>::FromOtherInterfaceBase(
+                        self.GetBase()
+                    )
+                };
+            }
+        };
+
+    public:
+        template<typename AnotherInterface>
+        AnotherInterface Into() const {
+            return IntoImpl<AnotherInterface>::Invoke(*this);
         }
 
     private:
