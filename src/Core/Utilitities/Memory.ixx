@@ -443,20 +443,23 @@ Engine {
         template<typename Tp>
         struct IntoImpl {
             static Borrowed<Tp> Invoke(const MultiInterface<T, RefCounted> &self) {
-                return IntoImpl<Borrowed<Tp>>::Invoke(self);
-            }
-        };
-
-        template<typename Tp>
-        struct IntoImpl<Borrowed<Tp>> {
-            static Borrowed<Tp> Invoke(
-                const MultiInterface<T, RefCounted> &self) {
                 return MultiInterface<Tp, RefCounted>::CreateFromRawPointersUnsafe(
-                    self.template GetInterface<Tp>(),
+                    static_cast<Tp *>(self.template GetInterface<T>()),
                     self.template GetInterface<RefCounted>()
                 );
             }
         };
+
+        // template<typename Tp>
+        // struct IntoImpl<Borrowed<Tp>> {
+        //     static Borrowed<Tp> Invoke(
+        //         const MultiInterface<T, RefCounted> &self) {
+        //         return MultiInterface<Tp, RefCounted>::CreateFromRawPointersUnsafe(
+        //             self.template GetInterface<Tp>(),
+        //             self.template GetInterface<RefCounted>()
+        //         );
+        //     }
+        // };
 
     public:
         template<typename U>
