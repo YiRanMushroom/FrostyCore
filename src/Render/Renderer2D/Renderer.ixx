@@ -25,7 +25,8 @@ Engine {
     export struct Renderer2DDescriptor {
         glm::u32vec2 OutputSize;
         // float VirtualSizeWidth;
-        mutable std::vector<Ref<ITransform>> Transforms;
+        // mutable std::vector<Ref<ITransform>> Transforms;
+        std::span<Borrowed<ITransform>> Transforms;
     };
 
     export struct Renderer2DBeginRenderingInfo {

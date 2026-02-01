@@ -1,66 +1,13 @@
-export module Core.Utilities;
+export module Core.Utilities:Memory;
 
 import Core.Prelude;
-import <cassert>;
+import Core.Exception;
+
+import :TypeTraits;
+import :MultiInterface;
 
 namespace
 Engine {
-    export class Initializer {
-    public:
-        Initializer() = default;
-
-        template<typename FuncType> requires std::is_invocable_r_v<void, FuncType>
-        Initializer(FuncType &&initFunc) {
-            mInitialized = std::make_shared<std::atomic<bool>>(false);
-            mInitFuture = std::async(std::launch::async,
-                                     [func = std::forward<FuncType>(initFunc), Initialized = mInitialized]() {
-                                         func();
-                                         Initialized->store(true, std::memory_order_release);
-                                     });
-        }
-
-        Initializer(Initializer &&other) = default;
-
-        Initializer &operator=(Initializer &&other) = default;
-
-        bool IsInitialized() {
-            if (mInitialized->load(std::memory_order_acquire)) {
-                return true;
-            }
-
-            if (mInitFuture.valid()) {
-                auto status = mInitFuture.wait_for(std::chrono::seconds(0));
-                if (status == std::future_status::ready) {
-                    mInitFuture.get(); // to propagate exceptions
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        explicit operator bool() {
-            return IsInitialized();
-        }
-
-        std::future<void> Wait() {
-            return std::async([this]() {
-                if (mInitFuture.valid()) {
-                    mInitFuture.get();
-                }
-            });
-        }
-
-        void Reset() {
-            Wait().get();
-            mInitialized = {};
-        }
-
-    private:
-        std::future<void> mInitFuture;
-        std::shared_ptr<std::atomic<bool>> mInitialized = std::make_unique<std::atomic<bool>>(false);
-    };
-
     export class RefCounted;
 
     export template<typename>
@@ -173,15 +120,8 @@ Engine {
         }
     };
 
-    template<typename T, typename U>
-    concept IsImplicitlyConvertibleTo = requires(T *t, U *u) {
-        u = t;
-    };
-
-    template<typename T, typename U>
-    concept IsExplicitlyConvertibleTo = requires(T *t) {
-        static_cast<U *>(t);
-    };
+    export template<typename T>
+    using Borrowed = MultiInterface<T, RefCounted>;
 
     template<typename T>
     class Ref {
@@ -190,9 +130,15 @@ Engine {
 
         Ref(nullptr_t) noexcept : mPtr(nullptr) {}
 
-
         Ref(T *ptr, RefCounted::ShareOwnership) requires std::is_base_of_v<RefCounted, T>
             : mPtr(ptr), mCounterAddress(static_cast<RefCounted *>(ptr)) {
+            if (mCounterAddress) {
+                mCounterAddress->AddRefStrong();
+            }
+        }
+
+        Ref(T *ptr, RefCounted *counterAddress, RefCounted::ShareOwnership)
+            : mPtr(ptr), mCounterAddress(counterAddress) {
             if (mCounterAddress) {
                 mCounterAddress->AddRefStrong();
             }
@@ -266,15 +212,11 @@ Engine {
 
         explicit operator bool() const noexcept { return mPtr != nullptr; }
 
-        // bool operator==(std::nullptr_t) const noexcept {
-        //     return mPtr == nullptr;
-        // }
-        //
-        // bool operator!=(std::nullptr_t) const noexcept {
-        //     return mPtr != nullptr;
-        // }
-
         auto operator<=>(const Ref &other) const = default;
+
+        [[nodiscard]] Weak<T> Weak() const noexcept;
+
+        [[nodiscard]] Borrowed<T> Borrow() const noexcept;
 
     public:
         ~Ref() noexcept {
@@ -342,9 +284,15 @@ Engine {
             }
         }
 
-
-        Weak(T *ptr) requires std::is_base_of_v<RefCounted, T>
+        Weak(T *ptr, RefCounted::ShareOwnership) requires std::is_base_of_v<RefCounted, T>
             : mPtr(ptr), mCounterAddress(static_cast<RefCounted *>(ptr)) {
+            if (mCounterAddress) {
+                mCounterAddress->AddRefWeak();
+            }
+        }
+
+        Weak(T *ptr, RefCounted *counterAddress, RefCounted::ShareOwnership)
+            : mPtr(ptr), mCounterAddress(counterAddress) {
             if (mCounterAddress) {
                 mCounterAddress->AddRefWeak();
             }
@@ -400,24 +348,9 @@ Engine {
         }
 
     public:
-        Ref<T> Lock() const noexcept {
-            if (!mCounterAddress) return nullptr;
+        [[nodiscard]] Ref<T> Lock() const noexcept;
 
-            size_t current = mCounterAddress->mStrongCount.load(std::memory_order_relaxed);
-            while (current != 0) {
-                if (mCounterAddress->mStrongCount.compare_exchange_weak(current, current + 1,
-                                                                        std::memory_order_acquire,
-                                                                        std::memory_order_relaxed)) {
-                    mCounterAddress->mWeakCount.fetch_add(1, std::memory_order_relaxed);
-
-                    Ref<T> result;
-                    result.mPtr = mPtr;
-                    result.mCounterAddress = mCounterAddress;
-                    return result;
-                }
-            }
-            return nullptr;
-        }
+        [[nodiscard]] Borrowed<T> Borrow() const noexcept;
 
     public:
         ~Weak() noexcept {
@@ -430,6 +363,39 @@ Engine {
         T *mPtr{nullptr};
         RefCounted *mCounterAddress{nullptr};
     };
+
+    template<typename T>
+    Weak<T> Ref<T>::Weak() const noexcept {
+        return Engine::Weak<T>(*this);
+    }
+
+    template<typename T>
+    Ref<T> Weak<T>::Lock() const noexcept {
+        if (!mCounterAddress) return nullptr;
+
+        size_t current = mCounterAddress->mStrongCount.load(std::memory_order_relaxed);
+        while (current != 0) {
+            if (mCounterAddress->mStrongCount.compare_exchange_weak(current, current + 1,
+                                                                    std::memory_order_acquire,
+                                                                    std::memory_order_relaxed)) {
+                mCounterAddress->mWeakCount.fetch_add(1, std::memory_order_relaxed);
+
+                Ref<T> result;
+                result.mPtr = mPtr;
+                result.mCounterAddress = mCounterAddress;
+                return result;
+            }
+        }
+        return nullptr;
+    }
+
+    template<typename T>
+    Borrowed<T> Weak<T>::Borrow() const noexcept {
+        return MultiInterface<T, RefCounted>::CreateFromRawPointersUnsafe(
+            mPtr,
+            mCounterAddress
+        );
+    }
 
     export template<typename T>
     class RefInterface : public RefCounted, public T {
@@ -448,82 +414,69 @@ Engine {
         return Ref<RefInterface<T>>::Create(std::forward<Args>(args)...).template As<T>();
     }
 
-    namespace ResourceOwnership {
-        export inline namespace Tags {
-            struct Static {};
-
-            struct AutoManaged {};
-
-            struct Transferred {};
-
-            struct Shared {};
+    template<typename T>
+    struct MultiInterfaceExtensions<T, RefCounted> {
+    private:
+        template<typename U> requires (IsImplicitlyConvertibleTo<T, U> || IsImplicitlyConvertibleTo<RefCounted, U>)
+        U *GetInterface(this const MultiInterface<T, RefCounted> &self) {
+            return self.mStoredInterfaces.template GetInterface<U>();
         }
-    }
-
-    export template<size_t N>
-    struct StringLiteral {
-        constexpr StringLiteral(const char (&str)[N]) {
-            std::copy_n(str, N, Value);
-        }
-
-        char Value[N];
 
     public:
-        constexpr StringLiteral() {
-            Value[0] = '\0';
+        template<typename U> requires (IsImplicitlyConvertibleTo<T, U> || IsImplicitlyConvertibleTo<RefCounted, U>)
+        operator U *(this const MultiInterface<T, RefCounted> &self) {
+            return self.mStoredInterfaces.template GetInterface<U>();
         }
 
-        constexpr std::string_view View() const {
-            return std::string_view(Value, N - 1);
+    public:
+        Ref<T> Ref(this const MultiInterface<T, RefCounted> &self) {
+            return Engine::Ref<T>(self.template GetInterface<T>(), self.template GetInterface<RefCounted>(),
+                                  RefCounted::ShareOwnership{});
         }
 
-        constexpr size_t Size() const {
-            return N - 1;
+        Weak<T> Weak(this const MultiInterface<T, RefCounted> &self) {
+            return Engine::Weak<T>(self.template GetInterface<T>(), self.template GetInterface<RefCounted>(),
+                                   RefCounted::ShareOwnership{});
         }
 
-        template<size_t Begin, size_t End>
-        constexpr auto Slice() const {
-            static_assert(Begin <= End, "Begin must be less than or equal to End");
-            static_assert(End <= N - 1, "End must be less than or equal to the size of the string literal");
-            StringLiteral<End - Begin + 1> result{};
-            for (size_t i = Begin; i < End; ++i) {
-                result.Value[i - Begin] = Value[i];
+    private:
+        template<typename Tp>
+        struct IntoImpl {
+            static Borrowed<Tp> Invoke(const MultiInterface<T, RefCounted> &self) {
+                return IntoImpl<Borrowed<Tp>>::Invoke(self);
             }
-            result.Value[End - Begin] = '\0';
-            return result;
+        };
+
+        template<typename Tp>
+        struct IntoImpl<Borrowed<Tp>> {
+            static Borrowed<Tp> Invoke(
+                const MultiInterface<T, RefCounted> &self) {
+                return MultiInterface<Tp, RefCounted>::CreateFromRawPointersUnsafe(
+                    self.template GetInterface<Tp>(),
+                    self.template GetInterface<RefCounted>()
+                );
+            }
+        };
+
+    public:
+        template<typename U>
+        auto Into(this const Borrowed<T> &self) {
+            return IntoImpl<U>::Invoke(self);
+        }
+
+        template<typename U> requires (IsExplicitlyConvertibleTo<T, U>)
+        Borrowed<U> As(this const Borrowed<T> &self) noexcept {
+            U *ptr = static_cast<U *>(self.template GetInterface<T>());
+            RefCounted *counter = self.template GetInterface<RefCounted>();
+            return MultiInterface<U, RefCounted>::CreateFromRawPointersUnsafe(ptr, counter);
         }
     };
 
-    export template<size_t N>
-    StringLiteral(const char (&)[N]) -> StringLiteral<N>;
-
-    export template<size_t N1, size_t N2>
-    constexpr bool operator==(const StringLiteral<N1> &lhs, const StringLiteral<N2> &rhs) {
-        return lhs.View() == rhs.View();
+    template<typename T>
+    Borrowed<T> Ref<T>::Borrow() const noexcept {
+        return MultiInterface<T, RefCounted>::CreateFromRawPointersUnsafe(
+            mPtr,
+            mCounterAddress
+        );
     }
-
-    export template<size_t N1, size_t N2>
-    constexpr bool operator!=(const StringLiteral<N1> &lhs, const StringLiteral<N2> &rhs) {
-        return !(lhs == rhs);
-    }
-
-    export template<StringLiteral literal>
-    constexpr auto operator""_sl() {
-        return literal;
-    }
-
-    static_assert("Hello, World!"_sl.View() == "Hello, World!");
-
-    export template<size_t N1, size_t N2>
-    constexpr auto operator+(const StringLiteral<N1> &lhs, const StringLiteral<N2> &rhs) {
-        StringLiteral<N1 + N2 - 1> result{};
-        std::copy_n(lhs.Value, N1 - 1, result.Value);
-        std::copy_n(rhs.Value, N2, result.Value + N1 - 1);
-        return result;
-    }
-
-    static_assert(("Hello, "_sl + "World!"_sl).View() == "Hello, World!");
-    static_assert("Hello, "_sl + "World!"_sl == "Hello, World!"_sl);
-
-    static_assert("Hello world!"_sl.Slice<0,5>().View() == "Hello");
 }

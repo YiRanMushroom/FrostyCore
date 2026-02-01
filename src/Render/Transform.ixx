@@ -14,9 +14,4 @@ Engine {
 
         virtual void DoTransform(glm::mat4 &matrix) = 0;
     };
-
-    // export class RefTransform : public ITransform, public Engine::RefCounted<RefTransform> {
-    //
-    // };
-    // export using RefTransform = RefInterface<ITransform>;
 }

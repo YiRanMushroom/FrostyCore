@@ -11,13 +11,14 @@ namespace
 Engine {
     NVRenderer2D::NVRenderer2D(const Renderer2DDescriptor &desc, Ref<CommandListSubmissionContext> context)
         : mDevice(context->GetDevice()), mSubmissionContext(std::move(context)),
-    mOutputSize(desc.OutputSize),
+          mOutputSize(desc.OutputSize),
           mVirtualTextureManager(mDevice), mClipRegionManager(mDevice.Get()) {
         CreateResources();
         CreateConstantBuffers();
         CreatePipelines();
         CreatePipelineResources();
-        SetTransforms(desc.Transforms);
+        SetTransforms(desc.Transforms | std::views::transform([](const auto &t) { return t.Ref(); })
+                      | std::ranges::to<std::vector>());
         for (auto &transform: mTransforms) {
             transform->OnFramebufferResized(static_cast<float>(mOutputSize.x),
                                             static_cast<float>(mOutputSize.y));
@@ -142,7 +143,7 @@ Engine {
 
             // Read as RGBA16_UNORM (8 bytes: 2 bytes per channel in little-endian)
             // Each channel is 16-bit, stored as little-endian uint16
-            uint16_t* rgba16 = static_cast<uint16_t*>(mappedPtr);
+            uint16_t *rgba16 = static_cast<uint16_t *>(mappedPtr);
             uint16_t r = rgba16[0];
             uint16_t g = rgba16[1];
             uint16_t b = rgba16[2];
