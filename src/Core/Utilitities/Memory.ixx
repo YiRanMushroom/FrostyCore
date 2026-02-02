@@ -108,6 +108,7 @@ Engine {
 
     private:
         void FinalDeallocate() const {
+            sTotalAllocations.fetch_sub(1, std::memory_order_relaxed);
             std::free(const_cast<void *>(mMallocPointer));
         }
 
@@ -134,14 +135,45 @@ Engine {
             // we then should use free directly because the destructor has already been called
             if (mStrongCount.fetch_sub(1, std::memory_order_release) == 1) {
                 std::atomic_thread_fence(std::memory_order_acquire);
-                mMallocPointer = dynamic_cast<const void *>(this);
-                this->~RefCounted();
-                new(static_cast<void *>(const_cast<RefCounted *>(this)))
-                        RefCounted(ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction{});
+                // mMallocPointer = dynamic_cast<const void *>(this);
+                // this->~RefCounted();
+                // new(static_cast<void *>(const_cast<RefCounted *>(this)))
+                //         RefCounted(ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction{});
+                TransitToDerivedDestructedState();
                 SubRefWeakImpl();
             } else {
                 SubRefWeakImpl();
             }
+        }
+
+        inline static thread_local void* sLastMallocPointer;
+
+        void operator delete(void *ptr) noexcept {
+            sLastMallocPointer = ptr; // Very hacky but whatever
+        }
+
+        void TransitToDerivedDestructedStateImpl1() const noexcept {
+            delete this; // Not actually freeing the memory, I fucking hate this so much
+            mMallocPointer = sLastMallocPointer; // Thread local so it is safe
+            sLastMallocPointer = nullptr;
+            new (static_cast<void *>(const_cast<RefCounted *>(this)))
+                    RefCounted(ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction{}); // Fucking does nothing
+        }
+
+        // Alternative implementation that doesn't use operator delete hackery
+        // I don't like it as much because it does an extra dynamic_cast, although we have RTTI enabled anyway
+        // and dynamic cast to void* does not introduce any overhead other than vtable lookup
+        // I fucking gave up not making it not hacky, so whatever
+        // This whole file has hacks everywhere
+        // void TransitToDerivedDestructedStateImpl2() const noexcept {
+        //     mMallocPointer = dynamic_cast<const void *>(this);
+        //     this->~RefCounted();
+        //     new(static_cast<void *>(const_cast<RefCounted *>(this)))
+        //             RefCounted(ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction{});
+        // }
+
+        void TransitToDerivedDestructedState() const noexcept {
+            TransitToDerivedDestructedStateImpl1();
         }
 
         void SubRefWeakImpl() const noexcept {
@@ -200,7 +232,6 @@ Engine {
 
         RefCounted(ConstructionFlag::BeginLifetime) : IRefCounted(&sVTable), mStrongCount(1), mWeakCount(1),
                                                       mMallocPointer(nullptr) {
-            // sTotalAllocations.fetch_add(1, std::memory_order_relaxed);
         }
 
         RefCounted(ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction) : IRefCounted{} {
@@ -209,9 +240,10 @@ Engine {
         }
 
     public:
-        // static inline std::atomic_size_t sTotalAllocations{0};
+        static inline std::atomic_size_t sTotalAllocations{0};
 
-        RefCounted() : RefCounted(ConstructionFlag::BeginLifetime{}) {}
+        RefCounted() : RefCounted(ConstructionFlag::BeginLifetime{}) {
+        }
     };
 
     export template<typename T>
@@ -347,6 +379,8 @@ Engine {
         static Ref<T> Create(Args &&... args) {
             void *rawMemory = std::malloc(sizeof(T));
             if (!rawMemory) throw std::bad_alloc();
+
+            RefCounted::sTotalAllocations.fetch_add(1, std::memory_order_relaxed);
 
             T *instance = nullptr;
             try {
