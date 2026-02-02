@@ -5,6 +5,7 @@ import Core.Exception;
 
 import :TypeTraits;
 import :MultiInterface;
+import :Tags;
 
 namespace
 Engine {
@@ -16,7 +17,17 @@ Engine {
     export template<typename>
     class Weak;
 
-    export class IRefCounted {
+    export class IRefCounted;
+
+    export struct RefCountedVTable {
+        void (IRefCounted::*AddRefStrong)() const noexcept;
+        void (IRefCounted::*AddRefWeak)() const noexcept;
+        void (IRefCounted::*SubRefStrong)() const noexcept;
+        void (IRefCounted::*SubRefWeak)() const noexcept;
+        bool (IRefCounted::*TryAddRefStrong)() const noexcept;
+    };
+
+    class IRefCounted {
     protected:
         virtual ~IRefCounted() noexcept = default;
 
@@ -29,26 +40,30 @@ Engine {
 
         virtual void SubRefWeak() const noexcept = 0;
 
+        // Try to upgrade from weak to strong reference, returns true if successful
+        // This is used by Weak::Lock() to atomically check and increment the strong count
+        [[nodiscard]] virtual bool TryAddRefStrong() const noexcept = 0;
+
     public:
-        template<typename T = void, typename U> requires std::is_base_of_v<RefCounted, std::remove_cvref_t<U>>
+        template<typename T = void, typename U> requires std::is_base_of_v<IRefCounted, std::remove_cvref_t<U>>
         auto RefFromThis(this U &&self) -> Ref<std::conditional_t<std::is_same_v<void, T>, std::remove_cvref_t<U>, T>> {
             using TargetType = std::conditional_t<std::is_same_v<void, T>, std::remove_cvref_t<U>, T>;
             Ref<TargetType> result;
             result.mPtr = static_cast<TargetType *>(&self);
-            result.mCounterAddress = static_cast<RefCounted *>(&self);
+            result.mCounterAddress = static_cast<IRefCounted *>(&self);
             if (result.mCounterAddress) {
                 result.mCounterAddress->AddRefStrong();
             }
             return result;
         }
 
-        template<typename T = void, typename U> requires std::is_base_of_v<RefCounted, std::remove_cvref_t<U>>
+        template<typename T = void, typename U> requires std::is_base_of_v<IRefCounted, std::remove_cvref_t<U>>
         auto WeakFromThis(
             this U &&self) -> Weak<std::conditional_t<std::is_same_v<void, T>, std::remove_cvref_t<U>, T>> {
             using TargetType = std::conditional_t<std::is_same_v<void, T>, std::remove_cvref_t<U>, T>;
             Weak<TargetType> result;
             result.mPtr = static_cast<TargetType *>(&self);
-            result.mCounterAddress = static_cast<RefCounted *>(&self);
+            result.mCounterAddress = static_cast<IRefCounted *>(&self);
             if (result.mCounterAddress) {
                 result.mCounterAddress->AddRefWeak();
             }
@@ -92,8 +107,8 @@ Engine {
                 std::atomic_thread_fence(std::memory_order_acquire);
                 mMallocPointer = dynamic_cast<const void *>(this);
                 this->~RefCounted();
-                new (static_cast<void *>(const_cast<RefCounted *>(this)))
-                    RefCounted(ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction{});
+                new(static_cast<void *>(const_cast<RefCounted *>(this)))
+                        RefCounted(ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction{});
                 SubRefWeak();
             } else {
                 SubRefWeak();
@@ -105,6 +120,19 @@ Engine {
                 std::atomic_thread_fence(std::memory_order_acquire);
                 FinalDeallocate();
             }
+        }
+
+        bool TryAddRefStrong() const noexcept override {
+            size_t current = mStrongCount.load(std::memory_order_relaxed);
+            while (current != 0) {
+                if (mStrongCount.compare_exchange_weak(current, current + 1,
+                                                       std::memory_order_acquire,
+                                                       std::memory_order_relaxed)) {
+                    mWeakCount.fetch_add(1, std::memory_order_relaxed);
+                    return true;
+                }
+            }
+            return false;
         }
 
     private:
@@ -124,11 +152,6 @@ Engine {
         };
 
         mutable const void *mMallocPointer;
-
-    public:
-        struct TransferOwnership {};
-
-        struct ShareOwnership {};
 
     private:
         struct ConstructionFlag {
@@ -161,14 +184,14 @@ Engine {
 
         Ref(nullptr_t) noexcept : mPtr(nullptr) {}
 
-        Ref(T *ptr, RefCounted::ShareOwnership) requires std::is_base_of_v<RefCounted, T>
-            : mPtr(ptr), mCounterAddress(static_cast<RefCounted *>(ptr)) {
+        Ref(T *ptr, ResourceOwnership::Tags::Shared) requires std::is_base_of_v<IRefCounted, T>
+            : mPtr(ptr), mCounterAddress(static_cast<IRefCounted *>(ptr)) {
             if (mCounterAddress) {
                 mCounterAddress->AddRefStrong();
             }
         }
 
-        Ref(T *ptr, RefCounted *counterAddress, RefCounted::ShareOwnership)
+        Ref(T *ptr, IRefCounted *counterAddress, ResourceOwnership::Tags::Shared)
             : mPtr(ptr), mCounterAddress(counterAddress) {
             if (mCounterAddress) {
                 mCounterAddress->AddRefStrong();
@@ -184,10 +207,9 @@ Engine {
         friend IRefCounted;
         friend RefCounted;
 
-
     private:
-        Ref(T *ptr, RefCounted::TransferOwnership) requires std::is_base_of_v<RefCounted, T>
-            : mPtr(ptr), mCounterAddress(static_cast<RefCounted *>(ptr)) {}
+        Ref(T *ptr, ResourceOwnership::Tags::Transferred) requires std::is_base_of_v<IRefCounted, T>
+            : mPtr(ptr), mCounterAddress(static_cast<IRefCounted *>(ptr)) {}
 
     public:
         Ref(const Ref &other) : mPtr(other.mPtr), mCounterAddress(other.mCounterAddress) {
@@ -294,12 +316,12 @@ Engine {
                 throw;
             }
 
-            return Ref<T>(instance, RefCounted::TransferOwnership{});
+            return Ref<T>(instance, ResourceOwnership::Tags::Transferred{});
         }
 
     private:
         T *mPtr{nullptr};
-        RefCounted *mCounterAddress{nullptr};
+        IRefCounted *mCounterAddress{nullptr};
     };
 
     template<typename T>
@@ -315,14 +337,14 @@ Engine {
             }
         }
 
-        Weak(T *ptr, RefCounted::ShareOwnership) requires std::is_base_of_v<RefCounted, T>
-            : mPtr(ptr), mCounterAddress(static_cast<RefCounted *>(ptr)) {
+        Weak(T *ptr, ResourceOwnership::Tags::Shared) requires std::is_base_of_v<IRefCounted, T>
+            : mPtr(ptr), mCounterAddress(static_cast<IRefCounted *>(ptr)) {
             if (mCounterAddress) {
                 mCounterAddress->AddRefWeak();
             }
         }
 
-        Weak(T *ptr, RefCounted *counterAddress, RefCounted::ShareOwnership)
+        Weak(T *ptr, IRefCounted *counterAddress, ResourceOwnership::Tags::Shared)
             : mPtr(ptr), mCounterAddress(counterAddress) {
             if (mCounterAddress) {
                 mCounterAddress->AddRefWeak();
@@ -393,7 +415,7 @@ Engine {
 
     private:
         T *mPtr{nullptr};
-        RefCounted *mCounterAddress{nullptr};
+        IRefCounted *mCounterAddress{nullptr};
     };
 
     template<typename T>
@@ -403,7 +425,7 @@ Engine {
 
     template<typename T>
     Borrowed<T> Ref<T>::Borrow() const noexcept {
-        return MultiInterface<T, RefCounted>::CreateFromRawPointersUnsafe(
+        return MultiInterface<T, IRefCounted>::CreateFromRawPointersUnsafe(
             mPtr,
             mCounterAddress
         );
@@ -413,25 +435,19 @@ Engine {
     Ref<T> Weak<T>::Lock() const noexcept {
         if (!mCounterAddress) return nullptr;
 
-        size_t current = mCounterAddress->mStrongCount.load(std::memory_order_relaxed);
-        while (current != 0) {
-            if (mCounterAddress->mStrongCount.compare_exchange_weak(current, current + 1,
-                                                                    std::memory_order_acquire,
-                                                                    std::memory_order_relaxed)) {
-                mCounterAddress->mWeakCount.fetch_add(1, std::memory_order_relaxed);
-
-                Ref<T> result;
-                result.mPtr = mPtr;
-                result.mCounterAddress = mCounterAddress;
-                return result;
-            }
+        if (mCounterAddress->TryAddRefStrong()) {
+            Ref<T> result;
+            result.mPtr = mPtr;
+            result.mCounterAddress = mCounterAddress;
+            return result;
         }
+
         return nullptr;
     }
 
     template<typename T>
     Borrowed<T> Weak<T>::Borrow() const noexcept {
-        return MultiInterface<T, RefCounted>::CreateFromRawPointersUnsafe(
+        return MultiInterface<T, IRefCounted>::CreateFromRawPointersUnsafe(
             mPtr,
             mCounterAddress
         );
@@ -457,30 +473,30 @@ Engine {
     export template<typename T>
     class Borrowed {
     public:
-        friend MultiInterface<T, RefCounted>;
+        friend MultiInterface<T, IRefCounted>;
 
         template<typename>
         friend class Borrowed;
 
     private:
-        MultiInterface<T, RefCounted> mBase;
+        MultiInterface<T, IRefCounted> mBase;
 
     public:
-        operator const MultiInterface<T, RefCounted> &() const {
+        operator const MultiInterface<T, IRefCounted> &() const {
             return mBase;
         }
 
-        operator MultiInterface<T, RefCounted> &() {
+        operator MultiInterface<T, IRefCounted> &() {
             return mBase;
         }
 
-        Borrowed(const MultiInterface<T, RefCounted> &base) : mBase(base) {}
+        Borrowed(const MultiInterface<T, IRefCounted> &base) : mBase(base) {}
 
         Borrowed() = default;
 
         template<typename U> requires (IsImplicitlyConvertibleTo<U, T>)
         Borrowed(const Borrowed<U> &other)
-            : mBase(other.mBase.template Into<MultiInterface<T, RefCounted>>()) {}
+            : mBase(other.mBase.template Into<MultiInterface<T, IRefCounted>>()) {}
 
     public:
         bool HasValue() const {
@@ -491,33 +507,33 @@ Engine {
             return mBase;
         }
 
-        template<typename U> requires (IsImplicitlyConvertibleTo<T, U> || IsImplicitlyConvertibleTo<RefCounted, U>)
+        template<typename U> requires (IsImplicitlyConvertibleTo<T, U> || IsImplicitlyConvertibleTo<IRefCounted, U>)
         U *GetInterface() const {
             return mBase.template GetInterface<U>();
         }
 
         Ref<T> Ref() const {
-            return Engine::Ref<T>(this->GetInterface<T>(), this->GetInterface<RefCounted>(),
-                                  RefCounted::ShareOwnership{});
+            return Engine::Ref<T>(this->GetInterface<T>(), this->GetInterface<IRefCounted>(),
+                                  ResourceOwnership::Tags::Shared{});
         }
 
         Weak<T> Weak() const {
-            return Engine::Weak<T>(this->GetInterface<T>(), this->GetInterface<RefCounted>(),
-                                   RefCounted::ShareOwnership{});
+            return Engine::Weak<T>(this->GetInterface<T>(), this->GetInterface<IRefCounted>(),
+                                   ResourceOwnership::Tags::Shared{});
         }
 
-        template<typename U> requires (IsImplicitlyConvertibleTo<T, U> || IsImplicitlyConvertibleTo<RefCounted, U>)
+        template<typename U> requires (IsImplicitlyConvertibleTo<T, U> || IsImplicitlyConvertibleTo<IRefCounted, U>)
         Borrowed<U> Into() const {
             U *ptr = static_cast<U *>(this->GetInterface<T>());
-            RefCounted *counter = this->GetInterface<RefCounted>();
-            return MultiInterface<U, RefCounted>::CreateFromRawPointersUnsafe(ptr, counter);
+            IRefCounted *counter = this->GetInterface<IRefCounted>();
+            return MultiInterface<U, IRefCounted>::CreateFromRawPointersUnsafe(ptr, counter);
         }
 
-        template<typename U> requires (IsExplicitlyConvertibleTo<T, U> || IsExplicitlyConvertibleTo<RefCounted, U>)
+        template<typename U> requires (IsExplicitlyConvertibleTo<T, U> || IsExplicitlyConvertibleTo<IRefCounted, U>)
         Borrowed<U> As() const noexcept {
             U *ptr = static_cast<U *>(this->GetInterface<T>());
-            RefCounted *counter = this->GetInterface<RefCounted>();
-            return MultiInterface<U, RefCounted>::CreateFromRawPointersUnsafe(ptr, counter);
+            IRefCounted *counter = this->GetInterface<IRefCounted>();
+            return MultiInterface<U, IRefCounted>::CreateFromRawPointersUnsafe(ptr, counter);
         }
     };
 }
