@@ -130,7 +130,8 @@ Engine {
         }
 
         void SubRefStrongImpl() const noexcept {
-            // never delete this when strong count reaches zero, we should always this->~RefCounted() to destroy the
+            // never delete this(actually I am deleting this but not freeing the memory)
+            // when strong count reaches zero, we should always this->~RefCounted() to destroy the
             // object, but we still need weak count to reach zero to free the memory
             // we then should use free directly because the destructor has already been called
             if (mStrongCount.fetch_sub(1, std::memory_order_release) == 1) {
