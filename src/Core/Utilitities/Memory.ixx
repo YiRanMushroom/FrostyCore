@@ -147,7 +147,7 @@ Engine {
             }
         }
 
-        inline static thread_local void* sLastMallocPointer;
+        inline static thread_local void *sLastMallocPointer;
 
         void operator delete(void *ptr) noexcept {
             sLastMallocPointer = ptr; // Very hacky but whatever
@@ -155,10 +155,10 @@ Engine {
 
         void TransitToDerivedDestructedStateImpl1() const noexcept {
             delete this; // Not actually freeing the memory, I fucking hate this so much
-            mMallocPointer = sLastMallocPointer; // Thread local so it is safe
+            new(static_cast<void *>(const_cast<RefCounted *>(this)))
+                    RefCounted(sLastMallocPointer,
+                               ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction{});
             sLastMallocPointer = nullptr;
-            new (static_cast<void *>(const_cast<RefCounted *>(this)))
-                    RefCounted(ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction{}); // Fucking does nothing
         }
 
         // Alternative implementation that doesn't use operator delete hackery
@@ -167,10 +167,10 @@ Engine {
         // I fucking gave up not making it not hacky, so whatever
         // This whole file has hacks everywhere
         // void TransitToDerivedDestructedStateImpl2() const noexcept {
-        //     mMallocPointer = dynamic_cast<const void *>(this);
+        //     auto MallocPointer = dynamic_cast<const void *>(this);
         //     this->~RefCounted();
         //     new(static_cast<void *>(const_cast<RefCounted *>(this)))
-        //             RefCounted(ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction{});
+        //             RefCounted(MallocPointer, ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction{});
         // }
 
         void TransitToDerivedDestructedState() const noexcept {
@@ -232,10 +232,11 @@ Engine {
         };
 
         RefCounted(ConstructionFlag::BeginLifetime) : IRefCounted(&sVTable), mStrongCount(1), mWeakCount(1),
-                                                      mMallocPointer(nullptr) {
-        }
+                                                      mMallocPointer(nullptr) {}
 
-        RefCounted(ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction) : IRefCounted{} {
+        RefCounted(const void *mallocPointer,
+                   ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction) : IRefCounted{},
+            mMallocPointer{mallocPointer} {
             // Do not initialize anything, correct data is already in place
             // mVTable pointer is trivially destructible and will remain valid
         }
@@ -243,8 +244,7 @@ Engine {
     public:
         static inline std::atomic_size_t sTotalAllocations{0};
 
-        RefCounted() : RefCounted(ConstructionFlag::BeginLifetime{}) {
-        }
+        RefCounted() : RefCounted(ConstructionFlag::BeginLifetime{}) {}
     };
 
     export template<typename T>
