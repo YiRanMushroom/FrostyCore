@@ -16,68 +16,25 @@ Engine {
     export template<typename>
     class Weak;
 
-    // Hack, definitely UB, should work though
-    class RefCounted {
+    export class IRefCounted {
     protected:
-        virtual ~RefCounted() noexcept = default;
+        virtual ~IRefCounted() noexcept = default;
 
-    private:
-        void FinalDeallocate() const {
-            if (this->InitialAllocationPointer) {
-                std::free(this->InitialAllocationPointer);
-                sTotalAllocations.fetch_sub(1, std::memory_order_relaxed);
-            } else {
-                throw Engine::RuntimeException(
-                    "Not using Make or Create to manage the life time of a RefCounted Object is prohibited,"
-                    "Because it would corrupted the memory layout"
-                );
-            }
-        }
+    public:
+        virtual void AddRefStrong() const noexcept = 0;
 
-    protected:
-        template<typename>
-        friend class Ref;
+        virtual void AddRefWeak() const noexcept = 0;
 
-        template<typename>
-        friend class Weak;
+        virtual void SubRefStrong() const noexcept = 0;
 
-        void AddRefStrong() const noexcept {
-            mStrongCount.fetch_add(1, std::memory_order_relaxed);
-            mWeakCount.fetch_add(1, std::memory_order_relaxed);
-        }
-
-        void AddRefWeak() const noexcept {
-            mWeakCount.fetch_add(1, std::memory_order_relaxed);
-        }
-
-        void SubRefStrong() const noexcept {
-            // never delete this when strong count reaches zero, we should always this->~RefCounted() to destroy the
-            // object, but we still need weak count to reach zero to free the memory
-            // we then should use free directly because the destructor has already been called
-            if (mStrongCount.fetch_sub(1, std::memory_order_release) == 1) {
-                std::atomic_thread_fence(std::memory_order_acquire);
-                this->~RefCounted();
-                SubRefWeak();
-            } else {
-                SubRefWeak();
-            }
-        }
-
-        void SubRefWeak() const noexcept {
-            if (mWeakCount.fetch_sub(1, std::memory_order_release) == 1) {
-                std::atomic_thread_fence(std::memory_order_acquire);
-                FinalDeallocate();
-                // std::free((void *) this);
-                // std::cout << "Freeing RefCounted at " << this << std::endl;
-            }
-        }
+        virtual void SubRefWeak() const noexcept = 0;
 
     public:
         template<typename T = void, typename U> requires std::is_base_of_v<RefCounted, std::remove_cvref_t<U>>
         auto RefFromThis(this U &&self) -> Ref<std::conditional_t<std::is_same_v<void, T>, std::remove_cvref_t<U>, T>> {
             using TargetType = std::conditional_t<std::is_same_v<void, T>, std::remove_cvref_t<U>, T>;
             Ref<TargetType> result;
-            result.mPtr = (TargetType *) &self;
+            result.mPtr = static_cast<TargetType *>(&self);
             result.mCounterAddress = static_cast<RefCounted *>(&self);
             if (result.mCounterAddress) {
                 result.mCounterAddress->AddRefStrong();
@@ -90,34 +47,108 @@ Engine {
             this U &&self) -> Weak<std::conditional_t<std::is_same_v<void, T>, std::remove_cvref_t<U>, T>> {
             using TargetType = std::conditional_t<std::is_same_v<void, T>, std::remove_cvref_t<U>, T>;
             Weak<TargetType> result;
-            result.mPtr = (TargetType *) &self;
+            result.mPtr = static_cast<TargetType *>(&self);
             result.mCounterAddress = static_cast<RefCounted *>(&self);
             if (result.mCounterAddress) {
                 result.mCounterAddress->AddRefWeak();
             }
             return result;
         }
+    };
+
+    class RefCounted : public IRefCounted {
+        friend class IRefCounted;
+
+    protected:
+        ~RefCounted() noexcept override = default;
+
+    private:
+        void FinalDeallocate() const {
+            std::free(const_cast<void *>(mMallocPointer));
+            sTotalAllocations.fetch_sub(1, std::memory_order_relaxed);
+        }
+
+    protected:
+        template<typename>
+        friend class Ref;
+
+        template<typename>
+        friend class Weak;
+
+        void AddRefStrong() const noexcept override {
+            mStrongCount.fetch_add(1, std::memory_order_relaxed);
+            mWeakCount.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        void AddRefWeak() const noexcept override {
+            mWeakCount.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        void SubRefStrong() const noexcept override {
+            // never delete this when strong count reaches zero, we should always this->~RefCounted() to destroy the
+            // object, but we still need weak count to reach zero to free the memory
+            // we then should use free directly because the destructor has already been called
+            if (mStrongCount.fetch_sub(1, std::memory_order_release) == 1) {
+                std::atomic_thread_fence(std::memory_order_acquire);
+                mMallocPointer = dynamic_cast<const void *>(this);
+                this->~RefCounted();
+                new (static_cast<void *>(const_cast<RefCounted *>(this)))
+                    RefCounted(ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction{});
+                SubRefWeak();
+            } else {
+                SubRefWeak();
+            }
+        }
+
+        void SubRefWeak() const noexcept override {
+            if (mWeakCount.fetch_sub(1, std::memory_order_release) == 1) {
+                std::atomic_thread_fence(std::memory_order_acquire);
+                FinalDeallocate();
+            }
+        }
 
     private:
         static_assert(std::is_trivially_destructible_v<std::atomic_size_t>,
                       "Atomic size type must be trivially destructible to make this work");
 
-        mutable std::atomic_size_t mStrongCount{1};
-        mutable std::atomic_size_t mWeakCount{1};
+        union {
+            struct {
+                // strong count includes weak references
+                // when strong count reaches zero, the object is destroyed
+                // when weak count reaches zero, the memory is freed
+                mutable std::atomic_size_t mStrongCount;
+                mutable std::atomic_size_t mWeakCount;
+            };
 
-        void *InitialAllocationPointer = nullptr;
+            alignas(16) char mPadding[sizeof(std::atomic_size_t) * 2];
+        };
+
+        mutable const void *mMallocPointer;
 
     public:
         struct TransferOwnership {};
 
         struct ShareOwnership {};
 
+    private:
+        struct ConstructionFlag {
+            struct BeginLifetime {};
+
+            struct RestartRefCountedLifetimeAfterDerivedDestruction {};
+        };
+
+        RefCounted(ConstructionFlag::BeginLifetime) : mStrongCount(1), mWeakCount(1), mMallocPointer(nullptr) {
+            sTotalAllocations.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        RefCounted(ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction) {
+            // Do not initialize anything, correct data is already in place
+        }
+
     public:
         static inline std::atomic_size_t sTotalAllocations{0};
 
-        RefCounted() : mStrongCount(1), mWeakCount(1) {
-            sTotalAllocations.fetch_add(1, std::memory_order_relaxed);
-        }
+        RefCounted() : RefCounted(ConstructionFlag::BeginLifetime{}) {}
     };
 
     export template<typename T>
@@ -150,7 +181,9 @@ Engine {
         template<typename U>
         friend class Weak;
 
+        friend IRefCounted;
         friend RefCounted;
+
 
     private:
         Ref(T *ptr, RefCounted::TransferOwnership) requires std::is_base_of_v<RefCounted, T>
@@ -261,8 +294,6 @@ Engine {
                 throw;
             }
 
-            instance->InitialAllocationPointer = rawMemory;
-
             return Ref<T>(instance, RefCounted::TransferOwnership{});
         }
 
@@ -304,6 +335,7 @@ Engine {
         template<typename U>
         friend class Weak;
 
+        friend IRefCounted;
         friend RefCounted;
 
         Weak(const Weak &other) : mPtr(other.mPtr), mCounterAddress(other.mCounterAddress) {
