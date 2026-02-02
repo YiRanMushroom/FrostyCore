@@ -32,7 +32,7 @@ Engine {
     };
 
     class IRefCounted {
-    protected:
+    public:
         virtual ~IRefCounted() noexcept = default;
 
     protected:
@@ -103,13 +103,12 @@ Engine {
     class RefCounted : public IRefCounted {
         friend class IRefCounted;
 
-    protected:
+    public:
         ~RefCounted() noexcept override = default;
 
     private:
         void FinalDeallocate() const {
             std::free(const_cast<void *>(mMallocPointer));
-            sTotalAllocations.fetch_sub(1, std::memory_order_relaxed);
         }
 
     protected:
@@ -166,7 +165,7 @@ Engine {
         }
 
     private:
-        static inline const RefCountedVTable sVTable{
+        static constexpr RefCountedVTable sVTable{
             .AddRefStrong = static_cast<void (IRefCounted::*)() const noexcept>(&RefCounted::AddRefStrongImpl),
             .AddRefWeak = static_cast<void (IRefCounted::*)() const noexcept>(&RefCounted::AddRefWeakImpl),
             .SubRefStrong = static_cast<void (IRefCounted::*)() const noexcept>(&RefCounted::SubRefStrongImpl),
@@ -201,7 +200,7 @@ Engine {
 
         RefCounted(ConstructionFlag::BeginLifetime) : IRefCounted(&sVTable), mStrongCount(1), mWeakCount(1),
                                                       mMallocPointer(nullptr) {
-            sTotalAllocations.fetch_add(1, std::memory_order_relaxed);
+            // sTotalAllocations.fetch_add(1, std::memory_order_relaxed);
         }
 
         RefCounted(ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction) : IRefCounted{} {
@@ -210,7 +209,7 @@ Engine {
         }
 
     public:
-        static inline std::atomic_size_t sTotalAllocations{0};
+        // static inline std::atomic_size_t sTotalAllocations{0};
 
         RefCounted() : RefCounted(ConstructionFlag::BeginLifetime{}) {}
     };

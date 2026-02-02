@@ -78,22 +78,36 @@ Engine {
         return std::move(results.front());
     }
 
-    export struct CPUImage {
-        uint32_t width{};
-        uint32_t height{};
-        std::shared_ptr<uint8_t[]> data{};
+    export class CPUImage : public RefCounted {
+        uint32_t mWidth{};
+        uint32_t mHeight{};
+        std::unique_ptr<uint8_t[]> mData{};
 
+    public:
         GPUImageDescriptor GetGPUDescriptor(std::string_view debugName = "CPUImage") const {
             return GPUImageDescriptor{
-                .width = width,
-                .height = height,
-                .imageData = std::span<const uint8_t>(data.get(), width * height),
+                .width = mWidth,
+                .height = mHeight,
+                .imageData = std::span<const uint8_t>(mData.get(), mWidth * mHeight),
                 .debugName = debugName
             };
         }
+
+        uint32_t GetWidth() const {
+            return mWidth;
+        }
+        uint32_t GetHeight() const {
+            return mHeight;
+        }
+        const uint8_t* GetData() const {
+            return mData.get();
+        }
+
+        CPUImage(uint32_t width, uint32_t height, std::unique_ptr<uint8_t[]> data)
+            : mWidth(width), mHeight(height), mData(std::move(data)) {}
     };
 
-    export CPUImage LoadImageFromFile(const std::filesystem::path &filePath) {
+    export Ref<CPUImage> LoadImageFromFile(const std::filesystem::path &filePath) {
         int width, height, channels;
         stbi_uc *imgData = stbi_load(filePath.string().c_str(), &width, &height, &channels, 4);
         if (!imgData) {
@@ -104,14 +118,11 @@ Engine {
             stbi_image_free(reinterpret_cast<stbi_uc *>(p));
         });
 
-        return CPUImage{
-            .width = static_cast<uint32_t>(width),
-            .height = static_cast<uint32_t>(height),
-            .data = data
-        };
+        return MakeRef<CPUImage>(static_cast<uint32_t>(width), static_cast<uint32_t>(height),
+                                 std::unique_ptr<uint8_t[]>(data.get()));
     }
 
-    export Awaitable<CPUImage> LoadImageFromFileAsync(const std::filesystem::path &filePath) {
+    export Awaitable<Ref<CPUImage>> LoadImageFromFileAsync(const std::filesystem::path &filePath) {
         co_return LoadImageFromFile(filePath);
     }
 }

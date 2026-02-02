@@ -150,16 +150,16 @@ namespace ImGui {
         Engine::Ref<ImGuiImageHolder> mHolder;
 
     public:
-        static ImGuiImage Create(nvrhi::TextureHandle texture, nvrhi::SamplerHandle sampler) {
-            return ImGuiImage(texture, sampler);
+        static Engine::Ref<ImGuiImage> Create(nvrhi::TextureHandle texture, nvrhi::SamplerHandle sampler) {
+            return Engine::MakeRef<ImGuiImage>(texture, sampler);
         }
     };
 
-    std::vector<ImGuiImage> g_ImageInUseCurrentFrame{};
+    std::vector<Engine::Ref<ImGuiImage>> g_ImageInUseCurrentFrame{};
 
-    std::vector<std::vector<ImGuiImage>> g_ImagesInUseForFrameIndex{};
+    std::vector<std::vector<Engine::Ref<ImGuiImage>>> g_ImagesInUseForFrameIndex{};
 
-    void RegisterImGuiImageForCurrentFrame(const ImGuiImage &image) {
+    void RegisterImGuiImageForCurrentFrame(const Engine::Ref<ImGuiImage> &image) {
         g_ImageInUseCurrentFrame.push_back(image);
     }
 
@@ -171,9 +171,9 @@ namespace ImGui {
         g_ImageInUseCurrentFrame.clear();
     }
 
-    export void ImageAutoManaged(const ImGuiImage &image, const ImVec2 &image_size, const ImVec2 &uv0 = ImVec2(0, 0),
+    export void ImageAutoManaged(const Engine::Ref<ImGuiImage> &image, const ImVec2 &image_size, const ImVec2 &uv0 = ImVec2(0, 0),
                                  const ImVec2 &uv1 = ImVec2(1, 1)) {
-        ImGui::Image(image.GetImGuiTextureID(), image_size, uv0, uv1);
+        ImGui::Image(image->GetImGuiTextureID(), image_size, uv0, uv1);
         RegisterImGuiImageForCurrentFrame(image);
     }
 
