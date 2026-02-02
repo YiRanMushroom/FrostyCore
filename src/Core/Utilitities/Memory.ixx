@@ -9,6 +9,8 @@ import :Tags;
 
 namespace
 Engine {
+    export class IRefCounted;
+
     export class RefCounted;
 
     export template<typename>
@@ -17,13 +19,15 @@ Engine {
     export template<typename>
     class Weak;
 
-    export class IRefCounted;
-
     export struct RefCountedVTable {
         void (IRefCounted::*AddRefStrong)() const noexcept;
+
         void (IRefCounted::*AddRefWeak)() const noexcept;
+
         void (IRefCounted::*SubRefStrong)() const noexcept;
+
         void (IRefCounted::*SubRefWeak)() const noexcept;
+
         bool (IRefCounted::*TryAddRefStrong)() const noexcept;
     };
 
@@ -31,18 +35,36 @@ Engine {
     protected:
         virtual ~IRefCounted() noexcept = default;
 
+    protected:
+        const RefCountedVTable *mVTable;
+
     public:
-        virtual void AddRefStrong() const noexcept = 0;
+        void AddRefStrong() const noexcept {
+            const IRefCounted *self = std::launder(this);
+            (self->*mVTable->AddRefStrong)();
+        }
 
-        virtual void AddRefWeak() const noexcept = 0;
+        void AddRefWeak() const noexcept {
+            const IRefCounted *self = std::launder(this);
+            (self->*mVTable->AddRefWeak)();
+        }
 
-        virtual void SubRefStrong() const noexcept = 0;
+        void SubRefStrong() const noexcept {
+            const IRefCounted *self = std::launder(this);
+            (self->*mVTable->SubRefStrong)();
+        }
 
-        virtual void SubRefWeak() const noexcept = 0;
+        void SubRefWeak() const noexcept {
+            const IRefCounted *self = std::launder(this);
+            (self->*mVTable->SubRefWeak)();
+        }
 
         // Try to upgrade from weak to strong reference, returns true if successful
         // This is used by Weak::Lock() to atomically check and increment the strong count
-        [[nodiscard]] virtual bool TryAddRefStrong() const noexcept = 0;
+        [[nodiscard]] bool TryAddRefStrong() const noexcept {
+            const IRefCounted *self = std::launder(this);
+            return (self->*mVTable->TryAddRefStrong)();
+        }
 
     public:
         template<typename T = void, typename U> requires std::is_base_of_v<IRefCounted, std::remove_cvref_t<U>>
@@ -69,6 +91,13 @@ Engine {
             }
             return result;
         }
+
+    protected:
+        IRefCounted(RefCountedVTable const *vtable) : mVTable(vtable) {}
+
+        IRefCounted() {
+            // Do not initialize anything, correct vtable pointer is already in place
+        }
     };
 
     class RefCounted : public IRefCounted {
@@ -90,16 +119,17 @@ Engine {
         template<typename>
         friend class Weak;
 
-        void AddRefStrong() const noexcept override {
+    private:
+        void AddRefStrongImpl() const noexcept {
             mStrongCount.fetch_add(1, std::memory_order_relaxed);
             mWeakCount.fetch_add(1, std::memory_order_relaxed);
         }
 
-        void AddRefWeak() const noexcept override {
+        void AddRefWeakImpl() const noexcept {
             mWeakCount.fetch_add(1, std::memory_order_relaxed);
         }
 
-        void SubRefStrong() const noexcept override {
+        void SubRefStrongImpl() const noexcept {
             // never delete this when strong count reaches zero, we should always this->~RefCounted() to destroy the
             // object, but we still need weak count to reach zero to free the memory
             // we then should use free directly because the destructor has already been called
@@ -109,20 +139,20 @@ Engine {
                 this->~RefCounted();
                 new(static_cast<void *>(const_cast<RefCounted *>(this)))
                         RefCounted(ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction{});
-                SubRefWeak();
+                SubRefWeakImpl();
             } else {
-                SubRefWeak();
+                SubRefWeakImpl();
             }
         }
 
-        void SubRefWeak() const noexcept override {
+        void SubRefWeakImpl() const noexcept {
             if (mWeakCount.fetch_sub(1, std::memory_order_release) == 1) {
                 std::atomic_thread_fence(std::memory_order_acquire);
                 FinalDeallocate();
             }
         }
 
-        bool TryAddRefStrong() const noexcept override {
+        bool TryAddRefStrongImpl() const noexcept {
             size_t current = mStrongCount.load(std::memory_order_relaxed);
             while (current != 0) {
                 if (mStrongCount.compare_exchange_weak(current, current + 1,
@@ -134,6 +164,15 @@ Engine {
             }
             return false;
         }
+
+    private:
+        static inline const RefCountedVTable sVTable{
+            .AddRefStrong = static_cast<void (IRefCounted::*)() const noexcept>(&RefCounted::AddRefStrongImpl),
+            .AddRefWeak = static_cast<void (IRefCounted::*)() const noexcept>(&RefCounted::AddRefWeakImpl),
+            .SubRefStrong = static_cast<void (IRefCounted::*)() const noexcept>(&RefCounted::SubRefStrongImpl),
+            .SubRefWeak = static_cast<void (IRefCounted::*)() const noexcept>(&RefCounted::SubRefWeakImpl),
+            .TryAddRefStrong = static_cast<bool (IRefCounted::*)() const noexcept>(&RefCounted::TryAddRefStrongImpl)
+        };
 
     private:
         static_assert(std::is_trivially_destructible_v<std::atomic_size_t>,
@@ -160,12 +199,14 @@ Engine {
             struct RestartRefCountedLifetimeAfterDerivedDestruction {};
         };
 
-        RefCounted(ConstructionFlag::BeginLifetime) : mStrongCount(1), mWeakCount(1), mMallocPointer(nullptr) {
+        RefCounted(ConstructionFlag::BeginLifetime) : IRefCounted(&sVTable), mStrongCount(1), mWeakCount(1),
+                                                      mMallocPointer(nullptr) {
             sTotalAllocations.fetch_add(1, std::memory_order_relaxed);
         }
 
-        RefCounted(ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction) {
+        RefCounted(ConstructionFlag::RestartRefCountedLifetimeAfterDerivedDestruction) : IRefCounted{} {
             // Do not initialize anything, correct data is already in place
+            // mVTable pointer is trivially destructible and will remain valid
         }
 
     public:
