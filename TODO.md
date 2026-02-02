@@ -12,3 +12,5 @@ Add:
 Add Entt and prepare for ECS.
 
 consider using vuk rhi (probably not for now)
+
+Reduce UB in RefCounted
