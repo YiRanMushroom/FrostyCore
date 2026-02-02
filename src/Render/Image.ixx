@@ -78,17 +78,17 @@ Engine {
         return std::move(results.front());
     }
 
-    export class CPUImage : public RefCounted {
+    export class CPUImage {
         uint32_t mWidth{};
         uint32_t mHeight{};
-        std::unique_ptr<uint8_t[]> mData{};
+        std::unique_ptr<IBuffer<uint8_t>> mBuffer;
 
     public:
         GPUImageDescriptor GetGPUDescriptor(std::string_view debugName = "CPUImage") const {
             return GPUImageDescriptor{
                 .width = mWidth,
                 .height = mHeight,
-                .imageData = std::span<const uint8_t>(mData.get(), mWidth * mHeight),
+                .imageData = mBuffer->AsSpan(),
                 .debugName = debugName
             };
         }
@@ -96,30 +96,55 @@ Engine {
         uint32_t GetWidth() const {
             return mWidth;
         }
+
         uint32_t GetHeight() const {
             return mHeight;
         }
-        const uint8_t* GetData() const {
-            return mData.get();
+
+        const uint8_t *GetData() const {
+            return mBuffer->Data();
         }
 
         CPUImage(uint32_t width, uint32_t height, std::unique_ptr<uint8_t[]> data)
-            : mWidth(width), mHeight(height), mData(std::move(data)) {}
+            : mWidth(width), mHeight(height),
+              mBuffer(std::make_unique<DynamicBuffer<uint8_t>>(data.release(),
+                                                               width * height * 4,
+                                                               ResourceOwnership::Transferred{})) {}
+
+        CPUImage(uint32_t width, uint32_t height, std::unique_ptr<IBuffer<uint8_t>> buffer)
+            : mWidth(width), mHeight(height),
+              mBuffer(std::move(buffer)) {}
+
+        CPUImage(uint32_t width, uint32_t height, ResourceState::Uninitialized)
+            : mWidth(width), mHeight(height),
+              mBuffer(std::make_unique<DynamicBuffer<uint8_t>>(width * height * 4,
+                                                               ResourceState::Uninitialized{})) {}
+
+        CPUImage(ResourceState::Uninitialized)
+            : mBuffer(nullptr) {}
     };
 
     export Ref<CPUImage> LoadImageFromFile(const std::filesystem::path &filePath) {
         int width, height, channels;
         stbi_uc *imgData = stbi_load(filePath.string().c_str(), &width, &height, &channels, 4);
         if (!imgData) {
-            throw std::runtime_error("Failed to load image: " + filePath.string());
+            throw RuntimeException("Failed to load image: " + filePath.string());
         }
 
-        auto data = std::shared_ptr<uint8_t[]>(imgData, [](uint8_t *p) {
-            stbi_image_free(reinterpret_cast<stbi_uc *>(p));
-        });
+        struct Deleter {
+            void operator()(stbi_uc *ptr) const {
+                stbi_image_free(ptr);
+            }
+        };
+
+        DynamicBuffer<uint8_t, Deleter> buffer(
+            imgData,
+            static_cast<size_t>(width) * static_cast<size_t>(height) * 4,
+            ResourceOwnership::Transferred{}
+        );
 
         return MakeRef<CPUImage>(static_cast<uint32_t>(width), static_cast<uint32_t>(height),
-                                 std::unique_ptr<uint8_t[]>(data.get()));
+                                 std::make_unique<DynamicBuffer<uint8_t, Deleter>>(std::move(buffer)));
     }
 
     export Awaitable<Ref<CPUImage>> LoadImageFromFileAsync(const std::filesystem::path &filePath) {

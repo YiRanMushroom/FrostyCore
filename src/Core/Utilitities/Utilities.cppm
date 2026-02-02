@@ -6,3 +6,4 @@ export import :Tags;
 export import :StringLiteral;
 export import :MultiInterface;
 export import :TypeTraits;
+export import :Buffer;

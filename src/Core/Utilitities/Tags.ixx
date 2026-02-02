@@ -11,6 +11,16 @@ Engine {
             struct Transferred {};
 
             struct Shared {};
+
+            struct Borrowed {};
+        }
+    }
+
+    namespace ResourceState {
+        export inline namespace Tags {
+            struct DefaultInitialized {};
+
+            struct Uninitialized {};
         }
     }
 }
