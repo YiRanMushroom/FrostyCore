@@ -40,7 +40,7 @@ Engine {
         virtual void OnDetach();
 
     protected:
-        Ref<Application> mApp{};
+        Weak<Application> mApp{};
     };
 }
 
@@ -254,9 +254,8 @@ Engine {
         virtual void DetachAllLayers() {
             for (auto &layer: mLayers) {
                 layer->OnDetach();
+                std::move(layer).Destroy();
             }
-
-            mLayers.clear();
         }
 
         void SubmitToCommandListThread(std::move_only_function<void()> task) {
@@ -270,8 +269,8 @@ Engine {
 
     template<typename T>
     std::future<T> Layer::SendToMainThreadToExecute(std::function<T()> func) {
-        if (mApp) {
-            return mApp->SendToMainThreadToExecute<T>(std::move(func));
+        if (auto app = mApp.Lock()) {
+            return app->SendToMainThreadToExecute<T>(std::move(func));
         }
         throw Engine::RuntimeException("Layer is not attached to an Application");
     }

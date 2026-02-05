@@ -568,8 +568,8 @@ Engine {
     }
 
     void Layer::OnFrameEnded(std::function<void()> callback) {
-        if (mApp) {
-            mApp->OnFrameEnded(std::move(callback));
+        if (auto app = mApp.Lock()) {
+            app->OnFrameEnded(std::move(callback));
         } else {
             throw Engine::RuntimeException("Layer is not attached to an Application");
         }

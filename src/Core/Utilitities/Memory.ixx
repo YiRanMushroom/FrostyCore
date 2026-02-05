@@ -29,6 +29,10 @@ Engine {
         void (IRefCounted::*SubRefWeak)() const noexcept;
 
         bool (IRefCounted::*TryAddRefStrong)() const noexcept;
+
+        bool (IRefCounted::*IsAlive)() const noexcept;
+
+        bool (IRefCounted::*TrySubLastRefStrong)() const noexcept;
     };
 
     class IRefCounted {
@@ -57,6 +61,16 @@ Engine {
         void SubRefWeak() const noexcept {
             const IRefCounted *self = std::launder(this);
             (self->*mVTable->SubRefWeak)();
+        }
+
+        [[nodiscard]] bool IsAlive() const noexcept {
+            const IRefCounted *self = std::launder(this);
+            return (self->*mVTable->IsAlive)();
+        }
+
+        bool TrySubLastRefStrong() const noexcept {
+            const IRefCounted *self = std::launder(this);
+            return (self->*mVTable->TrySubLastRefStrong)();
         }
 
         // Try to upgrade from weak to strong reference, returns true if successful
@@ -197,13 +211,36 @@ Engine {
             return false;
         }
 
+        bool IsAliveImpl() const noexcept {
+            return mStrongCount.load(std::memory_order_relaxed) != 0;
+        }
+
+        bool TrySubLastRefStrongImpl() const noexcept {
+            size_t current = mStrongCount.load(std::memory_order_relaxed);
+            while (current != 1) {
+                return false;
+            }
+            if (mStrongCount.compare_exchange_strong(current, 0,
+                                                     std::memory_order_acquire,
+                                                     std::memory_order_relaxed)) {
+                std::atomic_thread_fence(std::memory_order_acquire);
+                TransitToDerivedDestructedState();
+                SubRefWeakImpl();
+                return true;
+            }
+            return false;
+        }
+
     private:
         static constexpr RefCountedVTable sVTable{
             .AddRefStrong = static_cast<void (IRefCounted::*)() const noexcept>(&RefCounted::AddRefStrongImpl),
             .AddRefWeak = static_cast<void (IRefCounted::*)() const noexcept>(&RefCounted::AddRefWeakImpl),
             .SubRefStrong = static_cast<void (IRefCounted::*)() const noexcept>(&RefCounted::SubRefStrongImpl),
             .SubRefWeak = static_cast<void (IRefCounted::*)() const noexcept>(&RefCounted::SubRefWeakImpl),
-            .TryAddRefStrong = static_cast<bool (IRefCounted::*)() const noexcept>(&RefCounted::TryAddRefStrongImpl)
+            .TryAddRefStrong = static_cast<bool (IRefCounted::*)() const noexcept>(&RefCounted::TryAddRefStrongImpl),
+            .IsAlive = static_cast<bool (IRefCounted::*)() const noexcept>(&RefCounted::IsAliveImpl),
+            .TrySubLastRefStrong = static_cast<bool (IRefCounted::*)() const noexcept>(
+                &RefCounted::TrySubLastRefStrongImpl),
         };
 
     private:
@@ -330,7 +367,7 @@ Engine {
         T *operator->() const noexcept { return mPtr; }
 
         template<typename Result>
-        Result& operator->*(Result T::*member) const noexcept {
+        Result &operator->*(Result T::*member) const noexcept {
             return mPtr->*member;
         }
 
@@ -397,6 +434,24 @@ Engine {
             }
 
             return Ref<T>(instance, ResourceOwnership::Tags::Transferred{});
+        }
+
+        void Destroy(this Ref<T> &&self,
+                     std::chrono::duration<float> blockTimeUnit = std::chrono::duration<float>(1.f / 100)) noexcept {
+            IRefCounted *counter = self.mCounterAddress;
+
+            self.mCounterAddress = nullptr;
+            self.mPtr = nullptr;
+
+            // manually manage the destruction process
+            if (!counter || !counter->IsAlive()) {
+                return;
+            }
+
+            while (!counter->TrySubLastRefStrong()) {
+                // spin wait
+                std::this_thread::sleep_for(blockTimeUnit);
+            }
         }
 
     private:
@@ -484,7 +539,24 @@ Engine {
     public:
         [[nodiscard]] Ref<T> Lock() const noexcept;
 
+        void Reset() noexcept {
+            if (mCounterAddress) {
+                mCounterAddress->SubRefWeak();
+
+                mCounterAddress = nullptr;
+                mPtr = nullptr;
+            }
+        }
+
         [[nodiscard]] Borrowed<T> Borrow() const noexcept;
+
+        T &GetRefUnsafe() const noexcept {
+            return *mPtr;
+        }
+
+        T *GetPtrUnsafe() const noexcept {
+            return mPtr;
+        }
 
     public:
         ~Weak() noexcept {

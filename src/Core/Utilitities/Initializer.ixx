@@ -4,6 +4,8 @@ import Core.Prelude;
 
 import :Memory;
 
+import Core.Coroutine;
+
 namespace
 Engine {
     export class Initializer {
@@ -66,7 +68,7 @@ Engine {
     public:
         AsyncInitializationContext() = delete;
 
-        AsyncInitializationContext(IRefCounted *owner) : mOwner(owner) {}
+        AsyncInitializationContext(IRefCounted *owner) : mOwner(owner->RefFromThis()) {}
 
         void Pull() {
             std::erase_if(mInitFutures, [](auto &future) {
@@ -85,13 +87,14 @@ Engine {
                                    std::move_only_function<std::type_identity_t<ResultType>()> initFunc) {
             mInitFutures.push_back(
                 std::async(std::launch::async,
-                           [owner = mOwner->WeakFromThis<DerivedType>(), memberPtr,
+                           [owner = mOwner, memberPtr,
                                func = std::move(initFunc)] mutable {
                                ResultType result = std::invoke(std::move(func));
                                return std::move_only_function<void()>(
-                                   [weak = std::move(owner), memberPtr, result = std::move(result)]() mutable {
-                                       if (auto owner = weak.Lock()) {
-                                           owner->*memberPtr = std::move(result);
+                                   [owner = std::move(owner), memberPtr, result = std::move(result)]() mutable {
+                                       if (auto self = owner.Lock()) {
+                                           auto derivedSelf = static_cast<DerivedType *>(self.Get());
+                                           derivedSelf->*memberPtr = std::move(result);
                                        }
                                    });
                            }));
@@ -99,18 +102,24 @@ Engine {
 
         void Destroy() {
             for (auto &future: mInitFutures) {
-                if (future.valid()) {
-                    future.get();
-                }
+                auto pullFunc = future.get();
+                std::invoke(std::move(pullFunc));
             }
+            mInitFutures.clear();
         }
 
         ~AsyncInitializationContext() {
             Destroy();
+            // if (!m_IsDestroyed) {
+            //     std::cerr << "Error: AsyncInitializationContext must be explicitly destroyed before destruction."
+            //                " Or else the result is fatal, rather than simple resource leak." << std::endl;
+            //     throw RuntimeException("AsyncInitializationContext must be explicitly destroyed before destruction.");
+            // }
         }
 
     private:
-        IRefCounted *mOwner;
+        bool m_IsDestroyed{false};
+        Weak<IRefCounted> mOwner;
         std::vector<std::future<std::move_only_function<void()>>> mInitFutures;
     };
 }
