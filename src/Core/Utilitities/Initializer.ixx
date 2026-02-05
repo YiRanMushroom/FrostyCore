@@ -85,12 +85,14 @@ Engine {
                                    std::move_only_function<std::type_identity_t<ResultType>()> initFunc) {
             mInitFutures.push_back(
                 std::async(std::launch::async,
-                           [owner = mOwner->RefFromThis<DerivedType>(), memberPtr,
+                           [owner = mOwner->WeakFromThis<DerivedType>(), memberPtr,
                                func = std::move(initFunc)] mutable {
                                ResultType result = std::invoke(std::move(func));
                                return std::move_only_function<void()>(
-                                   [owner = std::move(owner), memberPtr, result = std::move(result)]() mutable {
-                                       owner->*memberPtr = std::move(result);
+                                   [weak = std::move(owner), memberPtr, result = std::move(result)]() mutable {
+                                       if (auto owner = weak.Lock()) {
+                                           owner->*memberPtr = std::move(result);
+                                       }
                                    });
                            }));
         }
