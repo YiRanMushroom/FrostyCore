@@ -59,7 +59,7 @@ Engine {
 
     private:
         std::future<void> mInitFuture;
-        std::shared_ptr<std::atomic<bool>> mInitialized = std::make_unique<std::atomic<bool>>(false);
+        std::shared_ptr<std::atomic<bool>> mInitialized = std::make_shared<std::atomic<bool>>(false);
     };
 
     export class AsyncInitializationContext {
