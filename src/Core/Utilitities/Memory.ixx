@@ -329,6 +329,11 @@ Engine {
         T &operator*() const noexcept { return *mPtr; }
         T *operator->() const noexcept { return mPtr; }
 
+        template<typename Result>
+        Result& operator->*(Result T::*member) const noexcept {
+            return mPtr->*member;
+        }
+
         void Reset() noexcept {
             if (mCounterAddress) {
                 mCounterAddress->SubRefStrong();
