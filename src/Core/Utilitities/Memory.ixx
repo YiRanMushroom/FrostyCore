@@ -223,7 +223,6 @@ Engine {
             if (mStrongCount.compare_exchange_strong(current, 0,
                                                      std::memory_order_acquire,
                                                      std::memory_order_relaxed)) {
-                std::atomic_thread_fence(std::memory_order_acquire);
                 TransitToDerivedDestructedState();
                 SubRefWeakImpl();
                 return true;
