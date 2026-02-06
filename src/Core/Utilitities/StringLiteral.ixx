@@ -36,6 +36,10 @@ Engine {
             result.Value[End - Begin] = '\0';
             return result;
         }
+
+        constexpr StringLiteral(std::string_view sv) {
+            std::copy_n(sv.data(), N, Value);
+        }
     };
 
     export template<size_t N>
@@ -56,7 +60,6 @@ Engine {
         return literal;
     }
 
-    static_assert("Hello, World!"_sl.View() == "Hello, World!");
 
     export template<size_t N1, size_t N2>
     constexpr auto operator+(const StringLiteral<N1> &lhs, const StringLiteral<N2> &rhs) {
@@ -66,8 +69,8 @@ Engine {
         return result;
     }
 
+    static_assert("Hello, World!"_sl.View() == "Hello, World!");
     static_assert(("Hello, "_sl + "World!"_sl).View() == "Hello, World!");
     static_assert("Hello, "_sl + "World!"_sl == "Hello, World!"_sl);
-
     static_assert("Hello world!"_sl.Slice<0, 5>().View() == "Hello");
 }
